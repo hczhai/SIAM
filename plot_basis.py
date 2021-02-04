@@ -6,8 +6,10 @@ Mess around with pyscf
 https://sunqm.github.io/pyscf/tutorial.html
 '''
 
+import plot
+
 import numpy as np
-import matplotlib as plt
+import matplotlib.pyplot as plt
 import pyscf as ps
 
 #############################################################################
@@ -60,16 +62,27 @@ def DiatomicEnergyWrapper():
 
     # def inputs
     atom = 'H';
-    basis = 'ccpvdz';
-    Rvals = [1,2,3,4];
+    Rvals = (0.7,0.8,10);
     
-    print("inputs = ",atom,basis,Rvals);
+    # make dict to hold output E vs R data for each basis
+    d=dict()
     
-    # run func
-    data = DiatomicEnergyVsR(atom, basis, Rvals);
+    # do multiple bases
+    bases = ['ccpvdz', 'sto-3g', 'sto-6g'];
+    for b in bases:
+        
+        print("inputs = ",atom,b,Rvals);
     
-    # make dict
-    d = dict([(basis, data)]);
+        # run func
+        data = DiatomicEnergyVsR(atom, b, Rvals);
+    
+        # put results in dict
+        d[b] = data;
+    
+    # call basisplot
+    labels = "Bond Length", "Energy", "Disassociation Curve by Basis Set"
+    plot.BasisPlot(d, labels);
+    
     
 
 #############################################################################
