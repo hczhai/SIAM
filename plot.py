@@ -16,7 +16,7 @@ def BasisPlot(basisdict, labels, comparediff=False):
     
     Args:
         basis dict, dict
-        labels, tuple of strings for xlabel, ylabel, title
+        labels, list of strings for xlabel, ylabel, title
     '''
     
     # check inputs

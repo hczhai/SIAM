@@ -7,6 +7,7 @@ https://sunqm.github.io/pyscf/tutorial.html
 '''
 
 import plot
+import utils
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -53,6 +54,17 @@ def DiatomicEnergyVsR(atom, basis, Rvals):
     
     return Rvals, Evals ; #### end diatomic energy
     
+    
+def GeneralEnergyVsR(): # elements, coords, basis):
+
+    # return object is np arr
+    #Evals = np.zeros(len(Rvals) );
+    
+    # construct atomstring from atoms and coords
+    d = {'H' : np.ones(3), 'O' : np.zeros(3)}
+    atomstring = utils.ParseGeoDict(d);
+    
+    
 #############################################################################
 #### wrappers and test funcs
 
@@ -80,9 +92,14 @@ def DiatomicEnergyWrapper():
         d[b] = data;
     
     # call basisplot
-    labels = "Bond Length", "Energy", "Disassociation Curve by Basis Set";
+    labels = ["Bond Length", "Energy", "Disassociation Curve by Basis Set"];
     labels = ["bad"];
     plot.BasisPlot(d, labels);
+    
+    
+def GeneralEnergyWrapper():
+
+    GeneralEnergyVsR();
     
     
 
@@ -91,20 +108,8 @@ def DiatomicEnergyWrapper():
 
 if __name__ == "__main__":
 
-    x = np.array([1,2,3,4]);
-    y = np.ones(4);
-    print(x-y);
-    print(x);
-
-    DiatomicEnergyWrapper();
-
-    #run in spin singlet and triplet states
-    #mol.build(atom = '''O 0 0 0; O 0 0 1.2''', basis = 'ccpvdz');
-
-    # HF energy
-    #m = ps.scf.RHF(mol);
-    #print('E(HF) = %g' % m.kernel())
-
+    #DiatomicEnergyWrapper();
+    GeneralEnergyWrapper();
 
     
     
