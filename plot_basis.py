@@ -62,7 +62,7 @@ def DiatomicEnergyWrapper():
 
     # def inputs
     atom = 'H';
-    Rvals = (0.7,0.8,10);
+    Rvals = (0.5,1.5,20);
     
     # make dict to hold output E vs R data for each basis
     d=dict()
@@ -80,7 +80,8 @@ def DiatomicEnergyWrapper():
         d[b] = data;
     
     # call basisplot
-    labels = "Bond Length", "Energy", "Disassociation Curve by Basis Set"
+    labels = "Bond Length", "Energy", "Disassociation Curve by Basis Set";
+    labels = ["bad"];
     plot.BasisPlot(d, labels);
     
     
@@ -89,6 +90,11 @@ def DiatomicEnergyWrapper():
 #### execute code
 
 if __name__ == "__main__":
+
+    x = np.array([1,2,3,4]);
+    y = np.ones(4);
+    print(x-y);
+    print(x);
 
     DiatomicEnergyWrapper();
 

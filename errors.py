@@ -3,31 +3,22 @@ Implementation of custom errors for the family of ThinkComplexity projects
 '''
 
 ##############################################################
-# errors for the graph based projects
+# errors for the pyscf enviro
 ##############################################################
 
-class GraphError(Exception):
+class PlotError(Exception):
     '''
-    Basic error for when things go wrong when using a Graph object (as defined
-    in the GraphObjects.py module).
-    '''
-    
-    pass; #### end GraphError
-    
-    
-class RandomGraphError(GraphError):
-    '''
-    Error class that inherits from GraphErrors, but is more specific to problems
-    with the RandomGraph class defined in the RandomGraph.py module.
+    Basic error for when things go wrong in the plot module
     '''
     
-    pass; #### end RandomgraphError
+    pass; #### end PlotError
     
-    
-class SmallWorldGraphError(RandomGraphError):
+class PlotTypeError(TypeError):
     '''
-    Even more specific error for raising when there is a problem with a
-    SmallWorldGraph as defined in the SmallWorldGraph.py module.
+    When a plot func gets the wrong input type
     '''
+
+    pass; #### end PlotError
     
-    pass; #### end SmallWorldGraphError
+    
+
