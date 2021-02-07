@@ -45,7 +45,7 @@ def DiatomicEnergyVsR(atom, basis, Rvals):
     
         # specify the geometry
         atomstring = atom+' 0 0 0; '+atom + ' 0 0 '+str(R); #watch spacing
-        print("atomstring",atomstring);
+        print("atomstring = ", atomstring);
         mol.atom = atomstring;
     
         # find HF energy
@@ -55,14 +55,25 @@ def DiatomicEnergyVsR(atom, basis, Rvals):
     return Rvals, Evals ; #### end diatomic energy
     
     
-def GeneralEnergyVsR(): # elements, coords, basis):
+def GeneralEnergyVsR(geo, basis, coordkey, coordvals):
+    '''
+    For a given molecule, find the ground state energy in a given basis set, over range of different coordinates for a certain atom
+    Args:
+    -geo, standard dict of elems to cartesian coords
+    -basis, string of basis name to input to pyscf mol constructor
+    -coordkey, elem name string, tells which element in mol to vary position of
+    
+    Returns tuple of 1d np arrs: indep var coords and energies (Evals)
+    '''
 
-    # return object is np arr
-    #Evals = np.zeros(len(Rvals) );
+    #return object is np arr
+    Evals = np.zeros(len(Rvals) );
     
     # construct atomstring from atoms and coords
     d = {'H' : np.ones(3), 'O' : np.zeros(3)}
     atomstring = utils.ParseGeoDict(d);
+    print("atomstring = ", atomstring);
+    mol = ps.gto.Mole(atom=atomstring);
     
     
 #############################################################################
