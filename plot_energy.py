@@ -1,9 +1,9 @@
 '''
-playground.py
+plot_energy.py
 
-Mess around with pyscf
-
-https://sunqm.github.io/pyscf/tutorial.html
+Routines for calculating energies, for a given molecular geometry
+-against independent variables
+-comparing different bases
 '''
 
 import plot
@@ -16,13 +16,13 @@ import pyscf as ps
 #############################################################################
 #### energy vs bond length in a given basis
 
-def DiatomicEnergyVsR(atom, basis, Rvals):
+def DiatomicEnergyVsR(atom, Rvals, basis):
     '''
     For a given diatomic molecule, find the ground state energy in a given basis set, over a range of bond lengths
     Args:
     -atom, string of atomic name to input to pyscf mol constructor
-    -basis, string of basis name to input to pyscf mol constructor
     -Rvals, specifies range of R, can be list of vals to take, or tuple (Rmin, Rmax, # pts)
+    -basis, string of basis name to input to pyscf mol constructor (last arg for *construction)
     Returns tuple of 1d np arrs: bond lengths (Rvals) and energies (Evals)
     '''
     
@@ -77,35 +77,66 @@ def GeneralEnergyVsR(geo, basis, coordkey, coordvals):
     
     
 #############################################################################
-#### wrappers and test funcs
+#### computing the energy across multiple basis sets
 
-def DiatomicEnergyWrapper():
+def EnergyByBasis(f, fargs, bases, labels):
+    '''
+    Using a given energy function, specifies the energy of the geo vs the indep var
+    (as specified by fargs) for multiple basis, and plots comparison
+    
+    Args:
+    f, function pointer, which returns tuple of 1d arrays indep var vals, E vals
+        code checks that the return vals are ok, raises TypeError otherwise
+    fargs, tuple of all args to pass to f for it to run
+    bases, list of strings, with basis names to pass to ps
+    labels, for passing to plotting routine
+    
+    '''
 
-    print("Executing Diatomic Energy Vs R")
-
-    # def inputs
-    atom = 'H';
-    Rvals = (0.5,1.5,20);
     
     # make dict to hold output E vs R data for each basis
     d=dict()
     
-    # do multiple bases
-    bases = ['ccpvdz', 'sto-3g', 'sto-6g'];
+    # compute energy for each basis
     for b in bases:
         
-        print("inputs = ",atom,b,Rvals);
+        print("inputs = ",fargs, "basis = ", b);
     
-        # run func
-        data = DiatomicEnergyVsR(atom, b, Rvals);
+        # run func that gets energy
+        data = f(*fargs, b);
+        
+        # check function has correct output
+        if( type(data) != type( (1,1) ) ):
+            raise TypeError("Energy function f in EnergyByBasis does not return tuple.");
+        elif( type(data[0]) != type(np.ones(0) ) ):
+            raise TypeError("Energy function f in EnergyByBasis does not return tuple of np arrays");
     
         # put results in dict
         d[b] = data;
     
     # call basisplot
-    labels = ["Bond Length", "Energy", "Disassociation Curve by Basis Set"];
-    labels = ["bad"];
+    
     plot.BasisPlot(d, labels);
+    
+    return; #### end EnergyByBasis
+    
+    
+#############################################################################
+#### wrappers and test funcs
+
+def DiatomicEnergyWrapper():
+
+    # define inputs to EByBasis
+    f=DiatomicEnergyVsR; # function to call for energies
+    atom = 'H'; # ie make H2 molecule
+    Rvals = (0.5,1.5,10); # Rmin, Rmax, # R pts
+    fargs = atom, Rvals;
+    bases = ['sto-3g','ccpvdz']; # which bases to use
+    labels = ["Bond Length", "Energy", "Disassociation Curve by Basis Set"]; # for plot
+    
+    EnergyByBasis(f, fargs, bases, labels);
+    
+    return;#### end wrapper
     
     
 def GeneralEnergyWrapper():
@@ -119,8 +150,7 @@ def GeneralEnergyWrapper():
 
 if __name__ == "__main__":
 
-    #DiatomicEnergyWrapper();
-    GeneralEnergyWrapper();
+    DiatomicEnergyWrapper();
 
     
     
