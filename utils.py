@@ -13,6 +13,11 @@ PeriodicTable = [None,'H','He','Li','Be','B','C','N','O','F','Ne','Na','Mg','Al'
 ##############################################################
 #### constructing atom geometry dicts
 
+# NB pyscf geometries default to angstrom, so always set unit="Bohr"
+# however mole.atom_coords() returns geometry array in Bohr always
+
+# reconfig since mole.atom takes lists, arrays !!
+
 def MonatomicChain(el, n, R, axis = 'x'):
     '''
     Chain of same element atoms separated by distance R

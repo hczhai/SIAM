@@ -40,7 +40,7 @@ def DiatomicEnergyVsR(atom, Rvals, basis):
     
         R = Rvals[i];
         print( "R = "+str(R))
-        mol = ps.gto.Mole(); # creates molecule object
+        mol = ps.gto.Mole(unit = "Bohr"); # creates molecule object, using au
         mol.verbose = 0; # how much printout
     
         # specify the geometry
@@ -91,6 +91,7 @@ def EnergyByBasis(f, fargs, bases, labels):
     bases, list of strings, with basis names to pass to ps
     labels, for passing to plotting routine
     
+    returns none
     '''
 
     
@@ -129,10 +130,10 @@ def DiatomicEnergyWrapper():
     # define inputs to EByBasis
     f=DiatomicEnergyVsR; # function to call for energies
     atom = 'H'; # ie make H2 molecule
-    Rvals = (0.5,1.5,10); # Rmin, Rmax, # R pts
+    Rvals = (1.2,1.6,10); # Rmin, Rmax, # R pts
     fargs = atom, Rvals;
     bases = ['sto-3g','ccpvdz']; # which bases to use
-    labels = ["Bond Length", "Energy", "Disassociation Curve by Basis Set"]; # for plot
+    labels = ["Bond Length (Bohr)", "Energy (Rydberg)", "Disassociation Curve by Basis Set"]; # for plot
     
     EnergyByBasis(f, fargs, bases, labels);
     
@@ -144,13 +145,39 @@ def GeneralEnergyWrapper():
     GeneralEnergyVsR();
     
     
+def CCSDWrapper():
+
+    print("\nSimple CCSD example with H2.");
+
+    # set up geometry of the H2 molecule
+    mol = ps.M(
+        unit = 'Bohr',
+        atom = 'H 0 0 0; H 0 0 1.4', # near gd state
+        basis = 'ccpvdz',
+        verbose = 3 ); #supress output for this example
+    print("\nH2 geometry =\n",mol.atom_coords() );
+
+    # use restricted HF to approx energy of HF gd state
+    EHF = mol.RHF().run();
+    print("\nEHF = mol.RHF().run() computes the HF gd state energy.",
+    "\nAccess it using EHF.kernel(): E_HF = %.5g" %EHF.kernel() );
+
+    # use coupled cluster singles doubles to approx correlation energy
+    ECC = EHF.CCSD().run();
+    print("\nECC = mf.CCSD().run() computes the correlation energy.",
+    "\nAccess it using ECC.e_corr: ECC = %.5g" %ECC.e_corr );
+    
+    
+    
+    
 
 #############################################################################
 #### execute code
 
 if __name__ == "__main__":
 
-    DiatomicEnergyWrapper();
+    #DiatomicEnergyWrapper();
+    CCSDWrapper();
 
     
     
