@@ -63,4 +63,10 @@ def BasisPlot(basisdict, labels, comparediff=False):
     ax.legend();
     plt.show();
 
-    return;
+    return; #### end basis plot
+    
+    
+def CorrelPlot(datadict, labels):
+    '''
+    Plot data of energy vs indep var, with and without correl effects included
+    '''
