@@ -1,9 +1,7 @@
 '''
 plot_energy.py
 
-Routines for calculating energies, for a given molecular geometry
--against independent variables
--comparing different bases
+Routines for calculating CC approx energies, including correlation, for a given molecular geometry
 '''
 
 import plot
@@ -16,9 +14,9 @@ import pyscf as ps
 #############################################################################
 #### energy vs bond length in a given basis
 
-def DiatomicEnergyVsR(atom, Rvals, basis):
+def DiatomicCorrelEnergyVsR(atom, Rvals, basis):
     '''
-    For a given diatomic molecule, find the ground state energy in a given basis set, over a range of bond lengths
+    For a given diatomic molecule, find the ground state and correl over range of bond lengths
     Args:
     -atom, string of atomic name to input to pyscf mol constructor
     -Rvals, specifies range of R, can be list of vals to take, or tuple (Rmin, Rmax, # pts)
@@ -33,6 +31,7 @@ def DiatomicEnergyVsR(atom, Rvals, basis):
         
     # return object is np arr
     Evals = np.zeros(len(Rvals) );
+    corrvals= np.zeros(len(Rvals) );
         
     # so Rvals is definitely a mesh of Rvals by now
     # can run thru it and get E's
@@ -49,37 +48,20 @@ def DiatomicEnergyVsR(atom, Rvals, basis):
         mol.atom = atomstring;
     
         # find HF energy
-        m= ps.scf.RHF(mol);
-        Evals[i] = m.kernel();
+        EHF = mol.RHF().run();
+        Evals[i] = EHF.kernel();
+        
+        # find correl energy using CCSD
+        ECC = EHF.CCSD().run();
+        corrvals[i] = ECC.e_corr;
     
-    return Rvals, Evals ; #### end diatomic energy
-    
-    
-def GeneralEnergyVsR(geo, basis, coordkey, coordvals):
-    '''
-    For a given molecule, find the ground state energy in a given basis set, over range of different coordinates for a certain atom
-    Args:
-    -geo, standard dict of elems to cartesian coords
-    -basis, string of basis name to input to pyscf mol constructor
-    -coordkey, elem name string, tells which element in mol to vary position of
-    
-    Returns tuple of 1d np arrs: indep var coords and energies (Evals)
-    '''
-
-    #return object is np arr
-    Evals = np.zeros(len(Rvals) );
-    
-    # construct atomstring from atoms and coords
-    d = {'H' : np.ones(3), 'O' : np.zeros(3)}
-    atomstring = utils.ParseGeoDict(d);
-    print("atomstring = ", atomstring);
-    mol = ps.gto.Mole(atom=atomstring);
+    return Rvals, Evals, Corrvals; #### end diatomic energy
     
     
 #############################################################################
 #### computing the energy across multiple basis sets
 
-def EnergyByBasis(f, fargs, bases, labels):
+def EnergyWithCorrel(f, fargs, bases, labels):
     '''
     Using a given energy function, specifies the energy of the geo vs the indep var
     (as specified by fargs) for multiple basis, and plots comparison
@@ -88,35 +70,36 @@ def EnergyByBasis(f, fargs, bases, labels):
     f, function pointer, which returns tuple of 1d arrays indep var vals, E vals
         code checks that the return vals are ok, raises TypeError otherwise
     fargs, tuple of all args to pass to f for it to run
-    bases, list of strings, with basis names to pass to ps
     labels, for passing to plotting routine
     
     returns none
     '''
+    
+    # for debugging
+    fname = "EnergyWithCorrel"
 
     
     # make dict to hold output E vs R data for each basis
     d=dict()
     
     # compute energy for each basis
-    for b in bases:
+    for method in ["RHF","CCSD"]:
         
-        print("inputs = ",fargs, "basis = ", b);
+        print("inputs = ",fargs, "method = ", method);
     
         # run func that gets energy
         data = f(*fargs, b);
         
         # check function has correct output
         if( type(data) != type( (1,1) ) ):
-            raise TypeError("Energy function f in EnergyByBasis does not return tuple.");
+            raise TypeError("Energy function f in "+fname+" does not return tuple.");
         elif( type(data[0]) != type(np.ones(0) ) ):
-            raise TypeError("Energy function f in EnergyByBasis does not return tuple of np arrays");
+            raise TypeError("Energy function f in "+fname+" does not return tuple of np arrays");
     
-        # put results in dict
-        d[b] = data;
+        # put results (tuple of 3 np arrays) in dict
+        d[method] = data;
     
-    # call basisplot
-    
+    # call plotter
     plot.BasisPlot(d, labels);
     
     return; #### end EnergyByBasis
@@ -125,9 +108,9 @@ def EnergyByBasis(f, fargs, bases, labels):
 #############################################################################
 #### wrappers and test funcs
 
-def DiatomicEnergyWrapper():
+def DiatomicWrapper():
 
-    # define inputs to EByBasis
+    # define inputs
     f=DiatomicEnergyVsR; # function to call for energies
     atom = 'H'; # ie make H2 molecule
     Rvals = (1.2,1.6,10); # Rmin, Rmax, # R pts
@@ -140,12 +123,7 @@ def DiatomicEnergyWrapper():
     return;#### end wrapper
     
     
-def GeneralEnergyWrapper():
-
-    GeneralEnergyVsR();
-    
-    
-def CCSDWrapper():
+def CCSDExample():
 
     print("\nSimple CCSD example with H2.");
 
@@ -176,8 +154,7 @@ def CCSDWrapper():
 
 if __name__ == "__main__":
 
-    #DiatomicEnergyWrapper();
-    CCSDWrapper();
+    DiatomicWrapper();
 
     
     
