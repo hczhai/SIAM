@@ -38,19 +38,17 @@ def DiatomicEnergyVsR(atom, Rvals, basis):
     # can run thru it and get E's
     for i in range(len(Rvals)):
     
-        R = Rvals[i];
-        print( "R = "+str(R))
-        mol = ps.gto.Mole(unit = "Bohr"); # creates molecule object, using au
-        mol.verbose = 0; # how much printout
-    
         # specify the geometry
+        R = Rvals[i];
+        print( "R = "+str(R));
         atomstring = atom+' 0 0 0; '+atom + ' 0 0 '+str(R); #watch spacing
         print("atomstring = ", atomstring);
-        mol.atom = atomstring;
+        
+        mol = ps.gto.Mole(unit = "Bohr", atom = atomstring, basis = basis); # creates molecule object, using au
     
         # find HF energy
-        m= ps.scf.RHF(mol);
-        Evals[i] = m.kernel();
+        EHF = ps.scf.RHF(mol);
+        Evals[i] = EHF.kernel();
     
     return Rvals, Evals ; #### end diatomic energy
     
@@ -132,7 +130,7 @@ def DiatomicEnergyWrapper():
     atom = 'H'; # ie make H2 molecule
     Rvals = (1.2,1.6,10); # Rmin, Rmax, # R pts
     fargs = atom, Rvals;
-    bases = ['sto-3g','ccpvdz']; # which bases to use
+    bases = ["sto-3g", "sto-6g", "ccpvdz"]; # which bases to use
     labels = ["Bond Length (Bohr)", "Energy (Rydberg)", "Disassociation Curve by Basis Set"]; # for plot
     
     EnergyByBasis(f, fargs, bases, labels);
@@ -144,30 +142,7 @@ def GeneralEnergyWrapper():
 
     GeneralEnergyVsR();
     
-    
-def CCSDWrapper():
 
-    print("\nSimple CCSD example with H2.");
-
-    # set up geometry of the H2 molecule
-    mol = ps.M(
-        unit = 'Bohr',
-        atom = 'H 0 0 0; H 0 0 1.4', # near gd state
-        basis = 'ccpvdz',
-        verbose = 3 ); #supress output for this example
-    print("\nH2 geometry =\n",mol.atom_coords() );
-
-    # use restricted HF to approx energy of HF gd state
-    EHF = mol.RHF().run();
-    print("\nEHF = mol.RHF().run() computes the HF gd state energy.",
-    "\nAccess it using EHF.kernel(): E_HF = %.5g" %EHF.kernel() );
-
-    # use coupled cluster singles doubles to approx correlation energy
-    ECC = EHF.CCSD().run();
-    print("\nECC = mf.CCSD().run() computes the correlation energy.",
-    "\nAccess it using ECC.e_corr: ECC = %.5g" %ECC.e_corr );
-    
-    
     
     
 
@@ -176,8 +151,7 @@ def CCSDWrapper():
 
 if __name__ == "__main__":
 
-    #DiatomicEnergyWrapper();
-    CCSDWrapper();
+    DiatomicEnergyWrapper();
 
     
     

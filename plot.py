@@ -70,3 +70,23 @@ def CorrelPlot(datadict, labels):
     '''
     Plot data of energy vs indep var, with and without correl effects included
     '''
+    
+    # check inputs
+    if( type(basisdict) != type(dict()) ): # check that basisdict is a dict
+        raise PlotTypeError("plot.BasisPlot 1st arg must be dictionary.\n");
+    if( type(labels) != type([]) ): # check that labels is a list
+        raise PlotTypeError("plot.BasisPlot 2nd arg must be a list.\n");
+        
+    # make figure
+    # 1 ax for energy 1 for correl energy
+    fig, axs = plt.subplots(2, 1, sharex = True);
+    
+    # plot energy data
+    for k in datadict:
+    
+        axs[0].plot(*datadict[k], label = k);
+        
+    # format and show
+    ax.set(xlabel = labels[0], ylabel = labels[1], title=labels[2]);
+    ax.legend();
+    plt.show();

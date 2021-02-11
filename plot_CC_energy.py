@@ -14,7 +14,7 @@ import pyscf as ps
 #############################################################################
 #### energy vs bond length in a given basis
 
-def DiatomicCorrelEnergyVsR(atom, Rvals, basis):
+def DiatomicCorrelVsR(atom, Rvals, basis):
     '''
     For a given diatomic molecule, find the ground state and correl over range of bond lengths
     Args:
@@ -37,15 +37,13 @@ def DiatomicCorrelEnergyVsR(atom, Rvals, basis):
     # can run thru it and get E's
     for i in range(len(Rvals)):
     
-        R = Rvals[i];
-        print( "R = "+str(R))
-        mol = ps.gto.Mole(unit = "Bohr"); # creates molecule object, using au
-        mol.verbose = 0; # how much printout
-    
         # specify the geometry
+        R = Rvals[i];
+        print( "R = "+str(R));
         atomstring = atom+' 0 0 0; '+atom + ' 0 0 '+str(R); #watch spacing
         print("atomstring = ", atomstring);
-        mol.atom = atomstring;
+        
+        mol = ps.gto.Mole(unit = "Bohr", atom = atomstring, basis=basis); # creates molecule object, using au
     
         # find HF energy
         EHF = mol.RHF().run();
@@ -61,7 +59,7 @@ def DiatomicCorrelEnergyVsR(atom, Rvals, basis):
 #############################################################################
 #### computing the energy across multiple basis sets
 
-def EnergyWithCorrel(f, fargs, bases, labels):
+def EnergyWithCorrel(f, fargs, labels):
     '''
     Using a given energy function, specifies the energy of the geo vs the indep var
     (as specified by fargs) for multiple basis, and plots comparison
@@ -76,31 +74,28 @@ def EnergyWithCorrel(f, fargs, bases, labels):
     '''
     
     # for debugging
-    fname = "EnergyWithCorrel"
-
+    fname = "EnergyWithCorrel";
+    print("inputs = ",fargs);
     
-    # make dict to hold output E vs R data for each basis
-    d=dict()
+    # return value
+    d = dict();
     
-    # compute energy for each basis
-    for method in ["RHF","CCSD"]:
+    # run func that gets energy
+    data = f(*fargs);
         
-        print("inputs = ",fargs, "method = ", method);
+    # check function has correct output
+    if( type(data) != type( (1,1) ) ):
+        raise TypeError("Energy function f in "+fname+" does not return tuple.");
+    elif( type(data[0]) != type(np.ones(0) ) ):
+        raise TypeError("Energy function f in "+fname+" does not return tuple of np arrays");
     
-        # run func that gets energy
-        data = f(*fargs, b);
-        
-        # check function has correct output
-        if( type(data) != type( (1,1) ) ):
-            raise TypeError("Energy function f in "+fname+" does not return tuple.");
-        elif( type(data[0]) != type(np.ones(0) ) ):
-            raise TypeError("Energy function f in "+fname+" does not return tuple of np arrays");
-    
-        # put results (tuple of 3 np arrays) in dict
-        d[method] = data;
+    # organize results (tuple of 3 np arrays) into dict
+    d["CCSD Energy"] = data[0], data[1]; # tuple of R vs E_CCSD
+    d["HF Energy"] = data[0], data[1] - data[2]; # R vs E_HF
+    #d["Correl Energy"] = data[0], data[2];
     
     # call plotter
-    plot.BasisPlot(d, labels);
+    plot.CorrelPlot(d, labels);
     
     return; #### end EnergyByBasis
     
@@ -111,14 +106,13 @@ def EnergyWithCorrel(f, fargs, bases, labels):
 def DiatomicWrapper():
 
     # define inputs
-    f=DiatomicEnergyVsR; # function to call for energies
+    f=DiatomicCorrelVsR; # function to call for energies
     atom = 'H'; # ie make H2 molecule
     Rvals = (1.2,1.6,10); # Rmin, Rmax, # R pts
     fargs = atom, Rvals;
-    bases = ['sto-3g','ccpvdz']; # which bases to use
     labels = ["Bond Length (Bohr)", "Energy (Rydberg)", "Disassociation Curve by Basis Set"]; # for plot
     
-    EnergyByBasis(f, fargs, bases, labels);
+    EnergyWithCorrel(f, fargs, labels);
     
     return;#### end wrapper
     
@@ -154,7 +148,7 @@ def CCSDExample():
 
 if __name__ == "__main__":
 
+    #CCSDExample();
     DiatomicWrapper();
-
     
     
