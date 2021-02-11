@@ -31,7 +31,7 @@ def DiatomicCorrelVsR(atom, Rvals, basis):
         
     # return object is np arr
     Evals = np.zeros(len(Rvals) );
-    corrvals= np.zeros(len(Rvals) );
+    Corrvals= np.zeros(len(Rvals) );
         
     # so Rvals is definitely a mesh of Rvals by now
     # can run thru it and get E's
@@ -51,7 +51,7 @@ def DiatomicCorrelVsR(atom, Rvals, basis):
         
         # find correl energy using CCSD
         ECC = EHF.CCSD().run();
-        corrvals[i] = ECC.e_corr;
+        Corrvals[i] = ECC.e_corr;
     
     return Rvals, Evals, Corrvals; #### end diatomic energy
     
@@ -109,7 +109,8 @@ def DiatomicWrapper():
     f=DiatomicCorrelVsR; # function to call for energies
     atom = 'H'; # ie make H2 molecule
     Rvals = (1.2,1.6,10); # Rmin, Rmax, # R pts
-    fargs = atom, Rvals;
+    basis = "sto-6g";
+    fargs = atom, Rvals, basis;
     labels = ["Bond Length (Bohr)", "Energy (Rydberg)", "Disassociation Curve by Basis Set"]; # for plot
     
     EnergyWithCorrel(f, fargs, labels);
