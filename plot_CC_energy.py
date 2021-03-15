@@ -95,7 +95,7 @@ def EnergyWithCorrel(f, fargs, labels):
     #d["Correl Energy"] = data[0], data[2];
     
     # call plotter
-    plot.CorrelPlot(d, labels);
+    plot.CorrelPlot(d, "CCSD Energy", labels);
     
     return; #### end EnergyByBasis
     

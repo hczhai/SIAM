@@ -69,9 +69,14 @@ def BasisPlot(basisdict, labels, comparediff=False):
     return; #### end basis plot
     
     
-def CorrelPlot(datadict, labels):
+def CorrelPlot(datadict, correl_key, labels):
     '''
     Plot data of energy vs indep var, with and without correl effects included
+    
+    Args:
+    datadict: dictionary with keys name of calc method, vals tuple of x, energy
+    correl_key: which key has correl data
+    labels: strings for labeling plot
     '''
     
     # for debugging
@@ -92,7 +97,20 @@ def CorrelPlot(datadict, labels):
     
         axs[0].plot(*datadict[k], label = k);
         
-    # format and show
+    # format energy plot
     axs[0].set(xlabel = labels[0], ylabel = labels[1], title=labels[2]);
     axs[0].legend();
+    
+    # plot correl effects
+    correl_energy = datadict[correl_key][1]; # benchmark
+    for k in datadict:
+        
+        if( k != correl_key): # dont plot 0s for the correl energies
+            x, y = datadict[k];
+            axs[1].plot(x, correl_energy - y);
+        
+    #format correl effects
+    axs[1].set(xlabel = labels[0], ylabel = "Correlation Energy")
+    
+    #show
     plt.show();
