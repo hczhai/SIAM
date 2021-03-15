@@ -7,6 +7,29 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pyscf as ps
 
+def GenericPlot(x,y, labels):
+    '''
+    '''
+    
+    # for debugging
+    fname = "GenericPlot";
+    
+    # check inputs
+    if( type(x) != type(np.zeros(1) ) ): # check that x is an np array
+        raise PlotTypeError(fname+" 1st arg must be np array.\n");
+    
+    # screen depth of y
+    depth = np.shape(y);
+    print(depth);
+    
+    fig, ax = plt.subplots();
+    ax.plot(x,y);
+
+    # format and show
+    ax.set(xlabel = labels[0], ylabel = labels[1], title=labels[2]);
+    plt.show();
+
+
 def BasisPlot(basisdict, labels, comparediff=False):
     '''
     Given a dict, with

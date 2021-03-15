@@ -15,7 +15,7 @@ import pyscf as ps
 #############################################################################
 #### energy by different methods
 
-def DissEnergyRHF(atom, Rvals, basis):
+def DissEnergy(atom, Rvals, basis, UHF = True):
     '''
     For a given diatomic molecule, find the ground state energy in a given basis set, over a range of bond lengths, with restricted hartree fock. Then
         subtract 2*monatomic to get diss energy
@@ -42,38 +42,48 @@ def DissEnergyRHF(atom, Rvals, basis):
         R = Rvals[i];
         print( "R = "+str(R));
         diatom = atom+' 0 0 0; '+atom + ' 0 0 '+str(R); #watch spacing
-        print("diatom = ", atomstring);
+        print("diatom = ", diatom);
         
         mol = ps.gto.Mole(unit = "Bohr", atom = diatom, basis = basis); # creates molecule object, using au
     
-        # find HF energy with restricted hartree fock
-        E_diatom = ps.scf.RHF(mol).kernel();
+        # find HF energy with (un)restricted hartree fock
+        if(UHF):
+            E_diatom = ps.scf.UHF(mol).kernel();
+        else:
+            E_diatom = ps.scf.RHF(mol).kernel();
         
         #monatom geometry
         monatom = atom+' 0 0 0;';
-        mon = ps.gto.Mole(unit = "Bohr", atom = monatom, basis = basis); # creates molecule object, using au
-        E_monatom = ps.scf.RHF(mon).kernel();
+        mon = ps.gto.Mole(unit = "Bohr", atom = monatom, spin = 1, basis = basis); # creates molecule object, using au
+        E_monatom = ps.scf.UHF(mon).kernel();
         
         # subtract for diss energy and store
-        Evals[i] = Ediatom - 2*E_monatom;
+        Evals[i] = E_diatom - 2*E_monatom;
     
-    return Rvals, Evals ; #### end diatomic RHF
+    return Rvals, Evals ; #### end diss energy
+    
+
+
+
     
     
 #############################################################################
 #### wrappers and test funcs
 
-def DiatomicEnergyWrapper():
+def DiatomicDissWrapper():
 
-    # define inputs to EByBasis
-    f=DiatomicEnergyVsR; # function to call for energies
-    atom = 'H'; # ie make H2 molecule
-    Rvals = (1.2,1.6,10); # Rmin, Rmax, # R pts
-    fargs = atom, Rvals;
-    bases = ["sto-3g", "sto-6g", "ccpvdz"]; # which bases to use
+    # define inputs
+    atom = 'F'; # ie make H2 molecule
+    Rvals = (0.5,5,10); # Rmin, Rmax, # R pts
     labels = ["Bond Length (Bohr)", "Energy (Rydberg)", "Disassociation Curve by Basis Set"]; # for plot
     
-    EnergyByBasis(f, fargs, bases, labels);
+    # get RHF data
+    R, E_RHF = DissEnergy(atom, Rvals, "sto-6g", UHF= False);
+    #plot.GenericPlot(R, E_RHF, labels);
+    
+    # get UHF data
+    R, E_UHF = DissEnergy(atom, Rvals, "sto-6g");
+    plot.GenericPlot(R, E_UHF, labels);
     
     return;#### end wrapper
     
@@ -87,4 +97,4 @@ def DiatomicEnergyWrapper():
 
 if __name__ == "__main__":
 
-    DiatomicEnergyWrapper();
+    DiatomicDissWrapper();
