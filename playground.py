@@ -21,3 +21,4 @@ for spin in [0,2]:
     # HF energy
     m = pyscf.scf.RHF(mol);
     print('E(HF) = %g' % m.kernel())
+    
