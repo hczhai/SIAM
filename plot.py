@@ -7,26 +7,38 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pyscf as ps
 
-def GenericPlot(x,y, labels):
+def GenericPlot(x,y, handles=[], styles = [], labels=["x","y",""]):
     '''
     '''
     
     # for debugging
     fname = "GenericPlot";
     
+    # screen depth of y
+    depth = np.shape(y)[0];
+    
     # check inputs
     if( type(x) != type(np.zeros(1) ) ): # check that x is an np array
         raise PlotTypeError(fname+" 1st arg must be np array.\n");
-    
-    # screen depth of y
-    depth = np.shape(y);
-    print(depth);
-    
+    legend=True;
+    if(handles==[]): # no handles for legend provided
+        handles = np.full(depth, "");
+        legend = False;
+    if(styles==[]): # no plot style kwargs provided
+        styles = np.full(depth, "");
+        
+    # construct axes
     fig, ax = plt.subplots();
-    ax.plot(x,y);
+    
+    #iter over y val sets
+    for yi in range(depth):
+    
+        plt.plot(x, y[yi], styles[yi], label = handles[yi]);
 
     # format and show
     ax.set(xlabel = labels[0], ylabel = labels[1], title=labels[2]);
+    if(legend):
+        ax.legend();
     plt.show();
 
 
