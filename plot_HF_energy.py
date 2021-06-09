@@ -128,7 +128,7 @@ def DiatomicEnergyWrapper():
     # define inputs to EByBasis
     f=DiatomicEnergyVsR; # function to call for energies
     atom = 'H'; # ie make H2 molecule
-    Rvals = (1.2,1.6,10); # Rmin, Rmax, # R pts
+    Rvals = (1.0,1.6,10); # Rmin, Rmax, # R pts
     fargs = atom, Rvals;
     bases = ["sto-3g", "sto-6g", "ccpvdz"]; # which bases to use
     labels = ["Bond Length (Bohr)", "Energy (Rydberg)", "Disassociation Curve by Basis Set"]; # for plot
