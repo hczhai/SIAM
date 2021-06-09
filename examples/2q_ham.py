@@ -14,6 +14,9 @@ Compute density matrices by
 import numpy
 from pyscf import gto, scf, fci
 
+verbose = True;
+
+# RHF calc of HLi for comparison
 mol = gto.M(atom='H 0 0 0; Li 0 0 1.1', basis='sto3g')
 m = scf.RHF(mol).run()
 fs = fci.FCI(mol, m.mo_coeff)
@@ -22,10 +25,16 @@ e, c = fs.kernel()
 norb = m.mo_energy.size
 neleca = nelecb = mol.nelectron // 2
 
+if(verbose):
+    print("norb = ",norb," neleca = ",neleca);
+
+
 #
 # Spin-free 1-particle density matrix
 # <Psi| a_{i\alpha}^\dagger a_{j\alpha} + a_{i\beta}^\dagger a_{j\beta} |Psi>
 #
+if(verbose):
+    print("1 particle density matrix");
 dm1 = numpy.zeros((norb,norb))
 for i in range(norb):
     for j in range(norb):
