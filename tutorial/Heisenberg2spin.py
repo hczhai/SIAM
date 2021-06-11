@@ -31,8 +31,8 @@ h2e = np.zeros((norbs, norbs,norbs,norbs));
 # all terms are 2e terms
 h2e[0,0,1,1] = -J/4;
 h2e[1,1,0,0] = -J/4;
-h2e[0,1,1,0] = J/8;
-h2e[1,0,0,1] = J/8;
+h2e[0,1,1,0] = J/2;
+h2e[1,0,0,1] = J/2;
 h2e[0,0,0,0] = J/4;
 h2e[1,1,1,1] = J/4;
 
