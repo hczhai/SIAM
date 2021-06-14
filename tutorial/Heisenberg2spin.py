@@ -75,11 +75,10 @@ if(verbose):
     print("FCI energies = ", E_02);
     
 # h2e terms for 1,1 case
-if True:
-    h2e_11[0,0,1,1] = -J/4
-    h2e_11[1,1,0,0] = -J/4;
-    h2e_11[1,0,0,1] = J/2;
-    h2e_11[0,1,1,0] = J/2;
+h2e_11[0,0,1,1] = -J/4
+h2e_11[1,1,0,0] = -J/4;
+h2e_11[1,0,0,1] = J/2;
+h2e_11[0,1,1,0] = J/2;
     
 # solve
 cisolver11 = fci.direct_nosym.FCI();
