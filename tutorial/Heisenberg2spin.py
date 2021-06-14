@@ -52,7 +52,8 @@ if(verbose):
     print("\n1. Constrained solution \n - nelecs = ",nelecs[0]);
 
 # h2e terms for 2,0 case
-h2e_20[0,0,1,1] = 2*J/4; # 2 undoes 1/2 out front
+h2e_20[0,0,1,1] = J/4;
+h2e_20[1,1,0,0] = J/4;
 
 # solve with FCISolver object
 cisolver20 = fci.direct_nosym.FCI();
@@ -63,7 +64,8 @@ if(verbose):
     print("FCI energies = ", E_20);
     
 # h2e terms for 0,2 case
-h2e_02[0,0,1,1] = 2*J/4; # 2 undoes 1/2 out front
+h2e_02[0,0,1,1] = J/4;
+h2e_02[1,1,0,0] = J/4;
 
 # solve
 cisolver02 = fci.direct_nosym.FCI();
@@ -102,8 +104,8 @@ nelecs_hub = 1,1;
 # all terms are 2e terms
 h2e_hub[0,0,1,1] = -J/4;
 h2e_hub[1,1,0,0] = -J/4;
-h2e_hub[0,1,1,0] = -J/2;
-h2e_hub[1,0,0,1] = -J/2;
+h2e_hub[0,1,1,0] = J/2;
+h2e_hub[1,0,0,1] = J/2;
 h2e_hub[0,0,0,0] = J/4; # mapping means this term is hubbard like
 h2e_hub[1,1,1,1] = J/4;
 
