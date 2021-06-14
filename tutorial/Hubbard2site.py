@@ -9,23 +9,32 @@ Solve FCI problem with given 1-electron and 2-electron Hamiltonian
 
 Secific problem:
 2 site hubbard model
+
 '''
 
 import numpy as np
 from pyscf import fci
 
 verbose = True;
+np.set_printoptions(suppress=True); # no sci notatation printing
 
 # system inputs
 # hamiltonian params must be floats
-norbs = 2;
-nelecs = 2;
-nroots = 4;
+nelecs = (2,0); # put in all spins as spin up
+norbs = 4;      # now this means spin orbitals
+nroots = 6;
 epsilon = 0 # on site energy
 t = 3.0 # hopping
 U = 200.0; # hubbard repulsion strength
 if(verbose):
     print("\nInputs:\nepsilon = ",epsilon,"\nt = ",t,"\nU = ",U);
+    
+# analytical solution
+E_exact = np.array([0,U,U/2 - 1/2 *np.sqrt(16*t*t+U*U), U/2 + 1/2 *np.sqrt(16*t*t+U*U),0,0])
+E_exact.sort();
+if(verbose):
+    print("\n0. Analytical solution");
+    print("Exact energies = ", E_exact);
 
 
 # implement h1e and h2e
@@ -33,25 +42,24 @@ if(verbose):
 h1e = np.zeros((norbs,norbs));
 h2e = np.zeros((norbs,norbs,norbs,norbs));
 
-# put in on site energy
-h1e[0,0], h1e[1,1] = epsilon, epsilon;
-
 # hopping
-h1e[0,1], h1e[1,0] = t, t;
+h1e[0,2] = t;
+h1e[2,0] = t;
+h1e[1,3] = t;
+h1e[3,1] = t;
 
 # hubbard
-h2e[0,0,0,0] += U;
-h2e[1,1,1,1] += U;
-
-# analytical solution
-E_exact = np.array([0,U,U/2 - 1/2 *np.sqrt(16*t*t+U*U), U/2 + 1/2 *np.sqrt(16*t*t+U*U)])
-E_exact.sort();
-if(verbose):
-    print("\n0. Analytical solution");
-    print("Exact energies = ", E_exact);
+if True:
+    h2e[0,0,1,1] = 2*U;
+    h2e[2,2,3,3] = 2*U;
+else:
+    h2e[0,1,1,0] = -U;
+    h2e[1,0,0,1] = -U;
+    h2e[2,3,3,2] = -U;
+    h2e[3,2,2,3] = -U;
 
 # implement FCISolver object
-cisolver = fci.direct_spin1.FCI();
+cisolver = fci.direct_nosym.FCI();
 cisolver.max_cycle = 100; # max number of iterations
 cisolver.conv_tol = 1e-8; # energy convergence
 
