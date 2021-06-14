@@ -45,4 +45,22 @@ if(verbose):
     print("\n1. nelecs = ",nelecs); # this matches analytical gd state
     print("FCI energies = ", E_fci);
     print(v_fci);
+    
+
+#### solve with direct_uhf method
+
+# need to reconfigure h arrays
+
+# h1e = (h1e alpha, h1e beta)
+h1e_alpha = 
+
+# solve
+cisolver = fci.direct_uhf.FCISolver();
+cisolver.max_cycle = 100
+cisolver.conv_tol = 1e-8
+E_fci, v_fci = cisolver.kernel(h1e, h2e, norbs, nelecs,nroots=4);
+if(verbose):
+    print("\n1. nelecs = ",nelecs); # this matches analytical gd state
+    print("FCI energies = ", E_fci);
+    print(v_fci);
 
