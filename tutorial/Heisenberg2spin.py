@@ -31,6 +31,10 @@ if(verbose):
     print("\n0. Analytical solution");
     print("Exact energies = ", E_exact);
     
+# call kernel to get warning print out here
+warning = fci.direct_nosym.FCI();
+warning.kernel(np.zeros((1,1)),np.zeros((1,1,1,1)),1,1);
+    
 #### nelec constrained solution
 
 # system inputs
@@ -39,7 +43,7 @@ norbs = 2;
 
 # init h1e, h2e
 h1e = np.zeros((norbs, norbs));
-h2e = np.zeros((norbs, norbs,norbs,norbs)); # for nelecs = 1,1
+h2e_11 = np.zeros((norbs, norbs,norbs,norbs)); # for nelecs = 1,1
 h2e_20 = np.zeros((norbs, norbs,norbs,norbs)); # for nelecs= 2,0
 h2e_02 = np.zeros((norbs, norbs,norbs,norbs)); # for nelecs = 0,2
 
@@ -64,19 +68,27 @@ h2e_02[0,0,1,1] = 2*J/4; # 2 undoes 1/2 out front
 cisolver02 = fci.direct_nosym.FCI();
 cisolver02.max_cycle = 100
 cisolver02.conv_tol = 1e-8
-E_02, v_02 = cisolver.kernel(h1e, h2e_02, norbs, nelecs[2],nroots=4);
+E_02, v_02 = cisolver02.kernel(h1e, h2e_02, norbs, nelecs[2],nroots=4);
 if(verbose):
     print("\n - nelecs = ",nelecs[2]);
     print("FCI energies = ", E_02);
     
 # h2e terms for 1,1 case
-h2e[0,0,1,1] = 2*(-J/4);
-h2e[1,0,0,1] = 2*(J/2);
+if True:
+    h2e_11[0,0,1,1] = -J/4
+    h2e_11[1,1,0,0] = -J/4;
+    h2e_11[1,0,0,1] = J/2;
+    h2e_11[0,1,1,0] = J/2;
     
-E_11, v_11 = cisolver.kernel(h1e, h2e, norbs, nelecs[1],nroots=4);
+# solve
+cisolver11 = fci.direct_nosym.FCI();
+cisolver11.max_cycle = 100
+cisolver11.conv_tol = 1e-8
+E_11, v_11 = cisolver11.kernel(h1e, h2e_11, norbs, nelecs[1],nroots=4);
 if(verbose):
     print("\n - nelecs = ",nelecs[1]);
     print("FCI energies = ", E_11);
+    
 
 #### map solution onto Hubbard model
 
@@ -95,10 +107,14 @@ h2e_hub[1,0,0,1] = -J/2;
 h2e_hub[0,0,0,0] = J/4; # mapping means this term is hubbard like
 h2e_hub[1,1,1,1] = J/4;
 
-E_map, v_map = cisolver.kernel(h1e_hub, h2e_hub, norbs, nelecs_hub,nroots=4);
+# solve
+cisolver_hub = fci.direct_nosym.FCI();
+cisolver_hub.max_cycle = 100
+cisolver_hub.conv_tol = 1e-8
+E_hub, v_hub = cisolver_hub.kernel(h1e_hub, h2e_hub, norbs, nelecs_hub,nroots=4);
 if(verbose):
     print("\n2. Mapped solution, nelecs = ",nelecs_hub);
-    print("FCI energies = ", E_map);
+    print("FCI energies = ", E_hub);
     #print(v_map);
     
 '''
