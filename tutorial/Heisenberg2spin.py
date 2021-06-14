@@ -79,8 +79,8 @@ if(verbose):
 # h2e terms for 1,1 case
 h2e_11[0,0,1,1] = -J/4
 h2e_11[1,1,0,0] = -J/4;
-h2e_11[1,0,0,1] = J/2;
-h2e_11[0,1,1,0] = J/2;
+h2e_11[1,0,0,1] = -J/2; # technically - in non mapped case
+h2e_11[0,1,1,0] = -J/2; # - a_1up^dagger a_2down^dagger a_1down a_2up, sum over spin
     
 # solve
 cisolver11 = fci.direct_nosym.FCI();
