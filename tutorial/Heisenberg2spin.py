@@ -11,9 +11,10 @@ Specific case:
 Solve 2 spin heisenberg hamiltonian
 
 Formalism:
-h1e = (p|h|q) p,q spatial orbitals
-h2e = (pq|h|rs) chemists notation, <pr|h|qs> physicists notation
+- h1e = (p|h|q) p,q spatial orbitals
+- h2e = (pq|h|rs) chemists notation, <pr|h|qs> physicists notation
         thus hermicity means h_pqrs = h_qpsr
+- as result of identity E_pq,rs = E_rs,pq, h_pq_rs = h_rs_pq
 '''
 
 import numpy as np
