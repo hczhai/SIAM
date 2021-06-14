@@ -39,8 +39,8 @@ h2e = np.zeros((norbs, norbs,norbs,norbs));
 # h2e terms
 h2e[0,0,1,1] = -J/4;
 h2e[1,1,0,0] = -J/4;
-h2e[0,1,1,0] = J/2;
-h2e[1,0,0,1] = J/2;
+h2e[0,1,1,0] = -J/2; # not needed
+h2e[1,0,0,1] = -J/2;
 
 
 # solve with FCISolver object
@@ -57,8 +57,8 @@ if(verbose):
 # all terms are 2e terms
 h2e[0,0,1,1] = -J/4;
 h2e[1,1,0,0] = -J/4;
-h2e[0,1,1,0] = J/2;
-h2e[1,0,0,1] = J/2;
+h2e[0,1,1,0] = -J/2;
+h2e[1,0,0,1] = -J/2;
 h2e[0,0,0,0] = J/4; # mapping means this term is hubbard like
 h2e[1,1,1,1] = J/4;
 
@@ -69,7 +69,7 @@ if(verbose):
     #print(v_map);
     
 
-#### solve with direct_uhf method
+#### solve with direct_uhf method, still constrained basis
 
 # need to reconfigure h arrays
 
@@ -84,11 +84,11 @@ h2e_alpha_alpha = np.zeros((norbs,norbs,norbs,norbs));
 h2e_alpha_beta = np.zeros((norbs,norbs,norbs,norbs));
 h2e_beta_beta = np.zeros((norbs,norbs,norbs,norbs));
 
-h2e_alpha_alpha[0,0,1,1] = J/4;
+h2e_alpha_alpha[0,0,1,1] = J/4; # both these terms are not needed
 h2e_beta_beta[1,1,0,0] = J/4; #NB alpha_alpha and beta_beta not ind'ly hermitian
 
-h2e_alpha_beta[0,1,1,0] = J/2;
-h2e_alpha_beta[1,0,0,1] = J/2; #NB alpha_beta is hermitian
+h2e_alpha_beta[0,1,1,0] = -J/2; # this term not needed
+h2e_alpha_beta[1,0,0,1] = -J/2; #NB alpha_beta is hermitian
 
 h2e_alpha_beta[0,0,1,1] = -J/4;
 h2e_alpha_beta[1,1,0,0] = -J/4;
@@ -99,6 +99,6 @@ cisolver.max_cycle = 100
 cisolver.conv_tol = 1e-8
 E_uhf, v_uhf = cisolver.kernel((h1e_alpha, h1e_beta), (h2e_alpha_alpha, h2e_alpha_beta, h2e_beta_beta), norbs, nelecs,nroots=4);
 if(verbose):
-    print("\n3. nelecs = ",nelecs); # this matches analytical gd state
+    print("\n3. UHF solution, constrained basis, nelecs = ",nelecs);
     print("UHF energies = ", E_uhf);
 
