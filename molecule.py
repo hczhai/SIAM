@@ -74,7 +74,7 @@ if(verbose):
     print("FCI energies = ",E_fci - (U-2*D));
     
 
-#### twith diagonal SOC on, use UHF method
+#### with diagonal SOC on, use UHF method
 
 # add terms to h1e
 h1e_alpha, h1e_beta = h1e, h1e;
