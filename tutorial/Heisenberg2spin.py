@@ -9,6 +9,11 @@ Solve FCI problem with given 1-electron and 2-electron Hamiltonian
 
 Specific case:
 Solve 2 spin heisenberg hamiltonian
+
+Formalism:
+h1e = (p|h|q) p,q spatial orbitals
+h2e = (pq|h|rs) chemists notation, <pr|h|qs> physicists notation
+        thus hermicity means h_pqrs = h_qpsr
 '''
 
 import numpy as np
@@ -29,30 +34,54 @@ if(verbose):
 #### nelec constrained solution
 
 # system inputs
-nelecs = (1,1);
+nelecs = [(2,0),(1,1), (0,2)]; # have to do 2,0; 1,1; and 0,2 separately
 norbs = 2;
 
-# implement h1e, h2e
+# init h1e, h2e
 h1e = np.zeros((norbs, norbs));
-h2e = np.zeros((norbs, norbs,norbs,norbs));
+h2e = np.zeros((norbs, norbs,norbs,norbs)); # for nelecs = 1,1
+h2e_20 = np.zeros((norbs, norbs,norbs,norbs)); # for nelecs= 2,0
+h2e_02 = np.zeros((norbs, norbs,norbs,norbs)); # for nelecs = 0,2
 
-# h2e terms
-h2e[0,0,1,1] = -J/4;
-h2e[1,1,0,0] = -J/4;
-h2e[0,1,1,0] = -J/2; # not needed
-h2e[1,0,0,1] = -J/2;
+if(verbose):
+    print("\n1. Constrained solution \n - nelecs = ",nelecs[0]);
 
+# h2e terms for 2,0 case
+h2e_20[0,0,1,1] = 2*J/4; # 2 undoes 1/2 out front
 
 # solve with FCISolver object
 cisolver = fci.direct_spin1.FCI()
 cisolver.max_cycle = 100
 cisolver.conv_tol = 1e-8
-E_fci, v_fci = cisolver.kernel(h1e, h2e, norbs, nelecs,nroots=4);
+E_20, v_20 = cisolver.kernel(h1e, h2e_20, norbs, nelecs[0],nroots=4);
 if(verbose):
-    print("\n1. Constrained solution, nelecs = ",nelecs);
-    print("FCI energies = ", E_fci);
+    print("FCI energies = ", E_20);
+    
+# h2e terms for 0,2 case
+h2e_02[0,0,1,1] = 2*J/4; # 2 undoes 1/2 out front
+
+# solve with FCISolver object
+cisolver = fci.direct_spin1.FCI()
+cisolver.max_cycle = 100
+cisolver.conv_tol = 1e-8
+E_02, v_02 = cisolver.kernel(h1e, h2e_02, norbs, nelecs[2],nroots=4);
+if(verbose):
+    print("\n - nelecs = ",nelecs[2]);
+    print("FCI energies = ", E_02);
+    
+# h2e terms for 1,1 case
+h2e[0,0,1,1] = 2*(-J/4);
+h2e[1,0,0,1] = 2*(J/2);
+    
+E_11, v_11 = cisolver.kernel(h1e, h2e, norbs, nelecs[1],nroots=4);
+if(verbose):
+    print("\n - nelecs = ",nelecs[1]);
+    print("FCI energies = ", E_11);
 
 #### map solution onto Hubbard model
+
+# hubbard inputs
+nelecs_hub = 1,1;
 
 # all terms are 2e terms
 h2e[0,0,1,1] = -J/4;
@@ -62,9 +91,9 @@ h2e[1,0,0,1] = -J/2;
 h2e[0,0,0,0] = J/4; # mapping means this term is hubbard like
 h2e[1,1,1,1] = J/4;
 
-E_map, v_map = cisolver.kernel(h1e, h2e, norbs, nelecs,nroots=4);
+E_map, v_map = cisolver.kernel(h1e, h2e, norbs, nelecs_hub,nroots=4);
 if(verbose):
-    print("\n2. Mapped solution, nelecs = ",nelecs);
+    print("\n2. Mapped solution, nelecs = ",nelecs_hub);
     print("FCI energies = ", E_map);
     #print(v_map);
     
@@ -97,8 +126,8 @@ h2e_alpha_beta[1,1,0,0] = -J/4;
 cisolver = fci.direct_uhf.FCISolver();
 cisolver.max_cycle = 100
 cisolver.conv_tol = 1e-8
-E_uhf, v_uhf = cisolver.kernel((h1e_alpha, h1e_beta), (h2e_alpha_alpha, h2e_alpha_beta, h2e_beta_beta), norbs, nelecs,nroots=4);
+E_uhf, v_uhf = cisolver.kernel((h1e_alpha, h1e_beta), (h2e_alpha_alpha, h2e_alpha_beta, h2e_beta_beta), norbs, nelecs_hub,nroots=4);
 if(verbose):
-    print("\n3. UHF solution, constrained basis, nelecs = ",nelecs);
+    print("\n3. UHF solution, constrained basis, nelecs = ",nelecs_hub);
     print("UHF energies = ", E_uhf);
 
