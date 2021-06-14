@@ -34,13 +34,13 @@ h1e[0,1] = 2*alpha;
 h1e[1,2] = 2*alpha;
 h1e[1,0] = 2*alpha;
 h1e[2,1] = 2*alpha;
-h1e[0,0] = -D;
+h1e[0,0] = -D; # z anisotropy
 h1e[2,2] = -D;
-h1e[0,2] = 2*E;
+h1e[0,2] = 2*E; # xy plane anisotropy
 h1e[2,0] = 2*E;
 
 # double electron terms
-h2e[0,0,0,0] = U;
+h2e[0,0,0,0] = U; # onsite coulomb on each p orbital
 h2e[1,1,1,1] = U;
 h2e[2,2,2,2] = U;
 
