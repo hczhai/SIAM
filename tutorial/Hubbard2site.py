@@ -24,6 +24,8 @@ nroots = 4;
 epsilon = 0 # on site energy
 t = 3.0 # hopping
 U = 200.0; # hubbard repulsion strength
+if(verbose):
+    print("\nInputs:\nepsilon = ",epsilon,"\nt = ",t,"\nU = ",U);
 
 
 # implement h1e and h2e
