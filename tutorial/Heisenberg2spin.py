@@ -86,7 +86,7 @@ h2e_11[0,1,1,0] = -J/2; # - a_1up^dagger a_2down^dagger a_1down a_2up, sum over 
 cisolver11 = fci.direct_nosym.FCI();
 cisolver11.max_cycle = 100
 cisolver11.conv_tol = 1e-8
-E_11, v_11 = cisolver11.kernel(h1e, h2e_11, norbs, nelecs[1],nroots=4);
+E_11, v_11 = cisolver11.kernel(h1e, h2e_11, norbs, nelecs[1],nroots=6);
 if(verbose):
     print("\n - nelecs = ",nelecs[1]);
     print("FCI energies = ", E_11);
@@ -113,7 +113,7 @@ h2e_hub[1,1,1,1] = J/4;
 cisolver_hub = fci.direct_nosym.FCI();
 cisolver_hub.max_cycle = 100
 cisolver_hub.conv_tol = 1e-8
-E_hub, v_hub = cisolver_hub.kernel(h1e_hub, h2e_hub, norbs, nelecs_hub,nroots=4);
+E_hub, v_hub = cisolver_hub.kernel(h1e_hub, h2e_hub, norbs, nelecs_hub,nroots=6);
 if(verbose):
     print("\n2. Mapped solution, nelecs = ",nelecs_hub);
     print("FCI energies = ", E_hub);
