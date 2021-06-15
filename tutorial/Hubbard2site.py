@@ -13,10 +13,11 @@ Specific problem:
 Formalism:
 - h1e = (p|h|q) p,q spatial orbitals
 - h2e = (pq|h|rs) chemists notation, <pr|h|qs> physicists notation
-- all direct_x solvers already assume 4 fold symmetry from sum_{pqrs}
-- hermicity means h_pqrs = h_qpsr
-- as result of identity E_pq,rs = E_rs,pq, h_pqrs = h_rspq
-- thus there is additional symmetry
+- all direct_x solvers assume 4fold symmetry from sum_{pqrs} (don't need to do manually)
+- 1/2 out front all 2e terms, so contributions are written as 1/2(2*actual ham term)
+- other symmetries to be aware of:
+      hermicity: h_pqrs = h_qpsr
+      E_pr,qs = E_rp,sq from properties of E
 '''
 
 import numpy as np
@@ -78,7 +79,7 @@ if(verbose):
 #### spin blind method
 # put all electrons as up and make p,q... spin orbitals
 nelecs = (2,0); # put in all spins as spin up
-norbs = 4;      # now this means spin orbitals
+norbs = 4;      # spin orbs ie 1alpha, 1beta, 2alpha, 2beta -> 0,1,2,3
 nroots = 6;
 
 # implement h1e and h2e
@@ -98,15 +99,15 @@ h1e_sb[2,0] = t;
 h1e_sb[1,3] = t;
 h1e_sb[3,1] = t;
 
-# hubbard
+# hubbard: 1/2(2*2U) total contribution
 if True:
-    h2e_sb[0,0,1,1] = U+U; # 2nd U from herm conj
-    h2e_sb[2,2,3,3] = U+U;
+    h2e_sb[0,0,1,1] = 2*U; # since pr,qs = 01,01 -> pr,qs^* = 01,01 can't absorb 1/2
+    h2e_sb[2,2,3,3] = 2*U;
 else: # this way also works, different shuffling of a's
-    h2e_sb[0,1,1,0] = -U;
-    h2e_sb[1,0,0,1] = -U; # herm conj
+    h2e_sb[0,1,1,0] = -U;  # use hermicity to absorb factor of 1/2
+    h2e_sb[1,0,0,1] = -U;  # pr,qs = 01,10 -> pr,qs^* = 10,01
     h2e_sb[2,3,3,2] = -U;
-    h2e_sb[3,2,2,3] = -U; # herm conj
+    h2e_sb[3,2,2,3] = -U;
 
 # implement FCISolver object
 cisolver_sb = fci.direct_nosym.FCI();
