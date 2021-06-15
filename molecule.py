@@ -8,7 +8,16 @@ Template:
 Solve FCI problem with given 1-electron and 2-electron Hamiltonian
 
 Specific case:
-Solve molecule
+Silas' model of molecule (SOC and spatial anisotropy)
+
+Formalism:
+- h1e = (p|h|q) p,q spatial orbitals
+- h2e = (pq|h|rs) chemists notation, <pr|h|qs> physicists notation
+- all direct_x solvers assume 4fold symmetry from sum_{pqrs} (don't need to do manually)
+- 1/2 out front all 2e terms, so contributions are written as 1/2(2*actual ham term)
+- other symmetries to be aware of:
+      hermicity: h_pqrs = h_qpsr
+      E_pr,qs = E_rp,sq from properties of E
 '''
 
 import numpy as np
