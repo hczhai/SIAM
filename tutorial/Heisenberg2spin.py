@@ -10,11 +10,15 @@ Solve FCI problem with given 1-electron and 2-electron Hamiltonian
 Specific case:
 Solve 2 spin heisenberg hamiltonian
 
+
 Formalism:
 - h1e = (p|h|q) p,q spatial orbitals
 - h2e = (pq|h|rs) chemists notation, <pr|h|qs> physicists notation
-        thus hermicity means h_pqrs = h_qpsr
-- as result of identity E_pq,rs = E_rs,pq, h_pq_rs = h_rs_pq
+- all direct_x solvers assume 4fold symmetry from sum_{pqrs} (don't need to do manually)
+- 1/2 out front all 2e terms, so contributions are written as 1/2(2*actual ham term)
+- other symmetries to be aware of:
+      hermicity: h_pqrs = h_qpsr
+      E_pr,qs = E_rp,sq from properties of E
 '''
 
 import numpy as np
@@ -37,8 +41,6 @@ warning = fci.direct_nosym.FCI();
 warning.kernel(np.zeros((1,1)),np.zeros((1,1,1,1)),1,1);
     
 #### nelec constrained solution
-
-# system inputs
 nelecs = [(2,0),(1,1), (0,2)]; # have to do 2,0; 1,1; and 0,2 separately
 norbs = 2;
 
@@ -86,20 +88,48 @@ h2e_11[0,1,1,0] = -J/2; # - a_1up^dagger a_2down^dagger a_1down a_2up, sum over 
 cisolver11 = fci.direct_nosym.FCI();
 cisolver11.max_cycle = 100
 cisolver11.conv_tol = 1e-8
-E_11, v_11 = cisolver11.kernel(h1e, h2e_11, norbs, nelecs[1],nroots=4);
+E_11, v_11 = cisolver11.kernel(h1e, h2e_11, norbs, nelecs[1],nroots=6);
 if(verbose):
     print("\n - nelecs = ",nelecs[1]);
     print("FCI energies = ", E_11);
     
+    
+#### spin blind solution
+nelecs = (2,0); # spin blind means all up
+norbs = 4; # spin orbs ie 1alpha, 1beta, 2alpha, 2beta -> 0,1,2,3
+nroots = 6;
+
+# init h1e, h2e
+h1e_sb = np.zeros((norbs, norbs));
+h2e_sb = np.zeros((norbs, norbs,norbs,norbs));
+
+# all terms are 2 electron
+h2e_sb[0,1,3,2] = J/2; # 1/2(2*2*J/2) contribution
+h2e_sb[1,0,2,3] = J/2; # absorb 1/2 with herm
+h2e_sb[3,2,0,1] = J/2;
+h2e_sb[2,3,1,0] = J/2;
+h2e_sb[0,0,2,2] = 2*J/4; # 1/2(2*2J/4)
+h2e_sb[1,1,3,3] = 2*(J/4); # pqrs = 1133, pqrs^* = 1133 so can't absorb 1/2
+h2e_sb[0,0,3,3] = 2*(-J/4); # likewise
+h2e_sb[1,1,2,2] = 2*(-J/4);
+
+# solve
+cisolver_sb = fci.direct_nosym.FCI();
+cisolver_sb.max_cycle = 100;
+cisolver_sb.conv_tol = 1e-8;
+E_sb, v_sb = cisolver_sb.kernel(h1e_sb, h2e_sb, norbs, nelecs, nroots = nroots);
+if(verbose):
+    print("\n2. Spin blind solution, nelecs = ",nelecs," nroots = ", nroots);
+    print("FCI energies = ", E_sb);
+
 
 #### map solution onto Hubbard model
+norbs = 2;
+nelecs = 1,1;
 
 # init h1e, h2e
 h1e_hub = np.zeros((norbs, norbs));
-h2e_hub = np.zeros((norbs, norbs,norbs,norbs)); # for nelecs = 1,1
-
-# hubbard inputs
-nelecs_hub = 1,1;
+h2e_hub = np.zeros((norbs, norbs,norbs,norbs));
 
 # all terms are 2e terms
 h2e_hub[0,0,1,1] = -J/4;
@@ -113,45 +143,10 @@ h2e_hub[1,1,1,1] = J/4;
 cisolver_hub = fci.direct_nosym.FCI();
 cisolver_hub.max_cycle = 100
 cisolver_hub.conv_tol = 1e-8
-E_hub, v_hub = cisolver_hub.kernel(h1e_hub, h2e_hub, norbs, nelecs_hub,nroots=4);
+E_hub, v_hub = cisolver_hub.kernel(h1e_hub, h2e_hub, norbs, nelecs,nroots=6);
 if(verbose):
-    print("\n2. Mapped solution, nelecs = ",nelecs_hub);
+    print("\n3. Mapped solution, nelecs = ",nelecs);
     print("FCI energies = ", E_hub);
-    #print(v_map);
     
-'''
-#### solve with direct_uhf method, still constrained basis
 
-# need to reconfigure h arrays
-
-# 1e part
-# UHF takes h1e = (h1e alpha, h1e beta)
-h1e_alpha = np.zeros((norbs, norbs));
-h1e_beta = np.zeros((norbs, norbs)); # still just empty
-
-# 2e part
-# UHF takes h2e = h2e alpha-alpha, h2e alpha-beta, h2e beta-beta
-h2e_alpha_alpha = np.zeros((norbs,norbs,norbs,norbs));
-h2e_alpha_beta = np.zeros((norbs,norbs,norbs,norbs));
-h2e_beta_beta = np.zeros((norbs,norbs,norbs,norbs));
-
-h2e_alpha_alpha[0,0,1,1] = J/4; # both these terms are not needed
-h2e_beta_beta[1,1,0,0] = J/4; #NB alpha_alpha and beta_beta not ind'ly hermitian
-
-h2e_alpha_beta[0,1,1,0] = -J/2; # this term not needed
-h2e_alpha_beta[1,0,0,1] = -J/2; #NB alpha_beta is hermitian
-
-h2e_alpha_beta[0,0,1,1] = -J/4;
-h2e_alpha_beta[1,1,0,0] = -J/4;
-
-# solve
-cisolver = fci.direct_uhf.FCISolver();
-cisolver.max_cycle = 100
-cisolver.conv_tol = 1e-8
-E_uhf, v_uhf = cisolver.kernel((h1e_alpha, h1e_beta), (h2e_alpha_alpha, h2e_alpha_beta, h2e_beta_beta), norbs, nelecs_hub,nroots=4);
-if(verbose):
-    print("\n3. UHF solution, constrained basis, nelecs = ",nelecs_hub);
-    print("UHF energies = ", E_uhf);
-    
-'''
 
