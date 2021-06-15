@@ -1,23 +1,21 @@
-#!/usr/bin/env python
-#
-# Author: Qiming Sun <osirpt.sun@gmail.com>
-#
-
 '''
+Christian Bunker
+M^2QM at UF
+June 2021
+    
 Template:
-Solve FCI problem with given 1-electron and 2-electron Hamiltonian
-
-Specific case:
-Silas' model of molecule (SOC and spatial anisotropy)
+Solve exact diag with given 1-electron and 2-electron Hamiltonian
 
 Formalism:
-- h1e = (p|h|q) p,q spatial orbitals
-- h2e = (pq|h|rs) chemists notation, <pr|h|qs> physicists notation
+- h1e_pq = (p|h|q) p,q spatial orbitals
+- h2e_pqrs = (pq|h|rs) chemists notation, <pr|h|qs> physicists notation
 - all direct_x solvers assume 4fold symmetry from sum_{pqrs} (don't need to do manually)
 - 1/2 out front all 2e terms, so contributions are written as 1/2(2*actual ham term)
-- other symmetries to be aware of:
-      hermicity: h_pqrs = h_qpsr
-      E_pr,qs = E_rp,sq from properties of E
+- hermicity: h_pqrs = h_qpsr can absorb factor of 1/2
+
+Specific case:
+- Silas' model of molecule (SOC and spatial anisotropy)
+- 3 L_z levels: m=-1,0,1 (6 spin orbitals)
 '''
 
 import numpy as np
@@ -25,6 +23,7 @@ from pyscf import fci
 
 verbose = True;
 np.set_printoptions(suppress=True); # no sci notatation printing
+check_analytical = True; # turn on to see if fci solutions reduce to constrained analytical solution
 
 # parameters in the hamiltonian
 alpha = 0.01;
@@ -73,10 +72,11 @@ h1e[0,0] += -alpha; # diagonal SOC
 h1e[1,1] += alpha;
 h1e[4,4] += alpha;
 h1e[5,5] += -alpha;
-h1e[0,3] += alpha; # off diagonal SOC
-h1e[3,0] += alpha;
-h1e[2,5] += alpha;
-h1e[5,2] += alpha;
+if( not check_analytical): # turn off off diag SOC when comparing with analytical
+    h1e[0,3] += alpha; # off diagonal SOC
+    h1e[3,0] += alpha;
+    h1e[2,5] += alpha;
+    h1e[5,2] += alpha;
 
 # double electron terms
 h2e[0,0,1,1] = 2*U; # hubbard
@@ -84,7 +84,7 @@ h2e[2,2,3,3] = 2*U;
 h2e[4,4,5,5] = 2*U;
 
 # solve with FCISolver object
-cisolver = fci.direct_spin1.FCI()
+cisolver = fci.direct_nosym.FCI()
 cisolver.max_cycle = 100
 cisolver.conv_tol = 1e-8
 E_fci, v_fci = cisolver.kernel(h1e, h2e, norbs, nelecs,nroots=nroots);

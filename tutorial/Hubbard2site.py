@@ -2,22 +2,28 @@
 #
 # Author: Qiming Sun <osirpt.sun@gmail.com>
 #
+# Example modified by Christian Bunker, June 2021
 
 '''
 Template:
 Solve FCI problem with given 1-electron and 2-electron Hamiltonian
 
-Specific problem:
-2 site hubbard model
+pyscf/fci module:
+- configuration interaction solvers of form fci.direct_x.FCI()
+- diagonalize 2nd quant hamiltonians via the .kernel() method
+- .kernel takes (1e hamiltonian, 2e hamiltonian, # spacial orbs, (# alpha e's, # beta e's))
+- direct_nosym assumes only h_pqrs = h_rspq (switch r1, r2 in coulomb integral)
+- direct_spin1 assumes h_pqrs = h_qprs = h_pqsr = h_qpsr
 
 Formalism:
-- h1e = (p|h|q) p,q spatial orbitals
-- h2e = (pq|h|rs) chemists notation, <pr|h|qs> physicists notation
+- h1e_pq = (p|h|q) p,q spatial orbitals
+- h2e_pqrs = (pq|h|rs) chemists notation, <pr|h|qs> physicists notation
 - all direct_x solvers assume 4fold symmetry from sum_{pqrs} (don't need to do manually)
 - 1/2 out front all 2e terms, so contributions are written as 1/2(2*actual ham term)
-- other symmetries to be aware of:
-      hermicity: h_pqrs = h_qpsr
-      E_pr,qs = E_rp,sq from properties of E
+- hermicity: h_pqrs = h_qpsr can absorb factor of 1/2
+
+Specific problem:
+2 site hubbard model
 '''
 
 import numpy as np
@@ -29,8 +35,8 @@ np.set_printoptions(suppress=True); # no sci notatation printing
 # system inputs
 # hamiltonian params must be floats
 epsilon = 0.0 # on site energy
-t = 3.0 # hopping
-U = 200.0; # hubbard repulsion strength
+t = 1.0 # hopping
+U = 2.0; # hubbard repulsion strength
 if(verbose):
     print("\nInputs:\nepsilon = ",epsilon,"\nt = ",t,"\nU = ",U);
     
