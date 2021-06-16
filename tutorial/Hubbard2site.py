@@ -142,6 +142,10 @@ Sx[1,0] += 1/2;
 Sx[2,3] += 1/2;
 Sx[3,2] += 1/2;
 Sy = np.zeros((norbs,norbs));
+Sy[0,1] += -np.complex(0,1)*1/2;
+Sy[1,0] += np.complex(0,1)*1/2;
+Sy[2,3] += -np.complex(0,1)*1/2;
+Sy[3,2] += np.complex(0,1)*1/2;
 Sz = np.zeros((norbs,norbs));
 Sz[0,0] += 1/2;
 Sz[1,1] += -1/2;
@@ -159,16 +163,20 @@ for vi in range(len(v_sb)): # iter over vectors
         # use contract_1e function
         result = fci.direct_nosym.contract_1e(S[Si], v_sb[vi], norbs, nelecs);
     
+        '''
         # compare to original eigenvector
         for resi in range(len(result)):
             if( abs(v_sb[vi][resi] ) > 1e-8 ): # only divide by nonzero elements
                 result[resi] = result[resi]/v_sb[vi][resi]; # ie divide by eigvec to get eigval
+        '''
+        Si_val = np.dot(np.reshape(v_sb[vi], (1,6)), result);
     
         if(verbose):
             if(Si == 0): # delineate w/ corresponding energy
                 Eform = E_formatter.format(E_sb[vi]);
                 print("E = ",Eform)
-            print("- ",np.reshape(result, (1, nroots) ) );
+            #print("- ",np.reshape(result, (1, nroots) ) );
+            print("- ",Si_val);
 
     
         

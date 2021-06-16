@@ -114,7 +114,7 @@ h2e[8,8,9,9] = 2*U;
 # pass ham to FCI solver kernel to diagonalize
 cisolver = fci.direct_nosym.FCI()
 myroots = 4; # don't print out 45
-E_fci, v_fci = cisolver.kernel(h1e, h2e, norbs, nelecs,nroots=myroots);
+E_fci, v_fci = cisolver.kernel(h1e, h2e, norbs, nelecs, nroots = myroots);
 E_fci.sort();
 if(verbose):
     print("\n1. Spin blind solution, nelecs = ",nelecs," nroots = ",myroots);
