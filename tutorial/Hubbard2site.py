@@ -130,34 +130,45 @@ if(verbose):
     print("\n2. nelecs = ",nelecs, " nroots = ",nroots);
     for i, v in enumerate(v_sb):
         Eform = E_formatter.format(E_sb[i]);
-        print("E = ",Eform,"  ", np.reshape(v, (1, v.size ) ) );
+        print("E = ",Eform);
+        print(np.reshape(v, (1, v.size ) ) );
 
 #### contract vector with Sz operator in h1e form to measure spin
 
-# make Sz operator
+# make S operators
+Sx = np.zeros((norbs,norbs));
+Sx[0,1] += 1/2;
+Sx[1,0] += 1/2;
+Sx[2,3] += 1/2;
+Sx[3,2] += 1/2;
+Sy = np.zeros((norbs,norbs));
 Sz = np.zeros((norbs,norbs));
 Sz[0,0] += 1/2;
 Sz[1,1] += -1/2;
 Sz[2,2] += 1/2;
 Sz[3,3] += -1/2;
+S = [Sx,Sy,Sz];
     
 # iter over vectors and contract
-
+print("\nActing with S");
 for vi in range(len(v_sb)): # iter over vectors
 
-    # use contract_1e function
-    result = fci.direct_nosym.contract_1e(Sz, v_sb[vi], norbs, nelecs);
+    #contract with each element of S operator
+    for Si in range(len(S)):
+
+        # use contract_1e function
+        result = fci.direct_nosym.contract_1e(S[Si], v_sb[vi], norbs, nelecs);
     
-    # compare to original eigenvector
-    for resi in range(len(result)):
-        if( abs(v_sb[vi][resi] ) > 1e-8 ): # only divide by nonzero elements
-            result[resi] = result[resi]/v_sb[vi][resi]; # ie divide by eigvec to get eigval
+        # compare to original eigenvector
+        for resi in range(len(result)):
+            if( abs(v_sb[vi][resi] ) > 1e-8 ): # only divide by nonzero elements
+                result[resi] = result[resi]/v_sb[vi][resi]; # ie divide by eigvec to get eigval
     
-    if(verbose):
-        if(vi == 0):
-            print("\n");
-        Eform = E_formatter.format(E_sb[vi]);
-        print("E = ",Eform,"  ", np.reshape(result, (1, nroots) ) );
+        if(verbose):
+            if(Si == 0): # delineate w/ corresponding energy
+                Eform = E_formatter.format(E_sb[vi]);
+                print("E = ",Eform)
+            print("- ",np.reshape(result, (1, nroots) ) );
 
     
         

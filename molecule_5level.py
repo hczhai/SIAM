@@ -42,7 +42,7 @@ E = 50.0;
 U = 2000.0;
 E_shift = (nelecs[0] - 2)/2 *U  # num paired e's/2 *U
 if(verbose):
-    print("\nInputs:","\nalpha = ",alpha,"\nD = ",D,"\nE = ",E,"\nU = ",U);
+    print("\nInputs:","check analytical = ", check_analytical,"\nalpha = ",alpha,"\nD = ",D,"\nE = ",E,"\nU = ",U);
     print("E shift = ",E_shift,"\nE/U = ",E/U,"\nalpha/(E^2/U) = ", alpha*U/(E*E) );
 
 #### get analytical energies

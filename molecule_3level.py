@@ -22,17 +22,16 @@ import numpy as np
 from pyscf import fci
 
 verbose = True;
-np.set_printoptions(suppress=True); # no sci notatation printing
-check_analytical = True; # turn on to see if fci solutions reduce to constrained analytical solution
+#np.set_printoptions(suppress=True); # no sci notatation printing
 
 # parameters in the hamiltonian
-alpha = 0.01;
-D = 20.0;
-E = 10.0;
-U = 1000.0;
+alpha = 0.001;
+D = 400.0;
+E = 60.0;
+U = 800.0;
 if(verbose):
     print("\nInputs:","\nalpha = ",alpha,"\nD = ",D,"\nE = ",E,"\nU = ",U);
-    print("E/U = ",E/U,"\nalpha/(E^2/U) = ", alpha*U/(E*E) );
+    print("E/U = ",E/U,"\nalpha/(E^2/U) = ", alpha*U/(E*E),"\nalpha/D = ",alpha/D );
 
 #### get analytical energies
 
@@ -40,13 +39,16 @@ if(verbose):
 H_T = np.array([[-2*alpha,0,-2*E,2*E], [0,2*alpha,2*E,-2*E],[-2*E,2*E,U,0],[2*E,-2*E,0,U]]); # T sector
 H_O = np.array([[-D-alpha,0,0,2*E,0],[0,-D+alpha,2*E,0,0],[0,2*E,-D-alpha,0,0],[2*E,0,0,-D+alpha,0],[0,0,0,0,-2*D+U]]); # other sector
 E_exact = np.append(np.linalg.eigh(H_T)[0], np.linalg.eigh(H_O)[0]);
+H_eff = np.array([[-2*alpha- 8*E*E/U, 8*E*E/U], [8*E*E/U, 2*alpha - 8*E*E/U - 2*alpha*alpha/(alpha-D)] ])
+E_S, E_T0 = np.linalg.eigh(H_eff)[0];
+print(np.linalg.eigh(H_eff)[0]);
 
 # sort and print
 E_exact.sort();
 if(verbose):
-    print("\n0. Analytical solution, constrained to nelecs = (2,2),\n i.e. exact when off diagonal SOC is turned off")
-    print("Exact energies = ",E_exact);
-    print("Expected singlet energy, E/U-->0 = ",-16*E*E/U);
+    print("\n0. Analytical solution, exact as alpha --> 0:")
+    print("Exact energies = \n",E_exact);
+    print("Expected energies as E/U, alpha/(E^2/U), alpha/D --> 0:\n- Singlet energy = ", E_S, "\n- T0 energy = ", E_T0, "\n- T+/- energy = ", alpha*alpha/(D-alpha) );
     
     
 #### solve with spin blind method
@@ -72,11 +74,10 @@ h1e[0,0] += -alpha; # diagonal SOC
 h1e[1,1] += alpha;
 h1e[4,4] += alpha;
 h1e[5,5] += -alpha;
-if( not check_analytical): # turn off off diag SOC when comparing with analytical
-    h1e[0,3] += alpha; # off diagonal SOC
-    h1e[3,0] += alpha;
-    h1e[2,5] += alpha;
-    h1e[5,2] += alpha;
+h1e[0,3] += alpha; # off diagonal SOC
+h1e[3,0] += alpha;
+h1e[2,5] += alpha;
+h1e[5,2] += alpha;
 
 # double electron terms
 h2e[0,0,1,1] = 2*U; # hubbard
