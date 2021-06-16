@@ -119,5 +119,6 @@ E_fci.sort();
 if(verbose):
     print("\n1. Spin blind solution, nelecs = ",nelecs," nroots = ",myroots);
     print("FCI energies = ",E_fci- E_shift);
+    #print(v_fci);
 
 

@@ -34,14 +34,18 @@ np.set_printoptions(suppress=True); # no sci notatation printing
 
 # system inputs
 # hamiltonian params must be floats
-epsilon = 0.0 # on site energy
-t = 1.0 # hopping
-U = 2.0; # hubbard repulsion strength
+epsilon1 = 0.0 # on site energy, site 1
+epsilon2 = 0.0; # site 2
+t = 3.0 # hopping
+U = 400.0 # hubbard repulsion strength
 if(verbose):
-    print("\nInputs:\nepsilon = ",epsilon,"\nt = ",t,"\nU = ",U);
+    print("\nInputs:\nepsilon1 = ",epsilon1,"\nepsilon2 = ",epsilon2,"\nt = ",t,"\nU = ",U);
+    print("t/U = ",t/U);
     
-# analytical solution
-E_exact = np.array([0,U,U*0.5 - 0.5*np.sqrt(16*t*t+U*U), U/2 + 1/2 *np.sqrt(16*t*t+U*U),0,0])
+# analytical solution by exact diag
+H_exact = np.array([[U+2*epsilon1,0,-t,t],[0,U+2*epsilon2,t,-t],[-t,t,epsilon1+epsilon2,0],[t,-t,0,epsilon1+epsilon2]]);
+E_exact = np.linalg.eigh(H_exact)[0];
+E_exact = np.append(E_exact, [epsilon1 + epsilon2, epsilon1 + epsilon2])
 E_exact.sort();
 if(verbose):
     print("\n0. Analytical solution");
@@ -59,8 +63,8 @@ h1e = np.zeros((norbs,norbs));
 h2e = np.zeros((norbs,norbs,norbs,norbs));
 
 # put in on site energy
-h1e[0,0] = epsilon;
-h1e[1,1] = epsilon;
+h1e[0,0] = epsilon1;
+h1e[1,1] = epsilon2;
 
 # hopping
 h1e[0,1] = t;
@@ -94,10 +98,10 @@ h1e_sb = np.zeros((norbs,norbs));
 h2e_sb = np.zeros((norbs,norbs,norbs,norbs));
 
 # on site energy
-h1e_sb[0,0] = epsilon;
-h1e_sb[1,1] = epsilon;
-h1e_sb[2,2] = epsilon;
-h1e_sb[3,3] = epsilon;
+h1e_sb[0,0] = epsilon1;
+h1e_sb[1,1] = epsilon1;
+h1e_sb[2,2] = epsilon2;
+h1e_sb[3,3] = epsilon2;
 
 # hopping
 h1e_sb[0,2] = t;
@@ -117,15 +121,47 @@ else: # this way also works, different shuffling of a's
 
 # implement FCISolver object
 cisolver_sb = fci.direct_nosym.FCI();
-cisolver_sb.max_cycle = 100;
-cisolver_sb.conv_tol = 1e-8;
 
 # kernel takes (1e ham, 2e ham, num orbitals, num electrons
 # returns eigvals and eigvecs of ham (in what basis?)
 E_sb, v_sb = cisolver_sb.kernel(h1e_sb, h2e_sb, norbs, nelecs, nroots = nroots);
+E_formatter = "{0:6.6f}"
 if(verbose):
     print("\n2. nelecs = ",nelecs, " nroots = ",nroots);
-    print("FCI energies = ", E_sb);
+    for i, v in enumerate(v_sb):
+        Eform = E_formatter.format(E_sb[i]);
+        print("E = ",Eform,"  ", np.reshape(v, (1, v.size ) ) );
+
+#### contract vector with Sz operator in h1e form to measure spin
+
+# make Sz operator
+Sz = np.zeros((norbs,norbs));
+Sz[0,0] += 1/2;
+Sz[1,1] += -1/2;
+Sz[2,2] += 1/2;
+Sz[3,3] += -1/2;
+    
+# iter over vectors and contract
+
+for vi in range(len(v_sb)): # iter over vectors
+
+    # use contract_1e function
+    result = fci.direct_nosym.contract_1e(Sz, v_sb[vi], norbs, nelecs);
+    
+    # compare to original eigenvector
+    for resi in range(len(result)):
+        if( abs(v_sb[vi][resi] ) > 1e-8 ): # only divide by nonzero elements
+            result[resi] = result[resi]/v_sb[vi][resi]; # ie divide by eigvec to get eigval
+    
+    if(verbose):
+        if(vi == 0):
+            print("\n");
+        Eform = E_formatter.format(E_sb[vi]);
+        print("E = ",Eform,"  ", np.reshape(result, (1, nroots) ) );
+
+    
+        
+
     
     
 

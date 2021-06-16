@@ -104,14 +104,18 @@ h1e_sb = np.zeros((norbs, norbs));
 h2e_sb = np.zeros((norbs, norbs,norbs,norbs));
 
 # all terms are 2 electron
-h2e_sb[0,1,3,2] = J/2; # 1/2(2*2*J/2) contribution
-h2e_sb[1,0,2,3] = J/2; # absorb 1/2 with herm
-h2e_sb[3,2,0,1] = J/2;
-h2e_sb[2,3,1,0] = J/2;
-h2e_sb[0,0,2,2] = 2*J/4; # 1/2(2*2J/4)
-h2e_sb[1,1,3,3] = 2*(J/4); # pqrs = 1133, pqrs^* = 1133 so can't absorb 1/2
-h2e_sb[0,0,3,3] = 2*(-J/4); # likewise
-h2e_sb[1,1,2,2] = 2*(-J/4);
+if True:
+    h2e_sb[0,1,3,2] += 2*J/2; # 1/2(2*2*J/2) contribution
+    h2e_sb[1,0,2,3] += 2*J/2; # herms map into each other so can't absorb 1/2
+else:
+    h2e_sb[0,1,3,2] += J/2; # equivalently could absorb 1/2 using E_pq,rs = E_rp,sq identity
+    h2e_sb[1,0,2,3] += J/2;
+    h2e_sb[3,2,0,1] += J/2;
+    h2e_sb[2,3,1,0] += J/2;
+h2e_sb[0,0,2,2] += 2*J/4; # 1/2(2*2J/4)
+h2e_sb[1,1,3,3] += 2*(J/4); # pqrs = 1133, pqrs^* = 1133 so can't absorb 1/2
+h2e_sb[0,0,3,3] += 2*(-J/4); # likewise
+h2e_sb[1,1,2,2] += 2*(-J/4);
 
 # solve
 cisolver_sb = fci.direct_nosym.FCI();
