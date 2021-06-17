@@ -30,7 +30,7 @@ import numpy as np
 import scipy as sp
 from pyscf import fci
 
-verbose = 2;
+verbose = 1;
 np.set_printoptions(suppress=True); # no sci notatation printing
 
 # system inputs
@@ -107,10 +107,11 @@ h1e_sb[2,2] = epsilon2;
 h1e_sb[3,3] = epsilon2;
 
 # hopping
-h1e_sb[0,2] = t;
-h1e_sb[2,0] = t;
-h1e_sb[1,3] = t;
-h1e_sb[3,1] = t;
+T = t/1e9
+h1e_sb[0,2] = t+T;
+h1e_sb[2,0] = t+T;
+h1e_sb[1,3] = t-T;
+h1e_sb[3,1] = t-T;
 
 # hubbard: 1/2(2*2U) total contribution
 if True:
@@ -136,7 +137,8 @@ if(verbose):
         print("- E = ",Eform);
         if(verbose > 1):
             print("  ",np.reshape(v, (1, v.size ) ) );
-            
+   
+'''
 #### rotate around singlet state
 print("\n*******");
 
@@ -161,11 +163,11 @@ singlet_rot = singlet_rot*angle_rot;
 R_inst = sp.spatial.transform.Rotation.from_rotvec(singlet_rot); # encodes rot vector as Rotation instance
 triplet_p = R_inst.apply(triplet_rot);
 print(triplet_p);
-
+'''
         
 
 #### contract vector with Sz operator in h1e form to measure spin
-'''
+
 # make S operators
 Sx = np.zeros((norbs,norbs));
 Sx[0,1] = 1/2;
@@ -206,5 +208,5 @@ for vi in range(len(v_sb)): # iter over vectors
         print("- <S> vector = ", S_exp );
         print("- norm if S_y = S_x = ", 2*S_exp[0]*S_exp[0] + S_exp[2]*S_exp[2]);
 
-'''
+
 
