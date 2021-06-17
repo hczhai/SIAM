@@ -27,20 +27,21 @@ Specific problem:
 '''
 
 import numpy as np
+import scipy as sp
 from pyscf import fci
 
-verbose = True;
+verbose = 2;
 np.set_printoptions(suppress=True); # no sci notatation printing
 
 # system inputs
 # hamiltonian params must be floats
-epsilon1 = 0.0 # on site energy, site 1
+epsilon1 = 0.0; # on site energy, site 1
 epsilon2 = 0.0; # site 2
-t = 3.0 # hopping
-U = 400.0 # hubbard repulsion strength
+t = 2.0 # hopping
+U = 1000.0 # hubbard repulsion strength
 if(verbose):
     print("\nInputs:\nepsilon1 = ",epsilon1,"\nepsilon2 = ",epsilon2,"\nt = ",t,"\nU = ",U);
-    print("t/U = ",t/U);
+    #print("t/U = ",t/U);
     
 # analytical solution by exact diag
 H_exact = np.array([[U+2*epsilon1,0,-t,t],[0,U+2*epsilon2,t,-t],[-t,t,epsilon1+epsilon2,0],[t,-t,0,epsilon1+epsilon2]]);
@@ -75,7 +76,7 @@ h2e[0,0,0,0] += U;
 h2e[1,1,1,1] += U;
 
 # implement FCISolver object
-cisolver = fci.direct_spin1.FCI();
+cisolver = fci.direct_nosym.FCI();
 cisolver.max_cycle = 100; # max number of iterations
 cisolver.conv_tol = 1e-8; # energy convergence
 
@@ -85,6 +86,8 @@ E_fci, v_fci = cisolver.kernel(h1e, h2e, norbs, nelecs, nroots = nroots);
 if(verbose):
     print("\n1. nelecs = ",nelecs, " nroots = ",nroots); # this matches analytical gd state
     print("FCI energies = ", E_fci);
+    if(verbose > 1):
+        print(v_fci);
 
 #### spin blind method
 # put all electrons as up and make p,q... spin orbitals
@@ -120,7 +123,7 @@ else: # this way also works, different shuffling of a's
     h2e_sb[3,2,2,3] = -U;
 
 # implement FCISolver object
-cisolver_sb = fci.direct_nosym.FCI();
+cisolver_sb = fci.direct_spin1.FCI();
 
 # kernel takes (1e ham, 2e ham, num orbitals, num electrons
 # returns eigvals and eigvecs of ham (in what basis?)
@@ -130,57 +133,78 @@ if(verbose):
     print("\n2. nelecs = ",nelecs, " nroots = ",nroots);
     for i, v in enumerate(v_sb):
         Eform = E_formatter.format(E_sb[i]);
-        print("E = ",Eform);
-        print(np.reshape(v, (1, v.size ) ) );
+        print("- E = ",Eform);
+        if(verbose > 1):
+            print("  ",np.reshape(v, (1, v.size ) ) );
+            
+#### rotate around singlet state
+print("\n*******");
+
+# the get singlet (the gd state) to rotate around (nonzero elems only)
+singlet = v_sb[0];
+triplet = v_sb[1];
+singlet_rot = []
+triplet_rot = []
+for i,e in enumerate(triplet): # get nonzero elems from triplet
+    if(abs(e) > 1e-2):
+        singlet_rot.append(singlet[i]);
+        triplet_rot.append(triplet[i]);
+singlet_rot = np.array(singlet_rot); # already norm'd !
+singlet_rot = singlet_rot.flatten();
+triplet_rot = np.array(triplet_rot);
+triplet_rot = triplet_rot.flatten();
+print(triplet_rot);
+#now norm of singlet_rot needs to be angle of rotation
+angle_rot = np.arccos(triplet_rot[0]);
+print(angle_rot);
+singlet_rot = singlet_rot*angle_rot;
+R_inst = sp.spatial.transform.Rotation.from_rotvec(singlet_rot); # encodes rot vector as Rotation instance
+triplet_p = R_inst.apply(triplet_rot);
+print(triplet_p);
+
+        
 
 #### contract vector with Sz operator in h1e form to measure spin
-
+'''
 # make S operators
 Sx = np.zeros((norbs,norbs));
-Sx[0,1] += 1/2;
-Sx[1,0] += 1/2;
-Sx[2,3] += 1/2;
-Sx[3,2] += 1/2;
-Sy = np.zeros((norbs,norbs));
-Sy[0,1] += -np.complex(0,1)*1/2;
-Sy[1,0] += np.complex(0,1)*1/2;
-Sy[2,3] += -np.complex(0,1)*1/2;
-Sy[3,2] += np.complex(0,1)*1/2;
+Sx[0,1] = 1/2;
+Sx[1,0] = 1/2;
+Sx[2,3] = 1/2;
+Sx[3,2] = 1/2;
+Sy = np.full((norbs, norbs), np.complex(0,0) );
+Sy[0,1] = -np.complex(0,1)*1/2;
+Sy[1,0] = np.complex(0,1)*1/2;
+Sy[2,3] = -np.complex(0,1)*1/2;
+Sy[3,2] = np.complex(0,1)*1/2;
 Sz = np.zeros((norbs,norbs));
-Sz[0,0] += 1/2;
-Sz[1,1] += -1/2;
-Sz[2,2] += 1/2;
-Sz[3,3] += -1/2;
-S = [Sx,Sy,Sz];
+Sz[0,0] = 1/2;
+Sz[1,1] = -1/2;
+Sz[2,2] = 1/2;
+Sz[3,3] = -1/2;
+S_op = [Sx,Sy,Sz]; # spin operator
+S_exp = np.zeros(3); # <S> goes here
     
 # iter over vectors and contract
 print("\nActing with S");
 for vi in range(len(v_sb)): # iter over vectors
 
     #contract with each element of S operator
-    for Si in range(len(S)):
-
+    for Si in range(len(S_op)):
+        print(norbs, nelecs)
         # use contract_1e function
-        result = fci.direct_nosym.contract_1e(S[Si], v_sb[vi], norbs, nelecs);
+        result = fci.direct_nosym.contract_1e(S_op[Si], v_sb[vi], norbs, nelecs);
     
-        '''
-        # compare to original eigenvector
-        for resi in range(len(result)):
-            if( abs(v_sb[vi][resi] ) > 1e-8 ): # only divide by nonzero elements
-                result[resi] = result[resi]/v_sb[vi][resi]; # ie divide by eigvec to get eigval
-        '''
-        Si_val = np.dot(np.reshape(v_sb[vi], (1,6)), result);
+        S_exp[Si] = np.dot(np.reshape(v_sb[vi], (1,6)), result);
     
-        if(verbose):
-            if(Si == 0): # delineate w/ corresponding energy
-                Eform = E_formatter.format(E_sb[vi]);
-                print("E = ",Eform)
-            #print("- ",np.reshape(result, (1, nroots) ) );
-            print("- ",Si_val);
+    if(verbose):
+        Eform = E_formatter.format(E_sb[vi]); # delineate w/ corresponding energy
+        print("E = ",Eform)
+        print("- <S^2> = ", np.linalg.norm(S_exp) );
+        print("- <S_z> = ", S_exp[2] );
+    if(verbose > 1): # extra printing
+        print("- <S> vector = ", S_exp );
+        print("- norm if S_y = S_x = ", 2*S_exp[0]*S_exp[0] + S_exp[2]*S_exp[2]);
 
-    
-        
-
-    
-    
+'''
 
