@@ -4,7 +4,7 @@ M^2QM at UF
 June 2021
     
 Template:
-Solve exact diag with given 1-electron and 2-electron Hamiltonian
+Solve exact diag problem with given 1-electron and 2-electron Hamiltonian
 
 Formalism:
 - h1e_pq = (p|h|q) p,q spatial orbitals
@@ -22,7 +22,7 @@ import numpy as np
 from pyscf import fci
 
 verbose = True;
-#np.set_printoptions(suppress=True); # no sci notatation printing
+np.set_printoptions(suppress=True); # no sci notatation printing
 
 # parameters in the hamiltonian
 alpha = 0.001;
@@ -93,5 +93,4 @@ E_fci.sort();
 if(verbose):
     print("\n1. Spin blind solution, nelecs = ",nelecs);
     print("FCI energies = ",E_fci - (U-2*D)); # overall shift of U-2D
-
 
