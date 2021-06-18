@@ -34,15 +34,19 @@ def h_leads(V, N):
     N is number of leads (on each side)
     '''
     
-    h = np.zeros((4*N,4*N)); # N leads on each side, 2N total leads, 4N spin orbs
+    n_lead_sos = 2*N[0] + 2*N[1]; # 2 spin orbs per lead site
+    h = np.zeros((n_lead_sos,n_lead_sos));
     
     # iter over lead sites
-    for i in range(2*(N-1)): # i is spin up orb on left side, i+1 spin down
+    for i in range(2*N[0]-2): # i is spin up orb on left side, i+1 spin down
 
         h[i,i+2] += -V; # left side
         h[i+2,i] += -V; # h.c.
-        h[4*N-1-i,4*N-1-(i+2)] += -V; # right side
-        h[4*N-1-(i+2),4*N-1-i] += -V; # h.c.
+        
+    for i in range(2,2*N[1]):
+        
+        h[n_lead_sos-i,n_lead_sos-(i+2)] += -V; # right side
+        h[n_lead_sos-(i+2),n_lead_sos-i] += -V; # h.c.
         
     return h; # end h_leads;
 
@@ -51,18 +55,19 @@ def h_bias(V,N):
     '''
     create 1e hamiltonian for bias voltage
     V is hopping between leads
-    N is number of leads (on each side)
+    N is tuple of number of leads on each side
     '''
     
-    h = np.zeros((4*N,4*N)); # N leads on each side, 2N total leads, 4N spin orbs
+    n_lead_sos = 2*N[0] + 2*N[1]; # 2 spin orbs per lead site
+    h = np.zeros((n_lead_sos,n_lead_sos));
     
     # iter over lead sites
-    for i in range(0,2*N-1,2): # i is spin up orb on left side, i+1 spin down
-    
-        h[i,i] += V/2;
-        h[i+1,i+1] += V/2;
-        h[4*N-1-i,4*N-1-i] += -V/2;
-        h[4*N-1-(i+1),4*N-1-(i+1)] += -V/2;
+    for i in range(2*N[0]): # i is spin up orb on left side, i+1 spin down
+
+        h[i,i] += V/2; # left side
+        
+    for i in range(1,2*N[1]+1):
+        h[n_lead_sos-i,n_lead_sos-i] += -V/2
         
     return h; # end h bias
     
@@ -128,7 +133,7 @@ def h_dot_2e(U,N):
 #################################################
 #### functions for manipulating hamiltonians
     
-def stitch_h1e(h_imp, h_imp_leads, h_leads, h_bias, verbose = 0):
+def stitch_h1e(h_imp, h_imp_leads, h_leads, h_bias, n_leads, verbose = 0):
     '''
     stitch together the various parts of the 1e hamiltonian
     the structure of the final should be block diagonal:
@@ -138,10 +143,9 @@ def stitch_h1e(h_imp, h_imp_leads, h_leads, h_bias, verbose = 0):
     '''
     
     # number of spin orbs
-    assert(np.shape(h_leads)[0] % 2 == 0); # should be even bc spin orbs
-    n_lead_sos = int(np.shape(h_leads)[0]/2);
     n_imp_sos = np.shape(h_imp)[0];
-    n_spin_orbs = (2*n_lead_sos + n_imp_sos);
+    n_lead_sos = 2*n_leads[0] + 2*n_leads[1];
+    n_spin_orbs = (2*n_leads[0] + 2*n_leads[1] + n_imp_sos);
     
     # combine pure lead ham states
     assert(np.shape(h_leads) == np.shape(h_bias) );#should both be lead sites only
@@ -151,26 +155,28 @@ def stitch_h1e(h_imp, h_imp_leads, h_leads, h_bias, verbose = 0):
     h = np.zeros((n_spin_orbs,n_spin_orbs));
     
     # put pure lead elements on top, bottom block diag
-    for i in range(n_lead_sos):
-        for j in range(n_lead_sos):
+    for i in range(2*n_leads[0]):
+        for j in range(2*n_leads[0]):
             
             # the first 2*n leads indices are the left leads
-            h[i,j] = h_leads[i,j];
+            h[i,j] += h_leads[i,j];
             
+    for i in range(2*n_leads[1]):
+        for j in range(2*n_leads[1]):
+        
             # last 2n_lead indices are right leads
-            # these count up from n_spin_orbs - n_lead_sos
-            h[n_spin_orbs-n_lead_sos+i,n_spin_orbs-n_lead_sos+j] = h_leads[i+n_lead_sos, j+n_lead_sos];
+            h[n_spin_orbs-1-i,n_spin_orbs-1-j] += h_leads[n_lead_sos-1-i, n_lead_sos-1-j];
            
     # fill in imp and imp-lead elements in middle
     assert(n_imp_sos+4 == np.shape(h_imp_leads)[0]); # 2 spin orbs to left, right
     for i in range(n_imp_sos + 4):
         for j in range(n_imp_sos + 4):
             
-            h[n_lead_sos - 2 + i, n_lead_sos - 2 + j] += h_imp_leads[i,j];
+            h[2*n_leads[0] - 2 + i, 2*n_leads[0] - 2 + j] += h_imp_leads[i,j];
             if(i>1 and j>1 and i<n_imp_sos+2 and j< n_imp_sos+2): #skip first two, last two rows, columns
-                h[n_lead_sos - 2 + i, n_lead_sos - 2 + j] += h_imp[i-2,j-2];
+                h[2*n_leads[0] - 2 + i, 2*n_leads[0] - 2 + i] += h_imp[i-2,j-2];
             
-    if(verbose > 2):
+    if(verbose > 1):
         print("h_leads + h_bias:\n",h_leads,"\nh_imp_leads:\n",h_imp_leads,"\nh_imp:\n",h_imp);
     return h; # end stitch h1e
     
@@ -181,8 +187,9 @@ def stitch_h2e(h_imp,n_leads,verbose = 0):
     '''
     
     n_imp_sos = np.shape(h_imp)[0];
-    n_lead_sos = 2*n_leads;
-    n_spin_orbs = n_imp_sos + 2*n_lead_sos
+    n_lead_sos = 2*n_leads[0] + 2*n_leads[1];
+    n_left = n_leads[0]
+    n_spin_orbs = n_imp_sos + n_lead_sos
     
     h = np.zeros((n_spin_orbs,n_spin_orbs,n_spin_orbs,n_spin_orbs));
     
@@ -190,7 +197,7 @@ def stitch_h2e(h_imp,n_leads,verbose = 0):
         for i2 in range(n_imp_sos):
             for i3 in range(n_imp_sos):
                 for i4 in range(n_imp_sos):
-                    h[n_lead_sos+i1,n_lead_sos+i2,n_lead_sos+i3,n_lead_sos+i4] = h_imp[i1,i2,i3,i4];
+                    h[n_left+i1,n_left+i2,n_left+i3,n_left+i4] = h_imp[i1,i2,i3,i4];
                     if(verbose > 1): # check 4D tensor by printing nonzero elems
                         if(h_imp[i1,i2,i3,i4] != 0):
                             print("  h_imp[",i1,i2,i3,i4,"] = ",h_imp[i1,i2,i3,i4]);
@@ -201,7 +208,7 @@ def stitch_h2e(h_imp,n_leads,verbose = 0):
 #####################################
 #### wrapper functions, test code
 
-def DotWrapper():
+def DotWrapper(std_inputs = True):
     '''
     Run whole SIAM machinery, with impurity a very simple dot model
     Impurity hamiltonian:
@@ -209,19 +216,27 @@ def DotWrapper():
     where i are impurity sites
     '''
 
-    verbose = 2;
+    verbose = 1;
     np.set_printoptions(suppress=True); # no sci notatation printing
 
     #### set up the generic parts of the hamiltonian
-    n_leads = 2;
+    n_leads = (4,3); # left leads, right leads
     n_imp_sites = 1
 
-    # physical params
-    V_leads = 3; # hopping
-    V_imp_leads = 4; # hopping
-    V_bias = 1; # bias voltage
-    V_gate = 10; # gate voltage on dot
-    U = 50; # hubbard repulsion
+    # physical params, should always be floats
+    if std_inputs: # input everything same as ruojing's code to compare
+        V_leads = 1.0; # hopping
+        V_imp_leads = 0.4; # hopping
+        V_bias = -0.005; # bias voltage
+        V_gate = -0.5; # gate voltage on dot
+        U = 1.0; # hubbard repulsion
+    else: # custom
+        V_leads = 1.0; # hopping
+        V_imp_leads = 0.4; # hopping
+        V_bias = -0.005; # bias voltage
+        V_gate = -0.5; # gate voltage on dot
+        U = 1.0; # hubbard repulsion
+    
     if(verbose): # print inputs
         print("\nInputs:\n- Num. leads = ",n_leads,"\n- Num. impurity sites = ",n_imp_sites,"\n- V_leads = ",V_leads,"\n- V_imp_leads = ",V_imp_leads,"\n- V_bias = ",V_bias,"\n- V_gate = ",V_gate, "\n- Hubbard U = ",U);
 
@@ -230,26 +245,25 @@ def DotWrapper():
     hb = h_bias(V_bias, n_leads);
     hdl = h_imp_leads(V_imp_leads, n_imp_sites);
     hd = h_dot_1e(V_gate, n_imp_sites);
-    h1e = stitch_h1e(hd, hdl, hl, hb, verbose = verbose);
-    if(verbose > 1):
+    h1e = stitch_h1e(hd, hdl, hl, hb, n_leads, verbose = verbose);
+    if(verbose > 2):
         print("\n- Full one electron hamiltonian = \n",h1e);
         
     # 2e hamiltonian only comes from impurity
-    if(verbose > 1):
+    if(verbose > 2):
         print("\n- Nonzero h2e elements = ");
     hd2e = h_dot_2e(U,n_imp_sites);
     h2e = stitch_h2e(hd2e, n_leads, verbose = verbose);
     
     # solve gd state of half filled system with FCI
-    norbs = 2*(2*n_leads+n_imp_sites); # spin orbs
+    norbs = 2*(n_leads[0]+n_leads[1]+n_imp_sites); # spin orbs
     nelecs = (int(norbs/2),0);
-    nroots = 5;
+    nroots = 1;
     cisolver = fci.direct_nosym.FCI();
     E_fci, v_fci = cisolver.kernel(h1e, h2e, norbs, nelecs, nroots = nroots);
     if(verbose):
         print("**********\nFCI energies, norbs = ",norbs,", nelecs = ",nelecs,", nroots = ",nroots);
-        for E in E_fci:
-            print("- E = ",E);
+        print("- E = ",E_fci);
         
     return; # end dot wrapper
     

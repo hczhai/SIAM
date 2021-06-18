@@ -91,7 +91,7 @@ def kernel(eris, ci, tf, dt, RK=4):
         d2abs.append(d2ab)
         d2bbs.append(d2bb)
 
-        print('time: ', i*dt)
+        #print('time: ', i*dt)
         dr, di = compute_update(ci, eris, dt, RK)
         r = ci.r + dt*dr
         i = ci.i + dt*di
@@ -198,6 +198,7 @@ if __name__ == '__main__':
     g2e[idot,idot,idot,idot] = U/t
     # mean-field calculation initialized to half filling
     nelec = int(norb/2), int(norb/2)
+    print("**** nelecs = ",nelec);
     Pa = np.zeros(norb)
     Pa[::2] = 1.0
     Pa = np.diag(Pa)
