@@ -167,7 +167,67 @@ class CIObject():
         d2bb = d2bb.transpose(1,0,3,2)
         return (d1a, d1b), (d2aa, d2ab, d2bb)
 
-if __name__ == '__main__':
+
+def Test():
+    '''
+    sample calculation of SIAM
+    Impurity = one level dot
+    '''
+    
+    from functools import reduce
+    from pyscf import gto,scf,ao2mo,symm
+    import h5py
+    
+    # top level inputs
+    verbose = 5;
+
+    # physical inputs
+    ll = 2 # number of left leads
+    lr = 1 # number of right leads
+    t = 1.0 # lead hopping
+    td = 0.4 # dot-lead hopping
+    U = 1.0 # dot interaction
+    Vg = -0.5 # gate voltage
+    V = -0.005 # bias
+    norb = ll+lr+1 # total number of sites
+    idot = ll # dot index
+    if(verbose):
+        print("\nInputs:\n- Left, right leads = ",(ll,lr),"\n- Gate voltage = ",Vg,"\n- Bias voltage = ",V,"\n- Lead hopping = ",t,"\n- Dot lead hopping = ",td,"\n- U = ",U);
+
+    #### make hamiltonian matrices, spin free formalism
+    # remember impurity is just one level dot
+    
+    # make ground state Hamiltonian with zero bias
+    h1e = np.zeros((norb,)*2)
+    for i in range(norb):
+        if i < norb-1:
+            dot = (i==idot or i+1==idot)
+            h1e[i,i+1] = -td/t if dot else -1.0
+        if i > 0:
+            dot = (i==idot or i-1==idot)
+            h1e[i,i-1] = -td/t if dot else -1.0
+    h1e[idot,idot] = Vg/t # input gate voltage
+    for i in range(idot): # input bias
+        h1e[i,i] = V/t/2
+    for i in range(idot+1,norb):
+        h1e[i,i] = -V/t/2
+    # g2e needs modification for all up spin
+    g2e = np.zeros((norb,)*4)
+    g2e[idot,idot,idot,idot] = U/t
+    
+    if(verbose > 2):
+        print("Full one electron hamiltonian:\n", h1e)
+        
+    #### do time propagation
+    tf = 1.0
+    dt = 0.01
+    eris = ERIs(h1e, g2e, mf.mo_coeff)
+    ci = CIObject(fcivec, norb, nelec)
+    (d1as, d1bs), (d2aas, d2abs, d2bbs) = kernel(eris, ci, tf, dt)
+    return;
+    
+    
+def OldCodeWrapper():
     # sample calculation of SIAM
     from functools import reduce
     from pyscf import gto,scf,ao2mo,symm 
@@ -198,7 +258,6 @@ if __name__ == '__main__':
     g2e[idot,idot,idot,idot] = U/t
     # mean-field calculation initialized to half filling
     nelec = int(norb/2), int(norb/2)
-    print("**** nelecs = ",nelec);
     Pa = np.zeros(norb)
     Pa[::2] = 1.0
     Pa = np.diag(Pa)
@@ -256,3 +315,8 @@ if __name__ == '__main__':
     f.create_dataset('d2abs', data=d2abs)
     f.create_dataset('d2bbs', data=d2bbs)
     f.close()
+    
+
+if __name__ == "__main__":
+
+    Test();
