@@ -24,101 +24,146 @@ Specific case:
 import numpy as np
 from pyscf import fci
 
-# global vars
-verbose = True;
-np.set_printoptions(suppress=True); # no sci notatation printing
-check_analytical = False; # turn on to compare to analytical solutions
-if(check_analytical): # implement simple 1e case that can be checked analytically
-    nelecs = (1,0);
-    nroots = 10; #1e, 10 orb basis
-else:
+##########################################
+#### create hamiltonians
+
+def h1e(norbs,D,E,alpha):
+    '''
+    Create one electron part of Silas' model hamiltonian from physical params
+    norbs = # spin orbs
+    D = z axis spatial anisotropy
+    E = xy plane spatial anisotropy
+    alpha = SOC strength
+    Returns: 2D np array
+    '''
+    
+    # make empty 2d matrix
+    # since code is not flexible right now (bad practice)
+    my_norbs = 10; # spin orbs
+    assert(norbs == my_norbs);
+    h = np.zeros((norbs, norbs));
+
+    # single electron terms
+    # best practice to use += thru out since we may modify elements twice
+    h[0,0] += -4*D; # z axis anisotropy
+    h[1,1] += -4*D;
+    h[2,2] += -D;
+    h[3,3] += -D;
+    h[6,6] += -D;
+    h[7,7] += -D;
+    h[8,8] += -4*D;
+    h[9,9] += -4*D;
+    h[0,4] += 2*E; # xy plane anisotropy
+    h[4,0] += 2*E;
+    h[1,5] += 2*E;
+    h[5,1] += 2*E;
+    h[2,6] += 2*E;
+    h[6,2] += 2*E;
+    h[3,7] += 2*E;
+    h[7,3] += 2*E;
+    h[4,8] += 2*E;
+    h[8,4] += 2*E;
+    h[5,9] += 2*E;
+    h[9,5] += 2*E;
+    h[0,0] += -2*alpha; # diag SOC
+    h[1,1] += 2*alpha;
+    h[2,2] += -alpha;
+    h[3,3] += alpha;
+    h[6,6] += alpha;
+    h[7,7] += -alpha;
+    h[8,8] += 2*alpha;
+    h[9,9] += -2*alpha;
+    h[0,3] += alpha; # off diag SOC
+    h[3,0] += alpha;
+    h[2,5] += alpha;
+    h[5,2] += alpha;
+    h[4,7] += alpha;
+    h[7,4] += alpha;
+    h[6,9] += alpha;
+    h[9,6] += alpha;
+    
+    return h;
+    
+def h2e(norbs, U):
+    '''
+    Create two electron part of Silas' model hamiltonian from physical params
+    norbs = # spin orbs
+    U = hubbard repulsion
+    Returns: 4D np array
+    '''
+
+    # make empty 4d matrix
+    # since code is not flexible right now (bad practice)
+    my_norbs = 10; # spin orbs
+    assert(norbs == my_norbs);
+    h = np.zeros((norbs, norbs,norbs,norbs));
+
+    # hubbard terms
+    h[0,0,1,1] = 2*U;
+    h[2,2,3,3] = 2*U;
+    h[4,4,5,5] = 2*U;
+    h[6,6,7,7] = 2*U;
+    h[8,8,9,9] = 2*U;
+
+    return h;
+ 
+ 
+##########################################
+#### wrapper funcs, test code
+
+def Test():
+
+    # top level inputs
+    verbose = True;
+    np.set_printoptions(suppress=True); # no sci notatation printing
+    
+    #### solve with spin blind method
+    norbs = 10; # spin orbs, d shell
     nelecs = (8,0);
-    nroots = 45; # 8e, 10 orb basis
+    nroots = 45; # full 8e, 10 orb basis
 
-# parameters in the hamiltonian
-alpha = 0.1;
-D = 100.0;
-E = 50.0;
-U = 2000.0;
-E_shift = (nelecs[0] - 2)/2 *U  # num paired e's/2 *U
-if(verbose):
-    print("\nInputs:","check analytical = ", check_analytical,"\nalpha = ",alpha,"\nD = ",D,"\nE = ",E,"\nU = ",U);
-    print("E shift = ",E_shift,"\nE/U = ",E/U,"\nalpha/(E^2/U) = ", alpha*U/(E*E) );
+    # parameters in the hamiltonian
+    alpha = 0.1;
+    D = 100.0;
+    E = 50.0;
+    U = 2000.0;
+    E_shift = (nelecs[0] - 2)/2 *U  # num paired e's/2 *U
+    if(verbose):
+        print("\nInputs:","\nalpha = ",alpha,"\nD = ",D,"\nE = ",E,"\nU = ",U);
+        print("E shift = ",E_shift,"\nE/U = ",E/U,"\nalpha/(E^2/U) = ", alpha*U/(E*E) );
 
-#### get analytical energies
+    #### get analytical energies
 
-# diagonalize numerically
-H_exact = np.zeros((10,10));
-E_exact = np.linalg.eigh(H_exact)[0];
+    # diagonalize numerically
+    H_exact = np.zeros((10,10));
+    E_exact = np.linalg.eigh(H_exact)[0];
 
-# sort and print
-E_exact.sort();
-if(verbose):
-    print("\n0. Analytical solution not yet implemented");
-    print("Exact energies = ",E_exact);
+    # sort and print
+    E_exact.sort();
+    if(verbose):
+        print("\n0. Analytical solution not yet implemented");
+        print("Exact energies = ",E_exact);
+
+    # implement h1e, h2e
+    h1e_mat = h1e(norbs, D, E, alpha);
+    h2e_mat = h2e(norbs, U);
+
+
+    # pass ham to FCI solver kernel to diagonalize
+    cisolver = fci.direct_nosym.FCI()
+    myroots = 4; # don't print out 45
+    E_fci, v_fci = cisolver.kernel(h1e_mat, h2e_mat, norbs, nelecs, nroots = myroots);
+    E_fci.sort();
+    if(verbose):
+        print("\n1. Spin blind solution, nelecs = ",nelecs," nroots = ",myroots);
+        print("FCI energies = ",E_fci- E_shift);
     
     
-#### solve with spin blind method
-norbs = 10; # spin orbs, d shell
+##########################################
+#### exec code
 
-# implement h1e, h2e
-h1e = np.zeros((norbs, norbs));
-h2e = np.zeros((norbs, norbs,norbs,norbs));
+if __name__ == "__main__":
 
-# single electron terms
-# best practice to use += thru out since we may modify elements twice
-h1e[0,0] += -4*D; # z axis anisotropy
-h1e[1,1] += -4*D;
-h1e[2,2] += -D;
-h1e[3,3] += -D;
-h1e[6,6] += -D;
-h1e[7,7] += -D;
-h1e[8,8] += -4*D;
-h1e[9,9] += -4*D;
-h1e[0,4] += 2*E; # xy plane anisotropy
-h1e[4,0] += 2*E;
-h1e[1,5] += 2*E;
-h1e[5,1] += 2*E;
-h1e[2,6] += 2*E;
-h1e[6,2] += 2*E;
-h1e[3,7] += 2*E;
-h1e[7,3] += 2*E;
-h1e[4,8] += 2*E;
-h1e[8,4] += 2*E;
-h1e[5,9] += 2*E;
-h1e[9,5] += 2*E;
-h1e[0,0] += -2*alpha; # diag SOC
-h1e[1,1] += 2*alpha;
-h1e[2,2] += -alpha;
-h1e[3,3] += alpha;
-h1e[6,6] += alpha;
-h1e[7,7] += -alpha;
-h1e[8,8] += 2*alpha;
-h1e[9,9] += -2*alpha;
-h1e[0,3] += alpha; # off diag SOC
-h1e[3,0] += alpha;
-h1e[2,5] += alpha;
-h1e[5,2] += alpha;
-h1e[4,7] += alpha;
-h1e[7,4] += alpha;
-h1e[6,9] += alpha;
-h1e[9,6] += alpha;
-
-# two electron terms
-h2e[0,0,1,1] = 2*U; # hubbard
-h2e[2,2,3,3] = 2*U;
-h2e[4,4,5,5] = 2*U;
-h2e[6,6,7,7] = 2*U;
-h2e[8,8,9,9] = 2*U;
-
-# pass ham to FCI solver kernel to diagonalize
-cisolver = fci.direct_nosym.FCI()
-myroots = 4; # don't print out 45
-E_fci, v_fci = cisolver.kernel(h1e, h2e, norbs, nelecs, nroots = myroots);
-E_fci.sort();
-if(verbose):
-    print("\n1. Spin blind solution, nelecs = ",nelecs," nroots = ",myroots);
-    print("FCI energies = ",E_fci- E_shift);
-    #print(v_fci);
+    Test();
 
 
