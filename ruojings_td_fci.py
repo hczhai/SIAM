@@ -76,7 +76,7 @@ def compute_energy(d1, d2, eris, time=None):
     e +=        einsum('pQrS,rSpQ',g2e_ab,d2ab)
     return e
 
-def kernel(eris, ci, tf, dt, RK=4):
+def kernel(eris, ci, tf, dt, RK=4, verbose = 0):
     N = int(tf/dt+1e-6)
     d1as = []
     d1bs = []
@@ -91,13 +91,17 @@ def kernel(eris, ci, tf, dt, RK=4):
         d2abs.append(d2ab)
         d2bbs.append(d2bb)
 
-        #print('time: ', i*dt)
+        if(verbose > 1):
+            print('    time: ', i*dt)
         dr, di = compute_update(ci, eris, dt, RK)
         r = ci.r + dt*dr
         i = ci.i + dt*di
         norm = np.linalg.norm(r + 1j*i)
         ci.r = r/norm 
         ci.i = i/norm
+        
+    if(verbose >1):
+        print(d1as);
     d1as = np.array(d1as,dtype=complex)
     d1bs = np.array(d1bs,dtype=complex)
     d2aas = np.array(d2aas,dtype=complex)
@@ -198,6 +202,8 @@ def Test():
     # remember impurity is just one level dot
     
     # make ground state Hamiltonian with zero bias
+    if(verbose):
+        print("1. Construct hamiltonian")
     h1e = np.zeros((norb,)*2)
     for i in range(norb):
         if i < norb-1:
@@ -218,7 +224,31 @@ def Test():
     if(verbose > 2):
         print("Full one electron hamiltonian:\n", h1e)
         
+    # mean-field calculation initialized to half filling
+    nelec = int(norb/2), int(norb/2)
+    Pa = np.zeros(norb)
+    Pa[::2] = 1.0
+    Pa = np.diag(Pa)
+    Pb = np.zeros(norb)
+    Pb[1::2] = 1.0
+    Pb = np.diag(Pb)
+    if(verbose):
+        print("2. UHF, half filling, nelecs = ",nelec);
+        print("- Pa:\n",Pa,"\n- Pb:\n",Pb);
+    
+    # construct molecule
+    mol = gto.M()
+    mol.incore_anyway = True # hold everything in memory
+    mol.nelectron = sum(nelec)
+    mf = scf.UHF(mol)
+    mf.get_hcore = lambda *args:h1e
+    mf.get_ovlp = lambda *args:np.eye(norb)
+    mf._eri = ao2mo.restore(8, g2e, norb)
+    mf.kernel(dm0=(Pa,Pb))
+        
     #### do time propagation
+    if(verbose):
+        print("3. Time propagation")
     tf = 1.0
     dt = 0.01
     eris = ERIs(h1e, g2e, mf.mo_coeff)
