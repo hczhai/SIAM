@@ -76,9 +76,17 @@ def compute_energy(d1, d2, eris, time=None):
     e +=        einsum('pQrS,rSpQ',g2e_ab,d2ab)
     return e
     
-def compute_dot_occ(r, dot_i):
-
-    n_i = np.zeros(());
+def compute_occ(site_i, d1, d2, mocoeffs, norbs):
+    
+    # now put dot occ operator in h1 form
+    occ = np.zeros((norbs,norbs));
+    occ[site_i,site_i] = 1;
+    
+    # have to store this operator as an eris object
+    occ_eris = ERIs(occ, np.zeros((norbs,norbs,norbs,norbs)), mocoeffs)
+    occ_val = compute_energy(d1,d2, occ_eris);
+    occ_val = np.real(occ_val);
+    return occ_val;
 
 def kernel(eris, ci, tf, dt, RK=4, verbose = 0):
     '''
@@ -110,9 +118,10 @@ def kernel(eris, ci, tf, dt, RK=4, verbose = 0):
         norm = np.linalg.norm(r + 1j*r_imag) # normalize complex vector
         ci.r = r/norm # update cisolver attributes
         ci.i = r_imag/norm
-        Energy = compute_energy((d1a,d1b),(d2aa,d2ab,d2bb),eris);
+        Energy = np.real(compute_energy((d1a,d1b),(d2aa,d2ab,d2bb),eris));
+        Occupancy = compute_occ(2,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb)
         if(verbose > 1):
-            print("    time: ", i*dt,", E = ", Energy);
+            print("    time: ", i*dt,", E = ",Energy,", Dot occ. = ",Occupancy);
         
     d1as = np.array(d1as,dtype=complex)
     d1bs = np.array(d1bs,dtype=complex)
@@ -204,7 +213,7 @@ def Test():
     t = 1.0 # lead hopping
     td = 0.4 # dot-lead hopping
     U = 1.0 # dot interaction
-    Vg = -0.5 # gate voltage
+    Vg = -100.5 # gate voltage
     V = -0.005 # bias
     norb = ll+lr+1 # total number of sites
     idot = ll # dot index
@@ -238,7 +247,7 @@ def Test():
         print("- Full one electron hamiltonian:\n", h1e)
         
     # code straight from ruojing, don't understand yet
-    nelec = int(norb/2), int(norb/2)
+    nelec = int(norb/2), int(norb/2) # half filling
     Pa = np.zeros(norb)
     Pa[::2] = 1.0
     Pa = np.diag(Pa)
@@ -259,8 +268,8 @@ def Test():
     mo_a = mf.mo_coeff[0]
     mo_b = mf.mo_coeff[1]
     cisolver = direct_uhf.FCISolver(mol)
-    h1e_a = reduce(np.dot, (mo_a.T, mf.get_hcore(), mo_a))
-    h1e_b = reduce(np.dot, (mo_b.T, mf.get_hcore(), mo_b))
+    h1e_a = reduce(np.dot, (mo_a.T, h1e, mo_a))
+    h1e_b = reduce(np.dot, (mo_b.T, h1e, mo_b))
     if(verbose > 2):
         print("- alpha, beta parts of 1e hamiltonian",h1e_a,"\n",h1e_b);
     g2e_aa = ao2mo.incore.general(mf._eri, (mo_a,)*4, compact=False)
@@ -281,7 +290,7 @@ def Test():
     if(verbose):
         print("3. Time propagation")
     tf = 4
-    dt = 0.1
+    dt = 0.001
     eris = ERIs(h1e, g2e, mf.mo_coeff)
     ci = CIObject(fcivec, norb, nelec)
     (d1as, d1bs), (d2aas, d2abs, d2bbs) = kernel(eris, ci, tf, dt, verbose = verbose)
