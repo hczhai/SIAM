@@ -75,6 +75,10 @@ def compute_energy(d1, d2, eris, time=None):
     e += 0.25 * einsum('PQRS,RSPQ',g2e_bb,d2bb)
     e +=        einsum('pQrS,rSpQ',g2e_ab,d2ab)
     return e
+    
+def compute_dot_occ(r, dot_i):
+
+    n_i = np.zeros(());
 
 def kernel(eris, ci, tf, dt, RK=4, verbose = 0):
     '''
@@ -85,7 +89,7 @@ def kernel(eris, ci, tf, dt, RK=4, verbose = 0):
     RK is order of runge kutta, default 4th
     verbose prints helpful debugging stuff
     '''
-    print(eris,ci);
+
     N = int(tf/dt+1e-6)
     d1as = []
     d1bs = []
@@ -99,15 +103,16 @@ def kernel(eris, ci, tf, dt, RK=4, verbose = 0):
         d2aas.append(d2aa)
         d2abs.append(d2ab)
         d2bbs.append(d2bb)
-        if(verbose > 1):
-            print("    time: ", i*dt,", r = ", ci.r[0]);
-        dr, di = compute_update(ci, eris, dt, RK) # update state (r, an fcivec) at each time step
+        dr, dr_imag = compute_update(ci, eris, dt, RK) # update state (r, an fcivec) at each time step
         r = ci.r + dt*dr
-        i = ci.i + dt*di
+        r_imag = ci.i + dt*dr_imag # imag part of fcivec
 
-        norm = np.linalg.norm(r + 1j*i) # normalize
-        ci.r = r/norm 
-        ci.i = i/norm
+        norm = np.linalg.norm(r + 1j*r_imag) # normalize complex vector
+        ci.r = r/norm # update cisolver attributes
+        ci.i = r_imag/norm
+        Energy = compute_energy((d1a,d1b),(d2aa,d2ab,d2bb),eris);
+        if(verbose > 1):
+            print("    time: ", i*dt,", E = ", Energy);
         
     d1as = np.array(d1as,dtype=complex)
     d1bs = np.array(d1bs,dtype=complex)
@@ -230,7 +235,7 @@ def Test():
     g2e[idot,idot,idot,idot] = U
     
     if(verbose > 2):
-        print("Full one electron hamiltonian:\n", h1e)
+        print("- Full one electron hamiltonian:\n", h1e)
         
     # code straight from ruojing, don't understand yet
     nelec = int(norb/2), int(norb/2)
@@ -250,13 +255,14 @@ def Test():
     symmetry = 8; # perm. symmetry of chemists integrals
     mf._eri = ao2mo.restore(8, g2e, norb) # h2e into scf solver
     mf.kernel(dm0=(Pa,Pb))
-    print("here")
     # ground state FCI
     mo_a = mf.mo_coeff[0]
     mo_b = mf.mo_coeff[1]
     cisolver = direct_uhf.FCISolver(mol)
     h1e_a = reduce(np.dot, (mo_a.T, mf.get_hcore(), mo_a))
     h1e_b = reduce(np.dot, (mo_b.T, mf.get_hcore(), mo_b))
+    if(verbose > 2):
+        print("- alpha, beta parts of 1e hamiltonian",h1e_a,"\n",h1e_b);
     g2e_aa = ao2mo.incore.general(mf._eri, (mo_a,)*4, compact=False)
     g2e_aa = g2e_aa.reshape(norb,norb,norb,norb)
     g2e_ab = ao2mo.incore.general(mf._eri, (mo_a,mo_a,mo_b,mo_b), compact=False)
@@ -274,8 +280,8 @@ def Test():
     #### do time propagation
     if(verbose):
         print("3. Time propagation")
-    tf = 0.05
-    dt = 0.01
+    tf = 4
+    dt = 0.1
     eris = ERIs(h1e, g2e, mf.mo_coeff)
     ci = CIObject(fcivec, norb, nelec)
     (d1as, d1bs), (d2aas, d2abs, d2bbs) = kernel(eris, ci, tf, dt, verbose = verbose)
