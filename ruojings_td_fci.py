@@ -3,7 +3,7 @@ Time dependent fci code and SIAM example
 Author: Ruojing Peng
 '''
 from pyscf import lib, fci, cc
-from pyscf.fci import direct_uhf, cistring
+from pyscf.fci import direct_uhf, direct_nosym, cistring
 import numpy as np
 einsum = lib.einsum
 
@@ -77,6 +77,15 @@ def compute_energy(d1, d2, eris, time=None):
     return e
 
 def kernel(eris, ci, tf, dt, RK=4, verbose = 0):
+    '''
+    Driver of the time propagation
+    eris is an instance of ERIs (see below)
+    ci is an instance of CIObject (see below)
+    tf, dt, floats are final time and time step
+    RK is order of runge kutta, default 4th
+    verbose prints helpful debugging stuff
+    '''
+    print(eris,ci);
     N = int(tf/dt+1e-6)
     d1as = []
     d1bs = []
@@ -90,18 +99,16 @@ def kernel(eris, ci, tf, dt, RK=4, verbose = 0):
         d2aas.append(d2aa)
         d2abs.append(d2ab)
         d2bbs.append(d2bb)
-
         if(verbose > 1):
-            print('    time: ', i*dt)
-        dr, di = compute_update(ci, eris, dt, RK)
+            print("    time: ", i*dt,", r = ", ci.r[0]);
+        dr, di = compute_update(ci, eris, dt, RK) # update state (r, an fcivec) at each time step
         r = ci.r + dt*dr
         i = ci.i + dt*di
-        norm = np.linalg.norm(r + 1j*i)
+
+        norm = np.linalg.norm(r + 1j*i) # normalize
         ci.r = r/norm 
         ci.i = i/norm
         
-    if(verbose >1):
-        print(d1as);
     d1as = np.array(d1as,dtype=complex)
     d1bs = np.array(d1bs,dtype=complex)
     d2aas = np.array(d2aas,dtype=complex)
@@ -139,15 +146,16 @@ class CIObject():
            norb: size of site basis
            nelec: nea, neb
         '''
-        self.r = fcivec.copy()
+        self.r = fcivec.copy() # ie r is the state in slater det basis
         self.i = np.zeros_like(fcivec)
         self.norb = norb
         self.nelec = nelec
 
     def compute_rdm1(self):
-        rr = direct_uhf.make_rdm1s(self.r, self.norb, self.nelec)
+        rr = direct_uhf.make_rdm1s(self.r, self.norb, self.nelec) # tuple of 1 particle density matrices for alpha, beta spin. self.r is fcivec
+        # dm1_alpha_pq = <a_p alpha ^dagger a_q alpha
         ii = direct_uhf.make_rdm1s(self.i, self.norb, self.nelec)
-        ri = direct_uhf.trans_rdm1s(self.r, self.i, self.norb, self.nelec)
+        ri = direct_uhf.trans_rdm1s(self.r, self.i, self.norb, self.nelec) # tuple of transition density matrices for alpha, beta spin. 1st arg is a bra and 2nd arg is a ket
         d1a = rr[0] + ii[0] + 1j*(ri[0]-ri[0].T)
         d1b = rr[1] + ii[1] + 1j*(ri[1]-ri[1].T)
         return d1a, d1b
@@ -196,7 +204,7 @@ def Test():
     norb = ll+lr+1 # total number of sites
     idot = ll # dot index
     if(verbose):
-        print("\nInputs:\n- Left, right leads = ",(ll,lr),"\n- Gate voltage = ",Vg,"\n- Bias voltage = ",V,"\n- Lead hopping = ",t,"\n- Dot lead hopping = ",td,"\n- U = ",U);
+        print("\nInputs:\n- Left, right leads = ",(ll,lr),"\n- nelecs = ", (int(norb/2), int(norb/2)),"\n- Gate voltage = ",Vg,"\n- Bias voltage = ",V,"\n- Lead hopping = ",t,"\n- Dot lead hopping = ",td,"\n- U = ",U);
 
     #### make hamiltonian matrices, spin free formalism
     # remember impurity is just one level dot
@@ -219,12 +227,12 @@ def Test():
         h1e[i,i] = -V/t/2
     # g2e needs modification for all up spin
     g2e = np.zeros((norb,)*4)
-    g2e[idot,idot,idot,idot] = U/t
+    g2e[idot,idot,idot,idot] = U
     
     if(verbose > 2):
         print("Full one electron hamiltonian:\n", h1e)
         
-    # mean-field calculation initialized to half filling
+    # code straight from ruojing, don't understand yet
     nelec = int(norb/2), int(norb/2)
     Pa = np.zeros(norb)
     Pa[::2] = 1.0
@@ -232,28 +240,45 @@ def Test():
     Pb = np.zeros(norb)
     Pb[1::2] = 1.0
     Pb = np.diag(Pb)
-    if(verbose):
-        print("2. UHF, half filling, nelecs = ",nelec);
-        print("- Pa:\n",Pa,"\n- Pb:\n",Pb);
-    
-    # construct molecule
+    # UHF
     mol = gto.M()
-    mol.incore_anyway = True # hold everything in memory
+    mol.incore_anyway = True
     mol.nelectron = sum(nelec)
     mf = scf.UHF(mol)
-    mf.get_hcore = lambda *args:h1e
+    mf.get_hcore = lambda *args:h1e # put h1e into scf solver
     mf.get_ovlp = lambda *args:np.eye(norb)
-    mf._eri = ao2mo.restore(8, g2e, norb)
+    symmetry = 8; # perm. symmetry of chemists integrals
+    mf._eri = ao2mo.restore(8, g2e, norb) # h2e into scf solver
     mf.kernel(dm0=(Pa,Pb))
+    print("here")
+    # ground state FCI
+    mo_a = mf.mo_coeff[0]
+    mo_b = mf.mo_coeff[1]
+    cisolver = direct_uhf.FCISolver(mol)
+    h1e_a = reduce(np.dot, (mo_a.T, mf.get_hcore(), mo_a))
+    h1e_b = reduce(np.dot, (mo_b.T, mf.get_hcore(), mo_b))
+    g2e_aa = ao2mo.incore.general(mf._eri, (mo_a,)*4, compact=False)
+    g2e_aa = g2e_aa.reshape(norb,norb,norb,norb)
+    g2e_ab = ao2mo.incore.general(mf._eri, (mo_a,mo_a,mo_b,mo_b), compact=False)
+    g2e_ab = g2e_ab.reshape(norb,norb,norb,norb)
+    g2e_bb = ao2mo.incore.general(mf._eri, (mo_b,)*4, compact=False)
+    g2e_bb = g2e_bb.reshape(norb,norb,norb,norb)
+    h1e_mo = (h1e_a, h1e_b)
+    g2e_mo = (g2e_aa, g2e_ab, g2e_bb)
+    eci, fcivec = cisolver.kernel(h1e_mo, g2e_mo, norb, nelec)
+    if(verbose):
+        print("2. FCI solution");
+        print("- gd state energy = ", eci);
+    #############
         
     #### do time propagation
     if(verbose):
         print("3. Time propagation")
-    tf = 1.0
+    tf = 0.05
     dt = 0.01
     eris = ERIs(h1e, g2e, mf.mo_coeff)
     ci = CIObject(fcivec, norb, nelec)
-    (d1as, d1bs), (d2aas, d2abs, d2bbs) = kernel(eris, ci, tf, dt)
+    (d1as, d1bs), (d2aas, d2abs, d2bbs) = kernel(eris, ci, tf, dt, verbose = verbose)
     return;
     
     

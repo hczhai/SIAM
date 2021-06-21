@@ -110,7 +110,7 @@ def h_dot_1e(V,N):
     # on site energy for each dot site
     for i in range (2*N):
     
-        h[i,i] = -V;
+        h[i,i] = V;
         
     return h; # end h dot 1e
     
@@ -166,7 +166,7 @@ def stitch_h1e(h_imp, h_imp_leads, h_leads, h_bias, n_leads, verbose = 0):
         
             # last 2n_lead indices are right leads
             h[n_spin_orbs-1-i,n_spin_orbs-1-j] += h_leads[n_lead_sos-1-i, n_lead_sos-1-j];
-           
+        
     # fill in imp and imp-lead elements in middle
     assert(n_imp_sos+4 == np.shape(h_imp_leads)[0]); # 2 spin orbs to left, right
     for i in range(n_imp_sos + 4):
@@ -188,7 +188,7 @@ def stitch_h2e(h_imp,n_leads,verbose = 0):
     
     n_imp_sos = np.shape(h_imp)[0];
     n_lead_sos = 2*n_leads[0] + 2*n_leads[1];
-    n_left = n_leads[0]
+    i_imp = 2*n_leads[0]; # index where imp orbs start
     n_spin_orbs = n_imp_sos + n_lead_sos
     
     h = np.zeros((n_spin_orbs,n_spin_orbs,n_spin_orbs,n_spin_orbs));
@@ -197,10 +197,10 @@ def stitch_h2e(h_imp,n_leads,verbose = 0):
         for i2 in range(n_imp_sos):
             for i3 in range(n_imp_sos):
                 for i4 in range(n_imp_sos):
-                    h[n_left+i1,n_left+i2,n_left+i3,n_left+i4] = h_imp[i1,i2,i3,i4];
+                    h[i_imp+i1,i_imp+i2,i_imp+i3,i_imp+i4] = h_imp[i1,i2,i3,i4];
                     if(verbose > 1): # check 4D tensor by printing nonzero elems
                         if(h_imp[i1,i2,i3,i4] != 0):
-                            print("  h_imp[",i1,i2,i3,i4,"] = ",h_imp[i1,i2,i3,i4]);
+                            print("  h_imp[",i1,i2,i3,i4,"] = ",h_imp[i1,i2,i3,i4]," --> h2e[",i_imp+i1,i_imp+i2,i_imp+i3,i_imp+i4,"]");
                         
     return h; # end stitch h2e
 
@@ -216,12 +216,14 @@ def DotWrapper(std_inputs = True):
     where i are impurity sites
     '''
 
-    verbose = 1;
+    verbose = 5;
     np.set_printoptions(suppress=True); # no sci notatation printing
 
     #### set up the generic parts of the hamiltonian
-    n_leads = (4,3); # left leads, right leads
+    n_leads = (2,1); # left leads, right leads
     n_imp_sites = 1
+    norbs = 2*(n_leads[0]+n_leads[1]+n_imp_sites); # num spin orbs
+    nelecs = (int(norbs/2),0);
 
     # physical params, should always be floats
     if std_inputs: # input everything same as ruojing's code to compare
@@ -238,14 +240,14 @@ def DotWrapper(std_inputs = True):
         U = 1.0; # hubbard repulsion
     
     if(verbose): # print inputs
-        print("\nInputs:\n- Num. leads = ",n_leads,"\n- Num. impurity sites = ",n_imp_sites,"\n- V_leads = ",V_leads,"\n- V_imp_leads = ",V_imp_leads,"\n- V_bias = ",V_bias,"\n- V_gate = ",V_gate, "\n- Hubbard U = ",U);
+        print("\nInputs:\n- Num. leads = ",n_leads,"\n- Num. impurity sites = ",n_imp_sites,"\n- nelecs = ",nelecs,"\n- V_leads = ",V_leads,"\n- V_imp_leads = ",V_imp_leads,"\n- V_bias = ",V_bias,"\n- V_gate = ",V_gate, "\n- Hubbard U = ",U);
 
     # make, combine all 1e hamiltonians
-    hl = h_leads(V_leads, n_leads);
-    hb = h_bias(V_bias, n_leads);
-    hdl = h_imp_leads(V_imp_leads, n_imp_sites);
-    hd = h_dot_1e(V_gate, n_imp_sites);
-    h1e = stitch_h1e(hd, hdl, hl, hb, n_leads, verbose = verbose);
+    hl = h_leads(V_leads, n_leads); # leads only
+    hb = h_bias(V_bias, n_leads);   # bias leads only
+    hdl = h_imp_leads(V_imp_leads, n_imp_sites); # leads talk to dot
+    hd = h_dot_1e(V_gate, n_imp_sites); # dot
+    h1e = stitch_h1e(hd, hdl, hl, hb, n_leads, verbose = verbose); # syntax is imp, imp-leads, leads, bias
     if(verbose > 2):
         print("\n- Full one electron hamiltonian = \n",h1e);
         
@@ -256,9 +258,8 @@ def DotWrapper(std_inputs = True):
     h2e = stitch_h2e(hd2e, n_leads, verbose = verbose);
     
     # solve gd state of half filled system with FCI
-    norbs = 2*(n_leads[0]+n_leads[1]+n_imp_sites); # spin orbs
-    nelecs = (int(norbs/2),0);
     nroots = 1;
+    #h2e = np.zeros((norbs, norbs, norbs, norbs));
     cisolver = fci.direct_nosym.FCI();
     E_fci, v_fci = cisolver.kernel(h1e, h2e, norbs, nelecs, nroots = nroots);
     if(verbose):
