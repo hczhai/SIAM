@@ -5,9 +5,74 @@ Functions which are generally helpful in the pyscf enviro
 import numpy as np
 import matplotlib.pyplot as plt
 import pyscf as ps
+from pyscf import fci
 
 # useful reference - grab element by atomic number
 PeriodicTable = [None,'H','He','Li','Be','B','C','N','O','F','Ne','Na','Mg','Al','Si','Cl','Ar','K','Ca','Sc','Ti','V','Cr','Mn','Fe','Co','Ni','Cu','Zn','Ga','Ge','As','Se','Br','Kr']
+
+##############################################################
+#### measuring energy eigenstates
+
+def Spin_exp(vs, norbs, nelecs):
+    '''
+    contract vector with S operator in h1e form to measure spin
+    Args:
+    - vs, array of fci vectors from FCI calc
+    - norbs, int, num of spin orbs
+    - nelecs, int, num of electrons
+    returns <S>
+    '''
+    
+    # return val
+    S_exp = [];
+
+    # make S operators
+    Sx = np.zeros((norbs,norbs));
+    for i in range(0,norbs,2): # i is spin up s=orb, i+1 is spin down
+        Sx[i,i+1] = 1/2;
+        Sx[i+1,0] = 1/2; # h.c.
+        
+    Sy = np.full((norbs, norbs), np.complex(0,0) );
+    for i in range(0,norbs,2):
+        Sy[i,i+1] = -np.complex(0,1)*1/2;
+        Sy[i+1,i] = np.complex(0,1)*1/2;
+        
+    Sz = np.zeros((norbs,norbs));
+    for i in range(0,norbs,2):
+        Sz[i,i] = 1/2;
+        Sz[i+1,i+1] = -1/2;
+
+    S_op = [Sx,Sy,Sz]; # spin operator
+
+    # S squared operator
+    S2 = np.zeros((norbs,norbs,norbs,norbs));
+    S2[0,1,1,0] = 1;
+    S2[1,0,0,1] = 1;
+    S2[2,3,3,2] = 1;
+    S2[3,2,2,3] = 1;
+    
+    # iter over vectors
+    for v in vs:
+    
+        S_exp_val = np.zeros(3);
+
+        #contract with each element of S operator
+        for Si in range(len(S_op)):
+
+            # use contract_1e function
+            result = fci.direct_nosym.contract_1e(S_op[Si], v, norbs, nelecs);
+            S_exp_val[Si] = np.dot(v.T, result);
+          
+        # done with this vector
+        S_exp.append(S_exp_val);
+
+    return S_exp; # end spin exp
+
+
+
+
+
+
 
 
 ##############################################################

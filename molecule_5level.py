@@ -21,7 +21,10 @@ Specific case:
 - analytical solution, 1e basis: (10 choose 1) = 10 states
 '''
 
+import utils
+
 import numpy as np
+import matplotlib.pyplot as plt
 from pyscf import fci
 
 ##########################################
@@ -111,21 +114,26 @@ def h2e(norbs, U):
 ##########################################
 #### utils
 
-def plot_DOS(energies, sigma, verbose = 0):
+def plot_DOS(energies, sigma, size = 100, verbose = 0):
 
     if(verbose):
         print("Plotting DOS")
-
-    # format plot
-    fig, ax = plt.subplots();
-    ax.set_xlim(energies[0],energies[-1])
-    print(energies[0],energies[-1]);
+        
+    # smear energies
+    smeared_energies = []
+    for E in energies: # gaussian for each energy
+        gauss = np.random.normal(E,E*sigma,size=size)
+        for num in gauss:
+            smeared_energies.append(num) # can pass smeared energies right to hist now
+        
+    plt.hist(smeared_energies,25);
+    plt.show();
  
  
 ##########################################
 #### wrapper funcs, test code
 
-def Test():
+def Main():
 
     # top level inputs
     verbose = True;
@@ -137,14 +145,14 @@ def Test():
     nroots = 45; # full 8e, 10 orb basis
 
     # parameters in the hamiltonian
-    alpha = 0.1;
+    alpha = 0.001;
     D = 100.0;
-    E = 50.0;
-    U = 2000.0;
+    E = 10.0;
+    U = 1000.0;
     E_shift = (nelecs[0] - 2)/2 *U  # num paired e's/2 *U
     if(verbose):
         print("\nInputs:","\nalpha = ",alpha,"\nD = ",D,"\nE = ",E,"\nU = ",U);
-        print("E shift = ",E_shift,"\nE/U = ",E/U,"\nalpha/(E^2/U) = ", alpha*U/(E*E) );
+        print("E shift = ",E_shift,"\nE/U = ",E/U,"\nalpha/D",alpha/D,"\nalpha/(E^2/U) = ", alpha*U/(E*E) );
 
     #### get analytical energies
 
@@ -155,8 +163,9 @@ def Test():
     # sort and print
     E_exact.sort();
     if(verbose):
-        print("\n0. Analytical solution not yet implemented");
-        print("Exact energies = ",E_exact);
+        print("\n0. Analytical solution from l=1 case")
+        print("Exact energies = \n",E_exact);
+        print("Expected energies as E/U, alpha/(E^2/U), alpha/D --> 0:\n- Singlet energy = ", -16*E*E/U, "\n- T0 energy = ", alpha*alpha/(D-alpha), "\n- T+/- energy = ", alpha*alpha/(D+alpha) );
 
     # implement h1e, h2e
     h1e_mat = h1e(norbs, D, E, alpha);
@@ -165,15 +174,17 @@ def Test():
 
     # pass ham to FCI solver kernel to diagonalize
     cisolver = fci.direct_nosym.FCI()
-    myroots = 4; # don't print out 45
-    E_fci, v_fci = cisolver.kernel(h1e_mat, h2e_mat, norbs, nelecs, nroots = myroots);
+    myroots = 45; # don't print out 45
+    E_fci, v_fci = cisolver.kernel(h1e_mat, h2e_mat, norbs, nelecs, nroots = 45);
     E_fci.sort();
+    spinexps = utils.Spin_exp(v_fci,norbs,nelecs); # evals <S> using fci vecs
     if(verbose):
         print("\n1. Spin blind solution, nelecs = ",nelecs," nroots = ",myroots);
-        print("FCI energies = ",E_fci- E_shift);
+        for i in range(myroots):
+            print("- E = ",E_fci[i] - E_shift, ", <S^2> = ",np.linalg.norm(spinexps[i]),", <S_z> = ", spinexps[i][2]);
         
     # plot DOS
-    sigma = 0.1 # gaussian smearing
+    sigma = 0.05 # gaussian smearing
     plot_DOS(E_fci,sigma, verbose = verbose);
     
     
@@ -182,6 +193,6 @@ def Test():
 
 if __name__ == "__main__":
 
-    Test();
+    Main();
 
 

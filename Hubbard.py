@@ -26,6 +26,8 @@ Specific problem:
 2 site hubbard model
 '''
 
+import utils
+
 import numpy as np
 import scipy as sp
 from pyscf import fci
@@ -132,73 +134,14 @@ cisolver_sb = fci.direct_spin1.FCI();
 # kernel takes (1e ham, 2e ham, num orbitals, num electrons
 # returns eigvals and eigvecs of ham (in what basis?)
 E_sb, v_sb = cisolver_sb.kernel(h1e_sb, h2e_sb, norbs, nelecs, nroots = nroots);
+spinexps = utils.Spin_exp(v_sb,norbs,nelecs); # evals <S> using fci vecs
 E_formatter = "{0:6.6f}"
 if(verbose):
     print("\n2. nelecs = ",nelecs, " nroots = ",nroots);
     for i, v in enumerate(v_sb):
         Eform = E_formatter.format(E_sb[i]);
-        print("- E = ",Eform);
-        if(verbose > 1):
-            print("  ",np.reshape(v, (1, v.size ) ) );
+        print("- E = ",Eform, ", <S^2> = ",np.linalg.norm(spinexps[i]),", <S_z> = ", spinexps[i][2]);
         
-
-######################################################################
-#### contract vector with Sz operator in h1e form to measure spin
-
-# make S operators
-Sx = np.zeros((norbs,norbs));
-Sx[0,1] = 1/2;
-Sx[1,0] = 1/2;
-Sx[2,3] = 1/2;
-Sx[3,2] = 1/2;
-Sy = np.full((norbs, norbs), np.complex(0,0) );
-Sy[0,1] = -np.complex(0,1)*1/2;
-Sy[1,0] = np.complex(0,1)*1/2;
-Sy[2,3] = -np.complex(0,1)*1/2;
-Sy[3,2] = np.complex(0,1)*1/2;
-Sz = np.zeros((norbs,norbs));
-Sz[0,0] = 1/2;
-Sz[1,1] = -1/2;
-Sz[2,2] = 1/2;
-Sz[3,3] = -1/2;
-S2 = np.zeros((norbs,norbs,norbs,norbs));
-S2[0,1,1,0] = 1;
-S2[1,0,0,1] = 1;
-S2[2,3,3,2] = 1;
-S2[3,2,2,3] = 1;
-#S2[0,0,0,0] = 2*1/4;
-#S2[0,0,1,1] = 2*(-2/4);
-#S2[1,1,1,1] = 2*1/4;
-#S2[2,2,2,2] = 2*1/4;
-#S2[2,2,3,3] = 2*(-2/4);
-#S2[3,3,3,3] = 2*1/4;
-S_op = [Sx,Sy,Sz]; # spin operator
-S_exp = np.zeros(3); # <S> goes here
-    
-# iter over vectors and contract
-print("\n3. Measure S on spin blind results");
-for vi in range(len(v_sb)): # iter over vectors
-
-    #contract with each element of S operator
-    for Si in range(len(S_op)):
-
-        # use contract_1e function
-        result = fci.direct_nosym.contract_1e(S_op[Si], v_sb[vi], norbs, nelecs);
-    
-        S_exp[Si] = np.dot(np.reshape(v_sb[vi], (1,6)), result);
-        
-    S2_result = fci.direct_nosym.contract_2e(S2, v_sb[vi], norbs, nelecs); # act w S^2
-    S2_result = np.dot(np.reshape(v_sb[vi], (1,6)), S2_result) + S_exp[2]*S_exp[2]/4 -S_exp[2]/2;
-    
-    if(verbose):
-        Eform = E_formatter.format(E_sb[vi]); # delineate w/ corresponding energy
-        print("E = ",Eform)
-        print("- <S^2> = ", np.linalg.norm(S_exp) );
-        print("- <S_z> = ", S_exp[2] );
-    if(verbose > 1): # extra printing
-        print("- <S> vector = ", S_exp );
-        print("- <S^2> with alternate S2 = ",S2_result);
-
 
 '''
 #### rotate around singlet state
