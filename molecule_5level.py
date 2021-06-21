@@ -106,6 +106,20 @@ def h2e(norbs, U):
     h[8,8,9,9] = 2*U;
 
     return h;
+    
+    
+##########################################
+#### utils
+
+def plot_DOS(energies, sigma, verbose = 0):
+
+    if(verbose):
+        print("Plotting DOS")
+
+    # format plot
+    fig, ax = plt.subplots();
+    ax.set_xlim(energies[0],energies[-1])
+    print(energies[0],energies[-1]);
  
  
 ##########################################
@@ -157,6 +171,10 @@ def Test():
     if(verbose):
         print("\n1. Spin blind solution, nelecs = ",nelecs," nroots = ",myroots);
         print("FCI energies = ",E_fci- E_shift);
+        
+    # plot DOS
+    sigma = 0.1 # gaussian smearing
+    plot_DOS(E_fci,sigma, verbose = verbose);
     
     
 ##########################################
