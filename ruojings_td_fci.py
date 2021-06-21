@@ -77,6 +77,15 @@ def compute_energy(d1, d2, eris, time=None):
     return e
     
 def compute_occ(site_i, d1, d2, mocoeffs, norbs):
+    '''
+    Compute the occ of the molecular orbital at index i 0<occ,2
+    by encoding n_i as an h1e
+    
+    Generally to compute stuff follow this formula:
+    - put operator in h1e, h2e format
+    - use these to construct an eris
+    - pass eris and density matrices to compute energy
+    '''
     
     # now put dot occ operator in h1 form
     occ = np.zeros((norbs,norbs));
