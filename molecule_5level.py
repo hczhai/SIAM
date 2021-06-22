@@ -136,7 +136,7 @@ def plot_DOS(energies, sigma, size = 100, verbose = 0):
 def Main():
 
     # top level inputs
-    verbose = True;
+    verbose = 5;
     np.set_printoptions(suppress=True); # no sci notatation printing
     
     #### solve with spin blind method
@@ -145,11 +145,11 @@ def Main():
     nroots = 45; # full 8e, 10 orb basis
 
     # parameters in the hamiltonian
-    alpha = 0.001;
+    alpha = 0.01;
     D = 100.0;
     E = 10.0;
-    U = 1000.0;
-    E_shift = (nelecs[0] - 2)/2 *U  # num paired e's/2 *U
+    U = 2000.0;
+    E_shift = (nelecs[0] - 2)/2 *U - 18*D  # num paired e's/2 *U
     if(verbose):
         print("\nInputs:","\nalpha = ",alpha,"\nD = ",D,"\nE = ",E,"\nU = ",U);
         print("E shift = ",E_shift,"\nE/U = ",E/U,"\nalpha/D",alpha/D,"\nalpha/(E^2/U) = ", alpha*U/(E*E) );
@@ -157,15 +157,13 @@ def Main():
     #### get analytical energies
 
     # diagonalize numerically
-    H_exact = np.zeros((10,10));
-    E_exact = np.linalg.eigh(H_exact)[0];
+    H_eff = np.array([[-2*alpha- 8*E*E/U, 8*E*E/U], [8*E*E/U, 2*alpha - 8*E*E/U - 2*alpha*alpha/(alpha-D)] ])
+    E_S, E_T0 = np.linalg.eigh(H_eff)[0];
 
     # sort and print
-    E_exact.sort();
     if(verbose):
         print("\n0. Analytical solution from l=1 case")
-        print("Exact energies = \n",E_exact);
-        print("Expected energies as E/U, alpha/(E^2/U), alpha/D --> 0:\n- Singlet energy = ", -16*E*E/U, "\n- T0 energy = ", alpha*alpha/(D-alpha), "\n- T+/- energy = ", alpha*alpha/(D+alpha) );
+        print("Expected energies as E/U, alpha/(E^2/U), alpha/D --> 0:\n- Singlet energy = ", E_S, "\n- T0 energy = ", E_T0, "\n- T+/- energy = ", alpha*alpha/(D+alpha) );
 
     # implement h1e, h2e
     h1e_mat = h1e(norbs, D, E, alpha);
@@ -175,13 +173,16 @@ def Main():
     # pass ham to FCI solver kernel to diagonalize
     cisolver = fci.direct_nosym.FCI()
     myroots = 45; # don't print out 45
+    range_interest = 5,12
     E_fci, v_fci = cisolver.kernel(h1e_mat, h2e_mat, norbs, nelecs, nroots = 45);
     E_fci.sort();
     spinexps = utils.Spin_exp(v_fci,norbs,nelecs); # evals <S> using fci vecs
     if(verbose):
         print("\n1. Spin blind solution, nelecs = ",nelecs," nroots = ",myroots);
-        for i in range(myroots):
+        for i in range(range_interest[0],range_interest[1]+1):
             print("- E = ",E_fci[i] - E_shift, ", <S^2> = ",np.linalg.norm(spinexps[i]),", <S_z> = ", spinexps[i][2]);
+            if(verbose > 2):
+                print("    ",v_fci[i]);
         
     # plot DOS
     sigma = 0.05 # gaussian smearing
