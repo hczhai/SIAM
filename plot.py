@@ -16,6 +16,9 @@ def GenericPlot(x,y, handles=[], styles = [], labels=["x","y",""]):
     
     # screen depth of y
     depth = np.shape(y)[0];
+    if( len(np.shape(y)) <= 1): # bypass for 1d array inputs
+        depth = 1;
+        y = np.array([y]);
     
     # check inputs
     if( type(x) != type(np.zeros(1) ) ): # check that x is an np array
@@ -29,7 +32,7 @@ def GenericPlot(x,y, handles=[], styles = [], labels=["x","y",""]):
         
     # construct axes
     fig, ax = plt.subplots();
-    
+
     #iter over y val sets
     for yi in range(depth):
     
