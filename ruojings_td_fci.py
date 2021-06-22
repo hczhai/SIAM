@@ -196,11 +196,11 @@ def Test():
     import h5py
     
     # top level inputs
-    verbose = 5;
+    verbose = 0;
 
     # physical inputs
-    ll = 2 # number of left leads
-    lr = 1 # number of right leads
+    ll = 8 # number of left leads
+    lr = 7 # number of right leads
     t = 1.0 # lead hopping
     td = 0.4 # dot-lead hopping
     U = 1.0 # dot interaction
