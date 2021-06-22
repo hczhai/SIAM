@@ -204,7 +204,7 @@ def kernel_plot(eris, ci, tf, dt, dot_i, t_dot, RK, verbose):
         Energy = np.real(compute_energy((d1a,d1b),(d2aa,d2ab,d2bb),eris));
         Occupancy = compute_occ(2,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb);
         Current = compute_current(dot_i, t_dot, (d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb);
-        if(verbose > 2):
+        if(verbose > 3):
             print("    time: ", i*dt,", E = ",Energy," Dot occ. = ",Occupancy);
           
         # fill arrays with observables
@@ -324,12 +324,12 @@ def Test():
     import h5py
     
     # top level inputs
-    verbose = 2;
+    verbose = 3;
 
     # physical inputs
-    ll = 4 # number of left leads
-    lr = 3 # number of right leads
-    t = 1.0 # lead hopping
+    ll = 3 # number of left leads
+    lr = 2 # number of right leads
+    t = 0.0 # lead hopping
     td = 0.4 # dot-lead hopping
     U = 1.0 # dot interaction
     Vg = -0.5 # gate voltage
@@ -349,17 +349,20 @@ def Test():
     for i in range(norb):
         if i < norb-1:
             dot = (i==idot or i+1==idot)
-            h1e[i,i+1] = -td/t if dot else -1.0
+            h1e[i,i+1] = -td if dot else -t
         if i > 0:
             dot = (i==idot or i-1==idot)
-            h1e[i,i-1] = -td/t if dot else -1.0
-    h1e[idot,idot] = Vg/t # input gate voltage
+            h1e[i,i-1] = -td if dot else -t
+    h1e[idot,idot] = Vg # input gate voltage
     # g2e needs modification for all up spin
     g2e = np.zeros((norb,)*4)
     g2e[idot,idot,idot,idot] = U
     
     if(verbose > 2):
         print("- Full one electron hamiltonian:\n", h1e)
+        if False:
+            eigvals, eigvecs = np.linalg.eigh(h1e);
+            print("*****", eigvals);
         
     # code straight from ruojing, don't understand yet
     nelec = int(norb/2), int(norb/2) # half filling
@@ -385,8 +388,6 @@ def Test():
     cisolver = direct_uhf.FCISolver(mol)
     h1e_a = reduce(np.dot, (mo_a.T, h1e, mo_a))
     h1e_b = reduce(np.dot, (mo_b.T, h1e, mo_b))
-    if(verbose > 2):
-        print("- alpha, beta parts of 1e hamiltonian",h1e_a,"\n",h1e_b);
     g2e_aa = ao2mo.incore.general(mf._eri, (mo_a,)*4, compact=False)
     g2e_aa = g2e_aa.reshape(norb,norb,norb,norb)
     g2e_ab = ao2mo.incore.general(mf._eri, (mo_a,mo_a,mo_b,mo_b), compact=False)
@@ -396,9 +397,12 @@ def Test():
     h1e_mo = (h1e_a, h1e_b)
     g2e_mo = (g2e_aa, g2e_ab, g2e_bb)
     eci, fcivec = cisolver.kernel(h1e_mo, g2e_mo, norb, nelec)
+    mycisolver = fci.direct_nosym.FCI();
+    myE, myv = mycisolver.kernel(h1e, g2e, norb, nelec, nroots = 4);
     if(verbose):
         print("2. FCI solution");
         print("- gd state energy, zero bias = ", eci);
+        print("- direct nosym gd state, zero bias = ",myE," (norbs, nelecs = ",norb,nelec,")")
     #############
         
     #### do time propagation
@@ -408,8 +412,8 @@ def Test():
         h1e[i,i] = V/2
     for i in range(idot+1,norb):
         h1e[i,i] = -V/2
-    tf = 10.0
-    dt = 0.01
+    tf = 4.0
+    dt = 0.1
     eris = ERIs(h1e, g2e, mf.mo_coeff) # diff h1e than in uhf, thus time dependence
     ci = CIObject(fcivec, norb, nelec)
     kernel_mode = "plot"; # tell kernel whether to return density matrices or arrs for plotting
