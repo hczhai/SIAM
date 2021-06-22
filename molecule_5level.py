@@ -136,7 +136,7 @@ def plot_DOS(energies, sigma, size = 100, verbose = 0):
 def Main():
 
     # top level inputs
-    verbose = 5;
+    verbose = 2;
     np.set_printoptions(suppress=True); # no sci notatation printing
     
     #### solve with spin blind method
@@ -148,7 +148,7 @@ def Main():
     alpha = 0.01;
     D = 100.0;
     E = 10.0;
-    U = 2000.0;
+    U = 1000.0;
     E_shift = (nelecs[0] - 2)/2 *U - 18*D  # num paired e's/2 *U
     if(verbose):
         print("\nInputs:","\nalpha = ",alpha,"\nD = ",D,"\nE = ",E,"\nU = ",U);

@@ -137,6 +137,7 @@ def Test():
         print("\n1. Spin blind solution, nelecs = ",nelecs, ", nroots = ",myroots);
         for i in range(myroots):
             print("- E = ",E_fci[i] - E_shift, ", <S^2> = ",np.linalg.norm(spinexps[i]),", <S_z> = ", spinexps[i][2]);
+            print("     ",v_fci[i]);
         
         
 ##########################################

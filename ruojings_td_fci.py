@@ -324,15 +324,11 @@ def Test():
     import h5py
     
     # top level inputs
-<<<<<<< HEAD
-    verbose = 0;
-=======
     verbose = 2;
->>>>>>> 5a169b701450a7201571cc6d2afdd85e9a3e2e9f
 
     # physical inputs
-    ll = 8 # number of left leads
-    lr = 7 # number of right leads
+    ll = 4 # number of left leads
+    lr = 3 # number of right leads
     t = 1.0 # lead hopping
     td = 0.4 # dot-lead hopping
     U = 1.0 # dot interaction
@@ -420,7 +416,7 @@ def Test():
     t, E, occ, J = kernel(kernel_mode, eris, ci, tf, dt, dot_i = idot, t_dot = td, verbose = verbose);
     
     # plot current vs time
-    plot.GenericPlot(t,J,labels=["time","Current","td-FCI with SIAM"]);
+    plot.GenericPlot(t,J,labels=["time","Current","td-FCI on SIAM"]);
     return;
     
     
