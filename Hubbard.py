@@ -89,7 +89,7 @@ E_fci, v_fci = cisolver.kernel(h1e, h2e, norbs, nelecs, nroots = nroots);
 if(verbose):
     print("\n1. nelecs = ",nelecs, " nroots = ",nroots); # this matches analytical gd state
     print("FCI energies = ", E_fci);
-    if(verbose > 1):
+    if(verbose > 2):
         print(v_fci);
 
 ######################################################################
@@ -140,7 +140,9 @@ if(verbose):
     print("\n2. nelecs = ",nelecs, " nroots = ",nroots);
     for i, v in enumerate(v_sb):
         Eform = E_formatter.format(E_sb[i]);
-        print("- E = ",Eform, ", <S^2> = ",np.linalg.norm(spinexps[i]),", <S_z> = ", spinexps[i][2]);
+        print("- E = ",Eform, ", <S_x> = ", spinexps[i][1], "<S_z> = ", spinexps[i][2]);
+        if(verbose > 2):
+            print(v);
         
 
 '''

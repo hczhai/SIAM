@@ -129,14 +129,14 @@ def Test():
     h2e_mat = h2e(norbs,U);
 
     # solve with FCISolver object
-    cisolver = fci.direct_nosym.FCI()
+    cisolver = fci.direct_spin1.FCI()
     E_fci, v_fci = cisolver.kernel(h1e_mat, h2e_mat, norbs, nelecs,nroots=15);
     E_fci.sort();
     spinexps = utils.Spin_exp(v_fci, norbs, nelecs)
     if(verbose):
         print("\n1. Spin blind solution, nelecs = ",nelecs, ", nroots = ",myroots);
         for i in range(myroots):
-            print("- E = ",E_fci[i] - E_shift, ", <S^2> = ",np.linalg.norm(spinexps[i]),", <S_z> = ", spinexps[i][2]);
+            print("- E = ",E_fci[i] - E_shift, ", <S_x> = ",spinexps[i][0]," <S_z> = ", spinexps[i][2]);
             if(verbose > 2):
                 print("     ",v_fci[i].T);
         

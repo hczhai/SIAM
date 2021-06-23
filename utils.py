@@ -30,13 +30,12 @@ def Spin_exp(vs, norbs, nelecs):
     Sx = np.zeros((norbs,norbs));
     for i in range(0,norbs,2): # i is spin up s=orb, i+1 is spin down
         Sx[i,i+1] = 1/2;
-        Sx[i+1,0] = 1/2; # h.c.
-        
-    Sy = np.full((norbs, norbs), np.complex(0,0) );
+        Sx[i+1,i] = 1/2; # h.c.
+    Sy = np.zeros((norbs,norbs));
     for i in range(0,norbs,2):
-        Sy[i,i+1] = -np.complex(0,1)*1/2;
-        Sy[i+1,i] = np.complex(0,1)*1/2;
-        
+        Sy[i,i+1] = -1/2;
+        Sy[i+1,i] = 1/2;
+    print(Sy)
     Sz = np.zeros((norbs,norbs));
     for i in range(0,norbs,2):
         Sz[i,i] = 1/2;
