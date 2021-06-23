@@ -101,7 +101,7 @@ def Test():
     E_shift = U - 2*D
     if(verbose):
         print("\nInputs:","\nalpha = ",alpha,"\nD = ",D,"\nE = ",E,"\nU = ",U);
-        print("E/U = ",E/U,"\nalpha/(E^2/U) = ", alpha*U/(E*E),"\nalpha/D = ",alpha/D );
+        print("\nalpha/D = ",alpha/D,"E/U = ",E/U,"\nalpha/(4E^2/U) = ", alpha*U/(4*E*E),"\nalpha^2/(4E^2/U) = ",alpha*alpha*U/(4*E*E) );
 
     #### get analytical energies
 
