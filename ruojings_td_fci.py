@@ -319,7 +319,7 @@ def Test():
     Impurity = one level dot
     '''
     
-    from functools import reduce
+    import functools
     from pyscf import gto,scf,ao2mo,symm
     import h5py
     
@@ -329,7 +329,7 @@ def Test():
     # physical inputs
     ll = 3 # number of left leads
     lr = 2 # number of right leads
-    t = 0.0 # lead hopping
+    t = 3.0 # lead hopping
     td = 0.4 # dot-lead hopping
     U = 1.0 # dot interaction
     Vg = -0.5 # gate voltage
@@ -386,8 +386,8 @@ def Test():
     mo_a = mf.mo_coeff[0]
     mo_b = mf.mo_coeff[1]
     cisolver = direct_uhf.FCISolver(mol)
-    h1e_a = reduce(np.dot, (mo_a.T, h1e, mo_a))
-    h1e_b = reduce(np.dot, (mo_b.T, h1e, mo_b))
+    h1e_a = functools.reduce(np.dot, (mo_a.T, h1e, mo_a))
+    h1e_b = functools.reduce(np.dot, (mo_b.T, h1e, mo_b))
     g2e_aa = ao2mo.incore.general(mf._eri, (mo_a,)*4, compact=False)
     g2e_aa = g2e_aa.reshape(norb,norb,norb,norb)
     g2e_ab = ao2mo.incore.general(mf._eri, (mo_a,mo_a,mo_b,mo_b), compact=False)
@@ -397,12 +397,12 @@ def Test():
     h1e_mo = (h1e_a, h1e_b)
     g2e_mo = (g2e_aa, g2e_ab, g2e_bb)
     eci, fcivec = cisolver.kernel(h1e_mo, g2e_mo, norb, nelec)
-    mycisolver = fci.direct_nosym.FCI();
-    myE, myv = mycisolver.kernel(h1e, g2e, norb, nelec, nroots = 4);
+    mycisolver = fci.direct_spin1.FCI();
+    myE, myv = mycisolver.kernel(h1e, g2e, norb, nelec);
     if(verbose):
         print("2. FCI solution");
         print("- gd state energy, zero bias = ", eci);
-        print("- direct nosym gd state, zero bias = ",myE," (norbs, nelecs = ",norb,nelec,")")
+        print("- direct spin 1 gd state, zero bias = ",myE," (norbs, nelecs = ",norb,nelec,")")
     #############
         
     #### do time propagation
