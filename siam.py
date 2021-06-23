@@ -246,7 +246,7 @@ def DotModel(nleads, nsites, norbs, nelecs, physical_params,verbose = 0):
     Pa[::2] = 1.0
     Pa = np.diag(Pa)
     
-    # UHF
+    # put everything into UHF scf object
     if(verbose):
         print("\nUHF energy calculation")
     mol = gto.M(); # geometry is meaningless
@@ -254,10 +254,10 @@ def DotModel(nleads, nsites, norbs, nelecs, physical_params,verbose = 0):
     mol.nelectron = sum(nelecs)
     scf_inst = scf.UHF(mol)
     scf_inst.get_hcore = lambda *args:h1e # put h1e into scf solver
-    scf_inst.get_ovlp = lambda *args:np.eye(norbs)
-    symmetry = 1; # perm. symmetry of chemists integrals
-    scf_inst._eri = ao2mo.restore(symmetry, h2e, norbs) # h2e into scf solver
-    scf_inst.kernel(dm0=(Pa, Pa)); # runs to get HF gd state, prints result
+    scf_inst.get_ovlp = lambda *args:np.eye(norbs) # init overlap as identity matrix
+    scf_inst._eri = h2e # put h2e into scf solver
+    scf_inst.kernel(dm0=(Pa, Pa)); # prints HF gd state but this number is meaningless
+                                   # what matter is h1e, h2e are now encoded in this scf instance
         
     return h1e, h2e, mol, scf_inst;
 
@@ -271,7 +271,7 @@ def CurrentWrapper():
     '''
 
     # top level inputs
-    verbose = 5;
+    verbose = 1;
     np.set_printoptions(suppress=True); # no sci notatation printing
 
     # set up the hamiltonian
@@ -281,7 +281,7 @@ def CurrentWrapper():
     nelecs = (int(norbs/2),0);
 
     # physical params, should always be floats
-    V_leads = 3.0; # hopping
+    V_leads = 1.0; # hopping
     V_imp_leads = 0.4; # hopping
     V_bias = 0; # wait till later to turn on current
     V_gate = -0.5; # gate voltage on dot

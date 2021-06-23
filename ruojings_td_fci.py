@@ -329,7 +329,7 @@ def Test():
     # physical inputs
     ll = 3 # number of left leads
     lr = 2 # number of right leads
-    t = 3.0 # lead hopping
+    t = 1.0 # lead hopping
     td = 0.4 # dot-lead hopping
     U = 1.0 # dot interaction
     Vg = -0.5 # gate voltage
@@ -378,9 +378,8 @@ def Test():
     mol.nelectron = sum(nelec)
     mf = scf.UHF(mol)
     mf.get_hcore = lambda *args:h1e # put h1e into scf solver
-    mf.get_ovlp = lambda *args:np.eye(norb)
-    symmetry = 8; # perm. symmetry of chemists integrals
-    mf._eri = ao2mo.restore(8, g2e, norb) # h2e into scf solver
+    mf.get_ovlp = lambda *args:np.eye(norb) # init overlap as identity
+    mf._eri = g2e # put h2e into scf solver
     mf.kernel(dm0=(Pa,Pb))
     # ground state FCI
     mo_a = mf.mo_coeff[0]
