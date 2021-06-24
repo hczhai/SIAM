@@ -331,7 +331,7 @@ def DotWrapper(std_inputs = True):
     np.set_printoptions(suppress=True); # no sci notatation printing
 
     #### set up the generic parts of the hamiltonian
-    n_leads = (3,2); # left leads, right leads
+    n_leads = (2,1); # left leads, right leads
     n_imp_sites = 1
     norbs = 2*(n_leads[0]+n_leads[1]+n_imp_sites); # num spin orbs
     nelecs = (int(norbs/2),0);
@@ -354,20 +354,11 @@ def DotWrapper(std_inputs = True):
         print("\nInputs:\n- Num. leads = ",n_leads,"\n- Num. impurity sites = ",n_imp_sites,"\n- nelecs = ",nelecs,"\n- V_leads = ",V_leads,"\n- V_imp_leads = ",V_imp_leads,"\n- V_bias = ",V_bias,"\n- V_gate = ",V_gate, "\n- Hubbard U = ",U);
 
     # make, combine all 1e hamiltonians
-    hl = np.zeros((10,10)); # leads only
+    hl = h_leads(V_leads, n_leads); # leads only
     hb = h_bias(V_bias, n_leads);   # bias leads only
     hdl = h_imp_leads(V_imp_leads, n_imp_sites); # leads talk to dot
     hd = h_dot_1e(V_gate, n_imp_sites); # dot
     h1e = stitch_h1e(hd, hdl, hl, hb, n_leads, verbose = verbose); # syntax is imp, imp-leads, leads, bias
-    
-    for i in range(0,12,2):
-        if(i < 4 or ( i >= 8 and i < 10 ) ):
-
-            h1e[i,i+2] = -V_leads
-            h1e[i+2,i] = -V_leads
-            h1e[i+1,i+3] = -V_leads
-            h1e[i+3,i+1] = -V_leads
-    
     
     if(verbose > 2):
         print("\n- Full one electron hamiltonian = \n",h1e);
@@ -384,7 +375,7 @@ def DotWrapper(std_inputs = True):
     # solve gd state of half filled system with FCI
     nroots = 1;
     #h2e = np.zeros((norbs, norbs, norbs, norbs));
-    cisolver = fci.direct_nosym.FCI();
+    cisolver = fci.direct_spin1.FCI();
     E_fci, v_fci = cisolver.kernel(h1e, h2e, norbs, nelecs);
     if(verbose):
         print("**********\nFCI energies, norbs = ",norbs,", nelecs = ",nelecs,", nroots = ",nroots);
@@ -400,6 +391,6 @@ def DotWrapper(std_inputs = True):
 if(__name__ == "__main__"):
 
     # test machinery on garnet's simple dot model
-    CurrentWrapper();
+    DotWrapper();
 
 
