@@ -17,8 +17,10 @@ Vg = -0.5
 U = 1.0
 
 # decide whether to do spin free or spin blind
-spin_free = True;
-
+spin_free = False;
+symmetry = 4; # perm symmetry of g2e. NB spin free uhf doesn't care about symmetry
+                # but spin blind uhf closest with symmetry = 4
+                
 if spin_free: # spin free formalism means ham summed over spin, orbs are molecular orbs
 
     # top level params
@@ -33,7 +35,6 @@ if spin_free: # spin free formalism means ham summed over spin, orbs are molecul
     g2e = np.zeros((norb, norb, norb, norb));
     g2e[2,2,2,2] = U;
     print("\nSpin free calculation");
-    print(h1e);
     
 else:  # spin blind formalism means no sum over spin, orbs are spin orbs
        # input all electrons as up, and even spin orbs are up while odd are down
@@ -52,12 +53,12 @@ else:  # spin blind formalism means no sum over spin, orbs are spin orbs
                      [0.0, 0.0, 0.0, 0.0, -td, 0.0, 0.0, 0.0],
                      [0.0, 0.0, 0.0, 0.0, 0.0, -td, 0.0, 0.0]]);
     g2e = np.zeros((norb, norb, norb, norb));
-    g2e[4,4,5,5] = U;
+    g2e[4,4,5,5] = 2*U;
     print("\nSpin blind calculation")
     print(h1e)
 
 # do direct fci
-cisolver = fci.direct_spin1.FCI();
+cisolver = fci.direct_spin1.FCI(); # needs to be spin1 not nosym
 edirect, vdirect = cisolver.kernel(h1e,g2e,norb,nelec);
 print("\n- direct fci gd state energy = ",edirect,"\n");
 
@@ -74,7 +75,7 @@ mol.nelectron = sum(nelec)
 mf = scf.UHF(mol) # make scf obj
 mf.get_hcore = lambda *args:h1e # pass hamiltonians to scf
 mf.get_ovlp = lambda *args:np.eye(norb)
-mf._eri = ao2mo.restore(8, g2e, norb)
+mf._eri = ao2mo.restore(symmetry, g2e, norb)
 mf.kernel(dm0=(Pa,Pb)) # UHF calc of energy
 mo_a = mf.mo_coeff[0]  # do fci on top of UHF
 mo_b = mf.mo_coeff[1]
