@@ -124,7 +124,7 @@ def compute_current(dot_i,t,d1,d2,mocoeffs,norbs):
 ################################################################
 #### kernel
 
-def kernel(mode, eris, ci, tf, dt, RK=4, dot_i = None, t_dot = None, verbose = 0):
+def kernel(mode, eris, ci, tf, dt, RK=4, i_dot = None, t_dot = None, verbose = 0):
     '''
     Wrapper for the different kernel implementations
     Lots of assertions to prevent confusion
@@ -156,12 +156,12 @@ def kernel(mode, eris, ci, tf, dt, RK=4, dot_i = None, t_dot = None, verbose = 0
     if(mode == "plot"):
     
         # check inputs
-        assert(dot_i != None);
+        assert(i_dot != None);
         assert(t_dot != None);
     
-        return kernel_plot(eris, ci, tf, dt, dot_i, t_dot, RK, verbose);
+        return kernel_plot(eris, ci, tf, dt, i_dot, t_dot, RK, verbose);
 
-def kernel_plot(eris, ci, tf, dt, dot_i, t_dot, RK, verbose):
+def kernel_plot(eris, ci, tf, dt, i_dot, t_dot, RK, verbose):
     '''
     Kernel for getting observables at each time step, for plotting
     Outputs 1d arrays of time, energy, dot occupancy, current
@@ -203,7 +203,7 @@ def kernel_plot(eris, ci, tf, dt, dot_i, t_dot, RK, verbose):
         # compute observables
         Energy = np.real(compute_energy((d1a,d1b),(d2aa,d2ab,d2bb),eris));
         Occupancy = compute_occ(2,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb);
-        Current = compute_current(dot_i, t_dot, (d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb);
+        Current = compute_current(i_dot, t_dot, (d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb);
         if(verbose > 3):
             print("    time: ", i*dt,", E = ",Energy," Dot occ. = ",Occupancy);
           
@@ -248,6 +248,9 @@ def kernel_std(eris, ci, tf, dt, RK):
     d2abs = np.array(d2abs,dtype=complex)
     d2bbs = np.array(d2bbs,dtype=complex)
     return (d1as, d1bs), (d2aas, d2abs, d2bbs)
+
+#####################################################################################
+#### class definitions
 
 class ERIs():
     def __init__(self, h1e, g2e, mo_coeff):
@@ -313,6 +316,33 @@ class CIObject():
         return (d1a, d1b), (d2aa, d2ab, d2bb)
 
 
+##########################################################################################################
+#### time propagation 
+
+def TimeProp(h1e, h2e, fcivec, mol,  scf_inst, time_stop, time_step, i_dot, t_dot, kernel_mode = "std", verbose = 0):
+    '''
+    Time propagate an FCI gd state
+    The physics of the FCI gd state is encoded in an scf instance
+    '''
+
+    # unpack
+    norbs = np.shape(h1e)[0];
+    nelecs = (mol.nelectron,0);
+    if(verbose):
+        print("\nTime Propagation, norbs = ", norbs, ", nelecs = ", nelecs);
+
+    # time propagation kernel requires
+    # - ERIS object to encode hamiltonians
+    # - CI object to encode ci states
+    eris = ERIs(h1e, h2e, scf_inst.mo_coeff);
+    ci = CIObject(fcivec, norbs, nelecs);
+
+    return kernel(kernel_mode, eris, ci, time_stop, time_step, i_dot = i_dot, t_dot = t_dot, verbose = verbose);
+
+
+###########################################################################################################
+#### test code and wrapper funcs
+
 def Test():
     '''
     sample calculation of SIAM
@@ -320,11 +350,10 @@ def Test():
     '''
     
     import functools
-    from pyscf import gto,scf,ao2mo,symm
-    import h5py
-    
+    from pyscf import gto,scf,ao2mo
+        
     # top level inputs
-    verbose = 3;
+    verbose = 2;
 
     # physical inputs
     ll = 3 # number of left leads
@@ -395,13 +424,13 @@ def Test():
     g2e_bb = g2e_bb.reshape(norb,norb,norb,norb)
     h1e_mo = (h1e_a, h1e_b)
     g2e_mo = (g2e_aa, g2e_ab, g2e_bb)
-    eci, fcivec = cisolver.kernel(h1e_mo, g2e_mo, norb, nelec)
-    mycisolver = fci.direct_spin1.FCI();
-    myE, myv = mycisolver.kernel(h1e, g2e, norb, nelec);
+    eci, fcivec = cisolver.kernel(h1e_mo, g2e_mo, norb, nelec, max_memory = 2000000000)
+    #mycisolver = fci.direct_spin1.FCI();
+    #myE, myv = mycisolver.kernel(h1e, g2e, norb, nelec);
     if(verbose):
         print("2. FCI solution");
         print("- gd state energy, zero bias = ", eci);
-        print("- direct spin 1 gd state, zero bias = ",myE," (norbs, nelecs = ",norb,nelec,")")
+        #print("- direct spin 1 gd state, zero bias = ",myE," (norbs, nelecs = ",norb,nelec,")")
     #############
         
     #### do time propagation
@@ -411,106 +440,17 @@ def Test():
         h1e[i,i] = V/2
     for i in range(idot+1,norb):
         h1e[i,i] = -V/2
-    tf = 4.0
-    dt = 0.1
+    tf = 10.0
+    dt = 0.01
     eris = ERIs(h1e, g2e, mf.mo_coeff) # diff h1e than in uhf, thus time dependence
     ci = CIObject(fcivec, norb, nelec)
     kernel_mode = "plot"; # tell kernel whether to return density matrices or arrs for plotting
-    t, E, occ, J = kernel(kernel_mode, eris, ci, tf, dt, dot_i = idot, t_dot = td, verbose = verbose);
+    t, E, occ, J = kernel(kernel_mode, eris, ci, tf, dt, i_dot = idot, t_dot = td, verbose = verbose);
     
     # plot current vs time
     plot.GenericPlot(t,J,labels=["time","Current","td-FCI on SIAM"]);
-    return;
-    
-    
-def OldCodeWrapper():
-    # sample calculation of SIAM
-    from functools import reduce
-    from pyscf import gto,scf,ao2mo,symm 
-    import h5py
 
-    ll = 4 # number of left leads
-    lr = 3 # number of right leads
-    t = 1.0 # lead hopping
-    td = 0.4 # dot-lead hopping
-    U = 1.0 # dot interaction
-    Vg = -0.5 # gate voltage
-    V = -0.005 # bias
-    norb = ll+lr+1 # total number of sites
-    idot = ll # dot index
-
-    # ground state Hamiltonian with zero bias
-    h1e = np.zeros((norb,)*2)
-    for i in range(norb):
-        if i < norb-1:
-            dot = (i==idot or i+1==idot)
-            h1e[i,i+1] = -td/t if dot else -1.0
-        if i > 0:
-            dot = (i==idot or i-1==idot)
-            h1e[i,i-1] = -td/t if dot else -1.0
-    h1e[idot,idot] = Vg/t
-    # g2e needs modification for all up spin
-    g2e = np.zeros((norb,)*4)
-    g2e[idot,idot,idot,idot] = U/t
-    # mean-field calculation initialized to half filling
-    nelec = int(norb/2), int(norb/2)
-    Pa = np.zeros(norb)
-    Pa[::2] = 1.0
-    Pa = np.diag(Pa)
-    Pb = np.zeros(norb)
-    Pb[1::2] = 1.0
-    Pb = np.diag(Pb)
-
-    mol = gto.M()
-    mol.incore_anyway = True
-    mol.nelectron = sum(nelec)
-    mf = scf.UHF(mol)
-    mf.get_hcore = lambda *args:h1e
-    mf.get_ovlp = lambda *args:np.eye(norb)
-    mf._eri = ao2mo.restore(8, g2e, norb)
-    mf.kernel(dm0=(Pa,Pb))
-    # ground state FCI
-    mo_a = mf.mo_coeff[0]
-    mo_b = mf.mo_coeff[1]
-    ci = direct_uhf.FCISolver(mol)
-    h1e_a = reduce(np.dot, (mo_a.T, mf.get_hcore(), mo_a))
-    h1e_b = reduce(np.dot, (mo_b.T, mf.get_hcore(), mo_b))
-    g2e_aa = ao2mo.incore.general(mf._eri, (mo_a,)*4, compact=False)
-    g2e_aa = g2e_aa.reshape(norb,norb,norb,norb)
-    g2e_ab = ao2mo.incore.general(mf._eri, (mo_a,mo_a,mo_b,mo_b), compact=False)
-    g2e_ab = g2e_ab.reshape(norb,norb,norb,norb)
-    g2e_bb = ao2mo.incore.general(mf._eri, (mo_b,)*4, compact=False)
-    g2e_bb = g2e_bb.reshape(norb,norb,norb,norb)
-    h1e_mo = (h1e_a, h1e_b)
-    g2e_mo = (g2e_aa, g2e_ab, g2e_bb)
-    eci, fcivec = ci.kernel(h1e_mo, g2e_mo, norb, nelec)
-
-    # dynamical Hamiltonian
-    for i in range(idot):
-        h1e[i,i] = V/t/2
-    for i in range(idot+1,norb):
-        h1e[i,i] = -V/t/2
-    # dynamical propagation
-#    tf = 1.0
-    tf = 10.0
-    dt = 0.01
-#    dt = 0.005
-    eris = ERIs(h1e, g2e, mf.mo_coeff)
-    ci = CIObject(fcivec, norb, nelec)
-    (d1as, d1bs), (d2aas, d2abs, d2bbs) = kernel(eris, ci, tf, dt)
-    f = h5py.File('SIAM_5_01.hdf5','w')
-#    f = h5py.File('SIAM_01.hdf5','w')
-#    f = h5py.File('SIAM_005.hdf5','w')
-    f.create_dataset('h1e', data=h1e)
-    f.create_dataset('g2e', data=g2e)
-    f.create_dataset('moa', data=mf.mo_coeff[0])
-    f.create_dataset('mob', data=mf.mo_coeff[1])
-    f.create_dataset('d1as', data=d1as)
-    f.create_dataset('d1bs', data=d1bs)
-    f.create_dataset('d2aas', data=d2aas)
-    f.create_dataset('d2abs', data=d2abs)
-    f.create_dataset('d2bbs', data=d2bbs)
-    f.close()
+    return; # end test
     
 
 if __name__ == "__main__":

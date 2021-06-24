@@ -21,6 +21,8 @@ Formalism:
 - hermicity: h_pqrs = h_qpsr can absorb factor of 1/2
 '''
 
+import ruojings_td_fci as td
+
 import numpy as np
 import functools
 from pyscf import fci, gto, scf, ao2mo
@@ -133,6 +135,22 @@ def h_dot_2e(U,N):
 
 #######################################################
 #### functions for manipulating basic hamiltonians
+
+def start_bias(V, dot_is, h1e):
+    '''
+    Manipulate a pre stitched h1e by turning on bias on leads
+    '''
+
+    # iter over leads
+    for i in range(np.shape(h1e)[0]):
+
+        # ignore dot orbs
+        if i < dot_is[0]:
+            h1e[i,i] = V/2;
+        elif i > dot_is[-1]:
+            h1e[i,i] = -V/2;
+
+    return h1e;
     
 def stitch_h1e(h_imp, h_imp_leads, h_leads, h_bias, n_leads, verbose = 0):
     '''
@@ -205,10 +223,9 @@ def stitch_h2e(h_imp,n_leads,verbose = 0):
                             print("  h_imp[",i1,i2,i3,i4,"] = ",h_imp[i1,i2,i3,i4]," --> h2e[",i_imp+i1,i_imp+i2,i_imp+i3,i_imp+i4,"]");
                         
     return h; # end stitch h2e
-    
-    
 
-def DotModel(nleads, nsites, norbs, nelecs, physical_params,verbose = 0):
+
+def dot_model(nleads, nsites, norbs, nelecs, physical_params,verbose = 0):
     '''
     Run whole SIAM machinery, with impurity a very simple dot model
     Impurity hamiltonian:
@@ -262,21 +279,83 @@ def DotModel(nleads, nsites, norbs, nelecs, physical_params,verbose = 0):
     return h1e, h2e, mol, scf_inst;
 
 
+
+#####################################
+#### get energies
+
+def direct_FCI(h1e, h2e, norbs, nelecs, verbose = 0):
+    '''
+    solve gd state with direct FCI
+    '''
+    
+    cisolver = fci.direct_spin1.FCI();
+    E_fci, v_fci = cisolver.kernel(h1e, h2e, norbs, nelecs);
+    if(verbose):
+        print("\nDirect FCI energies, zero bias, norbs = ",norbs,", nelecs = ",nelecs);
+        print("- E = ",E_fci);
+
+    return E_fci, v_fci;
+
+
+def scf_FCI(mol, scf_inst, verbose = 0):
+    '''
+    '''
+
+    # init ci solver with ham from molecule inst
+    cisolver = fci.direct_uhf.FCISolver(mol);
+
+    # get unpack from scf inst
+    h1e = scf_inst.get_hcore(mol);
+    norbs = np.shape(h1e)[0];
+    nelecs = (mol.nelectron,0);
+
+    # slater determinant coefficients
+    mo_a = scf_inst.mo_coeff[0]
+    mo_b = scf_inst.mo_coeff[1]
+   
+    # since we are in UHF formalism, need to split all hams by alpha, beta
+    # but since everything is spin blind, all beta matrices are zeros
+    h1e_a = functools.reduce(np.dot, (mo_a.T, h1e, mo_a))
+    h1e_b = functools.reduce(np.dot, (mo_b.T, h1e, mo_b))
+    h2e_aa = ao2mo.incore.general(scf_inst._eri, (mo_a,)*4, compact=False)
+    h2e_aa = h2e_aa.reshape(norbs,norbs,norbs,norbs)
+    h2e_ab = ao2mo.incore.general(scf_inst._eri, (mo_a,mo_a,mo_b,mo_b), compact=False)
+    h2e_ab = h2e_ab.reshape(norbs,norbs,norbs,norbs)
+    h2e_bb = ao2mo.incore.general(scf_inst._eri, (mo_b,)*4, compact=False)
+    h2e_bb = h2e_bb.reshape(norbs,norbs,norbs,norbs)
+    h1e_tup = (h1e_a, h1e_b)
+    h2e_tup = (h2e_aa, h2e_ab, h2e_bb)
+    
+    # run kernel to get exact energy
+    E_fci, v_fci = cisolver.kernel(h1e_tup, h2e_tup, norbs, nelecs)
+    if(verbose):
+        print("\nFCI from UHF, zero bias, norbs = ",norbs,", nelecs = ",nelecs);
+        print("- E = ", E_fci);
+
+    return E_fci, v_fci;
+
+
 #####################################
 #### wrapper functions, test code
 
 def CurrentWrapper():
     '''
-
+    Walks thru all the steps for plotting current thru a SIAM
+    - constructung the biasless hamiltonian, 1e and 2e parts
+    - encoding hamiltonians in an scf.UHF inst
+    - doing FCI on scf.UHF to get exact gd state
+    - turn on bias to induce current
+    - use ruojing's code to do time propagation
     '''
 
     # top level inputs
-    verbose = 1;
+    verbose = 3; # passed along throughout to control printing
     np.set_printoptions(suppress=True); # no sci notatation printing
 
     # set up the hamiltonian
     n_leads = (3,2); # left leads, right leads
     n_imp_sites = 1
+    imp_i = n_leads[0]*2
     norbs = 2*(n_leads[0]+n_leads[1]+n_imp_sites); # num spin orbs
     nelecs = (int(norbs/2),0);
 
@@ -289,33 +368,26 @@ def CurrentWrapper():
     params = V_leads, V_imp_leads, V_bias, V_gate, U;
 
     # get h1e, h2e, and scf implementation of SIAM with dot as impurity
-    h1e, h2e, mol, dotscf = DotModel(n_leads, n_imp_sites, norbs, nelecs, params, verbose = verbose);
+    h1e, h2e, mol, dotscf = dot_model(n_leads, n_imp_sites, norbs, nelecs, params, verbose = verbose);
+
+    # do fci directly from hams
+    direct_FCI(h1e, h2e, norbs, nelecs, verbose = verbose);
     
-    # solve gd state with direct FCI
-    cisolver = fci.direct_spin1.FCI();
-    E_fci, v_fci = cisolver.kernel(h1e, h2e, norbs, nelecs);
-    if(verbose):
-        print("\nDirect FCI energies, zero bias, norbs = ",norbs,", nelecs = ",nelecs);
-        print("- E = ",E_fci);
+    # from scf instance, do FCI
+    E_fci, v_fci = scf_FCI(mol, dotscf, verbose = verbose);
+
+    # prepare in dynamic state by turning on bias
+    V_bias = -0.005;
+    h1e = start_bias(V_bias,(imp_i,imp_i-1+2*n_imp_sites),h1e);
+
+    # from fci gd state, do time propagation
+    timestop, deltat = 4, 0.1 # time prop params
+    td.TimeProp(h1e, h2e, v_fci, mol, dotscf, timestop, deltat, imp_i, V_imp_leads, kernel_mode = "plot", verbose = verbose);
+    
+
+
         
-    # solve UHF exactly with FCI built on top
-    mo_a = dotscf.mo_coeff[0]
-    mo_b = dotscf.mo_coeff[1]
-    cisolver_uhf = fci.direct_uhf.FCISolver(mol)
-    h1e_a = functools.reduce(np.dot, (mo_a.T, h1e, mo_a))
-    h1e_b = functools.reduce(np.dot, (mo_b.T, h1e, mo_b))
-    g2e_aa = ao2mo.incore.general(dotscf._eri, (mo_a,)*4, compact=False)
-    g2e_aa = g2e_aa.reshape(norbs,norbs,norbs,norbs)
-    g2e_ab = ao2mo.incore.general(dotscf._eri, (mo_a,mo_a,mo_b,mo_b), compact=False)
-    g2e_ab = g2e_ab.reshape(norbs,norbs,norbs,norbs)
-    g2e_bb = ao2mo.incore.general(dotscf._eri, (mo_b,)*4, compact=False)
-    g2e_bb = g2e_bb.reshape(norbs,norbs,norbs,norbs)
-    h1e_mo = (h1e_a, h1e_b)
-    g2e_mo = (g2e_aa, g2e_ab, g2e_bb)
-    E_uhf, v_uhf = cisolver_uhf.kernel(h1e_mo, g2e_mo, norbs, nelecs)
-    if(verbose):
-        print("\nFCI from UHF")
-        print("- E = ", E_uhf);
+
         
         
     
