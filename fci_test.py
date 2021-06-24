@@ -18,14 +18,14 @@ Vg = -0.5
 U = 1.0
 
 # top level params
-symmetry = 4; # perm symmetry of g2e. NB spin free uhf doesn't care about symmetry
+symmetry = 4; # perm symmetry of g2e. NB spin free uhf gives same answer regardless of symmetry
 lleads = 3;
 rleads = 2;
 norb = lleads + rleads + 1; # 2 left sites, dot, right site
 nelec = (int(norb/2),int(norb/2)); # half filling
 
 # make spin free hamiltonian
-if (norb == 4): # leads = 2,1
+if (norb == 4 and lleads == 2 and rleads == 1):
     h1e = np.array([ [0.0, -t, 0.0, 0.0],
                  [-t,  0.0, -td, 0.0],
                  [0.0, -td, Vg,  -td],
@@ -33,7 +33,7 @@ if (norb == 4): # leads = 2,1
     g2e = np.zeros((norb, norb, norb, norb));
     g2e[lleads, lleads, lleads, lleads] = U;
     
-elif (norb == 6):
+elif (norb == 6 and lleads == 3 and rleads == 2):
     h1e = np.array([[0.0, -t, 0.0, 0.0, 0.0, 0.0],
                    [-t,  0.0, -t, 0.0, 0.0, 0.0],
                    [0.0, -t, 0.0,  -td, 0.0, 0.0],
@@ -55,7 +55,7 @@ def SpinFreeGdState():
     print("\n- direct fci, norbs = ",norb, ", nelecs = ",nelec);
     print("- E_gd = ", edirect,"\n");
 
-    # do fci building from uhf
+    # do fci building from uhf # follows ruojing's implementation exactly
     Pa = np.zeros(norb) # guess density matrices
     Pa[::2] = 1.0
     Pa = np.diag(Pa)
@@ -98,11 +98,11 @@ del g2e
 # input all electrons as up, and even spin orbs are up while odd are down
    
 # top level params
-symmetry = 1; # spin blind uhf closest with symmetry = 4
+symmetry = 1; # fci on uhf gives same answer regardless of symmetry
 norb = 2*(lleads + rleads + 1); # spin orbs now
 nelec = (int(norb/2),0); # half filling
 
-if (norb == 8):
+if (norb == 8 and lleads == 2 and rleads == 1): 
     # make spin free hamiltonian
     h1e = np.array([ [0.0, 0.0, -t, 0.0, 0.0, 0.0, 0.0, 0.0],
                      [0.0, 0.0, 0.0, -t, 0.0, 0.0, 0.0, 0.0],
@@ -116,7 +116,7 @@ if (norb == 8):
     g2e[4,4,5,5] =  U;
     g2e[5,5,4,4] = U;
     
-elif (norb == 12):
+elif (norb == 12 and lleads == 3 and rleads == 2):
     h1e = np.array([ [0.0, 0.0, -t, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
                      [0.0, 0.0, 0.0, -t, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
                      [-t, 0.0, 0.0, 0.0, -t, 0.0, 0.0, 0.0,  0.0, 0.0, 0.0, 0.0],
@@ -146,7 +146,7 @@ def SpinBlindGdState():
     print("\n- direct fci, norbs = ",norb, ", nelecs = ",nelec);
     print("- E_gd = ", edirect,"\n");
 
-    # do fci building from uhf
+    # do fci building from uhf # follows ruojing's implementation exactly
     Pa = np.zeros(norb) # guess density matrices
     Pa[::2] = 1.0
     Pa = np.diag(Pa)
