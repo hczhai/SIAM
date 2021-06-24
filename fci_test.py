@@ -100,7 +100,6 @@ del g2e
 # top level params
 symmetry = 1; # spin blind uhf closest with symmetry = 4
 norb = 2*(lleads + rleads + 1); # spin orbs now
-print(norb)
 nelec = (int(norb/2),0); # half filling
 
 if (norb == 8):
@@ -114,7 +113,8 @@ if (norb == 8):
                      [0.0, 0.0, 0.0, 0.0, -td, 0.0, 0.0, 0.0],
                      [0.0, 0.0, 0.0, 0.0, 0.0, -td, 0.0, 0.0]]);
     g2e = np.zeros((norb, norb, norb, norb));
-    g2e[4,4,5,5] = 2*U;
+    g2e[4,4,5,5] =  U;
+    g2e[5,5,4,4] = U;
     
 elif (norb == 12):
     h1e = np.array([ [0.0, 0.0, -t, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
@@ -127,14 +127,18 @@ elif (norb == 12):
                      [0.0, 0.0, 0.0, 0.0, 0.0, -td, 0.0, Vg, 0.0, -td, 0.0, 0.0],
                      [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -td, 0.0, 0.0,0.0, -t, 0.0],
                      [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -td, 0.0,0.0, 0.0, -t],
-                     [0.0, 0.0, -t, 0.0, 0.0, 0.0, 0.0, 0.0, -t, 0.0,  0.0, 0.0],
-                     [0.0, 0.0, -t, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -t,  0.0, 0.0] ]);
+                     [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -t, 0.0,  0.0, 0.0],
+                     [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -t,  0.0, 0.0] ]);
     g2e = np.zeros((norb, norb, norb, norb));
-    g2e[2*lleads, 2*lleads, 2*lleads+1, 2*lleads+1] = 2*U;
+    g2e[6,6,7,7] = U;
+    g2e[7,7,6,6] = U;
 
 def SpinBlindGdState():
     # does everything to compute gd state with fci direct, fci on uhf methods
     # now in spin blind formalism
+
+    assert(norb == np.shape(h1e)[0]);
+    assert(norb == np.shape(g2e)[0]);
 
     # do direct fci
     cisolver = fci.direct_spin1.FCI(); # needs to be spin1 not nosym
@@ -156,7 +160,8 @@ def SpinBlindGdState():
     mf.get_hcore = lambda *args:h1e # pass hamiltonians to scf
     mf.get_ovlp = lambda *args:np.eye(norb)
     mf._eri = ao2mo.restore(symmetry, g2e, norb)
-    mf.kernel(dm0=(Pa,Pb), max_cycle = 100) # UHF calc of energy
+    mf.max_cycle = 500;
+    mf.kernel(dm0=(Pa,Pb)) # UHF calc of energy
     mo_a = mf.mo_coeff[0]  # do fci on top of UHF
     mo_b = mf.mo_coeff[1]
     cisolver_uhf = fci.direct_uhf.FCISolver(mol)
@@ -183,3 +188,48 @@ def SpinBlindGdState():
 print("\nSpin blind calculation");
 SpinBlindGdState();
 
+def TestRestore():
+
+    for sym in [1,4,8]:
+
+        print("\n symmetry = ", sym)
+        norb = 8
+        g2e = np.zeros((norb, norb, norb, norb));
+        #g2e[4,4,5,5] = 2*U;
+        g2e[4,4,5,5] = U;
+        g2e[5,5,4,4] = U;
+
+        for i1 in range(norb):
+            for i2 in range(norb):
+                for i3 in range(norb):
+                    for i4 in range(norb):
+                        if g2e[i1,i2,i3,i4] != 0:
+                            print("g2e[",i1,i2,i3,i4,"] = ", g2e[i1,i2,i3,i4]);
+
+        g2e2 = ao2mo.restore(sym, g2e, norb);
+        del g2e
+
+        try:
+            print(sym,np.shape(g2e2))
+            for i1 in range(norb):
+                for i2 in range(norb):
+                    for i3 in range(norb):
+                        for i4 in range(norb):
+                            if g2e2[i1,i2,i3,i4] != 0:
+                                print("--> g2e2[",i1,i2,i3,i4,"] = ", g2e2[i1,i2,i3,i4]);
+        except:
+            try:
+                print(sym,np.shape(g2e2))
+                for i1 in range(np.shape(g2e2)[0]):
+                    for i2 in range(np.shape(g2e2)[1]):
+                        if g2e2[i1,i2] != 0:
+                            print("--> g2e2[",i1,i2,"] = ", g2e2[i1,i2]);
+
+            except: 
+                print(sym,np.shape(g2e2))
+                for i1 in range(np.shape(g2e2)[0]):
+                    if g2e2[i1] != 0:
+                        print("--> g2e2[",i1,"] = ", g2e2[i1]);
+
+
+#TestRestore();

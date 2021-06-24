@@ -129,7 +129,8 @@ def h_dot_2e(U,N):
     
     # hubbard repulsion when there are 2 e's on same MO
     for i in range(0,N,2): # i is spin up orb, i+1 is spin down
-        h[i,i,i+1,i+1] = 2*U;
+        h[i,i,i+1,i+1] = U;
+        h[i+1,i+1,i,i] = U; # switch electron labels
         
     return h; # end h dot 2e
 
@@ -334,16 +335,15 @@ def scf_FCI(mol, scf_inst, verbose = 0):
 
     return E_fci, v_fci;
 
-
 #####################################
 #### wrapper functions, test code
 
 def CurrentWrapper():
     '''
     Walks thru all the steps for plotting current thru a SIAM
-    - constructung the biasless hamiltonian, 1e and 2e parts
-    - encoding hamiltonians in an scf.UHF inst
-    - doing FCI on scf.UHF to get exact gd state
+    - construct the biasless hamiltonian, 1e and 2e parts
+    - encode hamiltonians in an scf.UHF inst
+    - do FCI on scf.UHF to get exact gd state
     - turn on bias to induce current
     - use ruojing's code to do time propagation
     '''
@@ -353,7 +353,7 @@ def CurrentWrapper():
     np.set_printoptions(suppress=True); # no sci notatation printing
 
     # set up the hamiltonian
-    n_leads = (3,2); # left leads, right leads
+    n_leads = (4,3); # left leads, right leads
     n_imp_sites = 1
     imp_i = n_leads[0]*2
     norbs = 2*(n_leads[0]+n_leads[1]+n_imp_sites); # num spin orbs
@@ -383,13 +383,7 @@ def CurrentWrapper():
     # from fci gd state, do time propagation
     timestop, deltat = 4, 0.1 # time prop params
     td.TimeProp(h1e, h2e, v_fci, mol, dotscf, timestop, deltat, imp_i, V_imp_leads, kernel_mode = "plot", verbose = verbose);
-    
-
-
-        
-
-        
-        
+      
     
 def DotWrapper(std_inputs = True):
     '''
@@ -456,6 +450,41 @@ def DotWrapper(std_inputs = True):
         
     return; # end dot wrapper
 
+
+def Test(): # test code
+    t = 1.0
+    td = 0.4
+    Vg = -0.5
+    U = 1.0
+    symmetry = 4; # perm symmetry of g2e. NB spin free uhf doesn't care about symmetry
+    lleads = 3;
+    rleads = 2;
+    norb = 2*(lleads + rleads + 1); # 2 left sites, dot, right site
+    nelec = (int(norb/2),int(norb/2)); # half filling
+    print(norb, nelec);
+    h1e = np.array([ [0.0, 0.0, -t, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                     [0.0, 0.0, 0.0, -t, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                     [-t, 0.0, 0.0, 0.0, -t, 0.0, 0.0, 0.0,  0.0, 0.0, 0.0, 0.0],
+                     [0.0, -t, 0.0, 0.0, 0.0, -t, 0.0, 0.0,  0.0, 0.0, 0.0, 0.0],
+                     [0.0, 0.0, -t, 0.0, 0.0, 0.0, -td, 0.0, 0.0, 0.0, 0.0, 0.0],
+                     [0.0, 0.0, 0.0, -t, 0.0, 0.0, 0.0, -td, 0.0, 0.0, 0.0, 0.0],
+                     [0.0, 0.0, 0.0, 0.0, -td, 0.0, Vg, 0.0, -td, 0.0, 0.0, 0.0],
+                     [0.0, 0.0, 0.0, 0.0, 0.0, -td, 0.0, Vg, 0.0, -td, 0.0, 0.0],
+                     [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -td, 0.0, 0.0,0.0, -t, 0.0],
+                     [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -td, 0.0,0.0, 0.0, -t],
+                     [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -t, 0.0,  0.0, 0.0],
+                     [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -t,  0.0, 0.0] ]);
+    g2e = np.zeros((norb, norb, norb, norb));
+    g2e[6,6,7,7] = 2*U;
+
+    params = t, td, 0.0, Vg, U;
+    h1e2, h2e2, mol, dotscf = dot_model((lleads, rleads), 1, norb, nelec, params,);
+
+    for i in range(norb):
+        for j in range(norb):
+            if(h1e[i,j] != h1e2[i,j] ): # matrices don't match
+                print(i,j, h1e[i,j], h1e2[i,j] )
+
     
 #####################################
 #### exec code
@@ -463,6 +492,6 @@ def DotWrapper(std_inputs = True):
 if(__name__ == "__main__"):
 
     # test machinery on garnet's simple dot model
-    DotWrapper();
+    CurrentWrapper();
 
 

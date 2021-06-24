@@ -356,8 +356,8 @@ def Test():
     verbose = 2;
 
     # physical inputs
-    ll = 3 # number of left leads
-    lr = 2 # number of right leads
+    ll = 4 # number of left leads
+    lr = 3 # number of right leads
     t = 1.0 # lead hopping
     td = 0.4 # dot-lead hopping
     U = 1.0 # dot interaction
@@ -389,9 +389,6 @@ def Test():
     
     if(verbose > 2):
         print("- Full one electron hamiltonian:\n", h1e)
-        if False:
-            eigvals, eigvecs = np.linalg.eigh(h1e);
-            print("*****", eigvals);
         
     # code straight from ruojing, don't understand yet
     nelec = int(norb/2), int(norb/2) # half filling
@@ -425,12 +422,12 @@ def Test():
     h1e_mo = (h1e_a, h1e_b)
     g2e_mo = (g2e_aa, g2e_ab, g2e_bb)
     eci, fcivec = cisolver.kernel(h1e_mo, g2e_mo, norb, nelec, max_memory = 2000000000)
-    #mycisolver = fci.direct_spin1.FCI();
-    #myE, myv = mycisolver.kernel(h1e, g2e, norb, nelec);
+    mycisolver = fci.direct_spin1.FCI();
+    myE, myv = mycisolver.kernel(h1e, g2e, norb, nelec);
     if(verbose):
         print("2. FCI solution");
         print("- gd state energy, zero bias = ", eci);
-        #print("- direct spin 1 gd state, zero bias = ",myE," (norbs, nelecs = ",norb,nelec,")")
+        print("- direct spin 1 gd state, zero bias = ",myE," (norbs, nelecs = ",norb,nelec,")")
     #############
         
     #### do time propagation
