@@ -121,10 +121,35 @@ def compute_current(dot_i,t,d1,d2,mocoeffs,norbs):
     J_val = np.imag(J_val);
     return J_val;
     
+def compute_current_spinblind(dot_i,t,d1,d2,mocoeffs,norbs):
+    '''
+    TODO: generalize this to any size dot
+    '''
+
+    print(dot_i)
+
+    # operator
+    J = np.zeros((norbs,norbs));
+    for doti in range(dot_i[0], dot_i[-1], 2):
+        J[doti - 2,doti] = -t/2;  # up spin to left up spin
+        J[doti+1-2,doti+1] = -t/2; # down to down
+        J[doti,doti - 2] =  t/2; # hc
+        J[doti+1, doti+1-2] = t/2; # hc
+        J[doti + 2,doti] = t/2;  # up spin to right up spin
+        J[doti+1+2,doti+1] = t/2; # down to down
+        J[doti,doti + 2] =  -t/2; # hc
+        J[doti+1, doti+1+2] = -t/2; # hc
+    
+    # have to store this operator as an eris object
+    J_eris = ERIs(J, np.zeros((norbs,norbs,norbs,norbs)), mocoeffs)
+    J_val = compute_energy(d1,d2, J_eris);
+    J_val = np.imag(J_val);
+    return J_val;
+
 ################################################################
 #### kernel
 
-def kernel(mode, eris, ci, tf, dt, RK=4, i_dot = None, t_dot = None, verbose = 0):
+def kernel(mode, eris, ci, tf, dt, RK=4, i_dot = None, t_dot = None, spinblind = False, verbose = 0):
     '''
     Wrapper for the different kernel implementations
     Lots of assertions to prevent confusion
@@ -159,9 +184,9 @@ def kernel(mode, eris, ci, tf, dt, RK=4, i_dot = None, t_dot = None, verbose = 0
         assert(i_dot != None);
         assert(t_dot != None);
     
-        return kernel_plot(eris, ci, tf, dt, i_dot, t_dot, RK, verbose);
+        return kernel_plot(eris, ci, tf, dt, i_dot, t_dot, RK, spinblind, verbose);
 
-def kernel_plot(eris, ci, tf, dt, i_dot, t_dot, RK, verbose):
+def kernel_plot(eris, ci, tf, dt, i_dot, t_dot, RK, spinblind, verbose):
     '''
     Kernel for getting observables at each time step, for plotting
     Outputs 1d arrays of time, energy, dot occupancy, current
@@ -202,18 +227,22 @@ def kernel_plot(eris, ci, tf, dt, i_dot, t_dot, RK, verbose):
         
         # compute observables
         Energy = np.real(compute_energy((d1a,d1b),(d2aa,d2ab,d2bb),eris));
-        Occupancy = compute_occ(2,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb);
-        Current = compute_current(i_dot, t_dot, (d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb);
+        #Occupancy = compute_occ(2,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb);
+        if spinblind: # differt operator for current in spin blind formalism
+            Current = compute_current_spinblind(i_dot, t_dot, (d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb);
+        else:
+            Current = compute_current(i_dot, t_dot, (d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb);
+
         if(verbose > 3):
-            print("    time: ", i*dt,", E = ",Energy," Dot occ. = ",Occupancy);
+            print("    time: ", i*dt);
           
         # fill arrays with observables
         t_vals[i] = i*dt;
         energy_vals[i] = Energy
-        occ_vals[i] = Occupancy;
+        #occ_vals[i] = Occupancy;
         current_vals[i] = Current;
         
-    return t_vals, energy_vals, occ_vals, current_vals ;
+    return t_vals, energy_vals, current_vals ;
     
 def kernel_std(eris, ci, tf, dt, RK):
     '''
@@ -325,6 +354,9 @@ def TimeProp(h1e, h2e, fcivec, mol,  scf_inst, time_stop, time_step, i_dot, t_do
     The physics of the FCI gd state is encoded in an scf instance
     '''
 
+    # assertion statements to check inputs
+    assert(type(i_dot) == type([]) );
+
     # unpack
     norbs = np.shape(h1e)[0];
     nelecs = (mol.nelectron,0);
@@ -336,8 +368,9 @@ def TimeProp(h1e, h2e, fcivec, mol,  scf_inst, time_stop, time_step, i_dot, t_do
     # - CI object to encode ci states
     eris = ERIs(h1e, h2e, scf_inst.mo_coeff);
     ci = CIObject(fcivec, norbs, nelecs);
-
-    return kernel(kernel_mode, eris, ci, time_stop, time_step, i_dot = i_dot, t_dot = t_dot, verbose = verbose);
+    
+    # kernel does time prop, NB we assume a spin blind formalism
+    return kernel(kernel_mode, eris, ci, time_stop, time_step, i_dot = i_dot, t_dot = t_dot, spinblind = True, verbose = verbose);
 
 
 ###########################################################################################################
@@ -353,11 +386,11 @@ def Test():
     from pyscf import gto,scf,ao2mo
         
     # top level inputs
-    verbose = 2;
+    verbose = 3;
 
     # physical inputs
-    ll = 4 # number of left leads
-    lr = 3 # number of right leads
+    ll = 2 # number of left leads
+    lr = 1 # number of right leads
     t = 1.0 # lead hopping
     td = 0.4 # dot-lead hopping
     U = 1.0 # dot interaction
@@ -421,7 +454,7 @@ def Test():
     g2e_bb = g2e_bb.reshape(norb,norb,norb,norb)
     h1e_mo = (h1e_a, h1e_b)
     g2e_mo = (g2e_aa, g2e_ab, g2e_bb)
-    eci, fcivec = cisolver.kernel(h1e_mo, g2e_mo, norb, nelec, max_memory = 2000000000)
+    eci, fcivec = cisolver.kernel(h1e_mo, g2e_mo, norb, nelec)
     mycisolver = fci.direct_spin1.FCI();
     myE, myv = mycisolver.kernel(h1e, g2e, norb, nelec);
     if(verbose):
@@ -437,12 +470,12 @@ def Test():
         h1e[i,i] = V/2
     for i in range(idot+1,norb):
         h1e[i,i] = -V/2
-    tf = 10.0
+    tf = 4.0
     dt = 0.01
     eris = ERIs(h1e, g2e, mf.mo_coeff) # diff h1e than in uhf, thus time dependence
     ci = CIObject(fcivec, norb, nelec)
     kernel_mode = "plot"; # tell kernel whether to return density matrices or arrs for plotting
-    t, E, occ, J = kernel(kernel_mode, eris, ci, tf, dt, i_dot = idot, t_dot = td, verbose = verbose);
+    t, E, J = kernel(kernel_mode, eris, ci, tf, dt, i_dot = idot, t_dot = td, verbose = verbose);
     
     # plot current vs time
     plot.GenericPlot(t,J,labels=["time","Current","td-FCI on SIAM"]);
