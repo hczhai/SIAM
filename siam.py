@@ -21,6 +21,7 @@ Formalism:
 - hermicity: h_pqrs = h_qpsr can absorb factor of 1/2
 '''
 
+import molecule_5level
 import ruojings_td_fci as td
 import plot
 
@@ -203,7 +204,7 @@ def stitch_h1e(h_imp, h_imp_leads, h_leads, h_bias, n_leads, verbose = 0):
             if(i>1 and j>1 and i<n_imp_sos+2 and j< n_imp_sos+2): #skip first two, last two rows, columns
                 h[2*n_leads[0] - 2 + i, 2*n_leads[0] - 2 + i] += h_imp[i-2,j-2];
             
-    if(verbose > 3):
+    if(verbose > 2):
         print("- h_leads + h_bias:\n",h_leads,"\n- h_imp_leads:\n",h_imp_leads,"\n- h_imp:\n",h_imp);
     return h; # end stitch h1e
     
@@ -226,7 +227,7 @@ def stitch_h2e(h_imp,n_leads,verbose = 0):
             for i3 in range(n_imp_sos):
                 for i4 in range(n_imp_sos):
                     h[i_imp+i1,i_imp+i2,i_imp+i3,i_imp+i4] = h_imp[i1,i2,i3,i4];
-                    if(verbose > 1): # check 4D tensor by printing nonzero elems
+                    if(verbose > 2): # check 4D tensor by printing nonzero elems
                         if(h_imp[i1,i2,i3,i4] != 0):
                             print("  h_imp[",i1,i2,i3,i4,"] = ",h_imp[i1,i2,i3,i4]," --> h2e[",i_imp+i1,i_imp+i2,i_imp+i3,i_imp+i4,"]");
                         
@@ -285,6 +286,60 @@ def dot_model(nleads, nsites, norbs, nelecs, physical_params,verbose = 0):
                                    # what matter is h1e, h2e are now encoded in this scf instance
         
     return h1e, h2e, mol, scf_inst;
+    
+    
+def mol_model(nleads, nsites, norbs, nelecs, physical_params,verbose = 0):
+    '''
+    Run whole SIAM machinery, with impurity Silas' molecule
+    returns np arrays: 1e hamiltonian, 2e hamiltonian, and scf object
+    '''
+
+    # unpack inputs
+    V_leads, V_imp_leads, V_bias, mol_params = physical_params;
+    D, E, alpha, U = mol_params;
+
+    if(verbose): # print inputs
+        print("\nInputs:\n- Num. leads = ",nleads,"\n- Num. impurity sites = ",nsites,"\n- nelecs = ",nelecs,"\n- V_leads = ",V_leads,"\n- V_imp_leads = ",V_imp_leads,"\n- V_bias = ",V_bias,"\n- D = ",D,"\n- E = ",E, "\n- alpha = ",alpha, "\n- U = ",U, "\n- E/U = ",E/U,"\n- alpha/D = ",alpha/D,"\n- alpha/(E^2/U) = ",alpha*U/(E*E),"\n- alpha^2/(E^2/U) = ",alphaalpha**U/(E*E) );
+
+    #### make full system ham from inputs
+
+    # make, combine all 1e hamiltonians
+    hl = h_leads(V_leads, nleads); # leads only
+    hb = h_bias(V_bias, nleads);   # bias leads only
+    hdl = h_imp_leads(V_imp_leads, nsites); # leads talk to dot
+    hd = molecule_5level.h1e(nsites*2,D,E,alpha); # Silas' model
+    h1e = stitch_h1e(hd, hdl, hl, hb, nleads, verbose = verbose); # syntax is imp, imp-leads, leads, bias
+    if(verbose > 2):
+        print("\n- Full one electron hamiltonian = \n",h1e);
+        
+    # 2e hamiltonian only comes from impurity
+    if(verbose > 2):
+        print("\n- Nonzero h2e elements = ");
+    hd2e = molecule_5level.h2e(2*nsites, U);
+    h2e = stitch_h2e(hd2e, nleads, verbose = verbose);
+
+    #### encode physics of dot model in an SCF obj
+
+    # initial guess density matrices
+    Pa = np.zeros(norbs)
+    Pa[::2] = 1.0
+    Pa = np.diag(Pa)
+
+    # put everything into UHF scf object
+    if(verbose):
+        print("\nUHF energy calculation")
+    mol = gto.M(); # geometry is meaningless
+    mol.incore_anyway = True
+    mol.nelectron = sum(nelecs)
+    scf_inst = scf.UHF(mol)
+    scf_inst.get_hcore = lambda *args:h1e # put h1e into scf solver
+    scf_inst.get_ovlp = lambda *args:np.eye(norbs) # init overlap as identity matrix
+    scf_inst._eri = h2e # put h2e into scf solver
+    scf_inst.kernel(dm0=(Pa, Pa)); # prints HF gd state but this number is meaningless
+                                   # what matter is h1e, h2e are now encoded in this scf instance
+        
+    return h1e, h2e, mol, scf_inst;
+
 
 
 
@@ -347,7 +402,7 @@ def scf_FCI(mol, scf_inst, verbose = 0):
 
 def DotCurrentWrapper():
     '''
-    Walks thru all the steps for plotting current thru a SIAM
+    Walks thru all the steps for plotting current thru a SIAM. Impurity is a quantum dot
     - construct the biasless hamiltonian, 1e and 2e parts
     - encode hamiltonians in an scf.UHF inst
     - do FCI on scf.UHF to get exact gd state
@@ -386,7 +441,8 @@ def DotCurrentWrapper():
     # prepare in dynamic state by turning on bias
     V_bias = -0.005;
     h1e = start_bias(V_bias, imp_i,h1e);
-    print(h1e)
+    if(verbose > 2):
+        print(h1e)
 
     # from fci gd state, do time propagation
     timestop, deltat = 4, 0.1 # time prop params
@@ -397,6 +453,67 @@ def DotCurrentWrapper():
     
     # write results to external file
     # should also write code that plots from external file
+    
+    return; # end dot current wrapper
+    
+    
+def MolCurrentWrapper():
+    '''
+    Same as DotCurrentWrapper but impurity is Silas' molecule model
+    '''
+    
+    # top level inputs
+    verbose = 5; # passed along throughout to control printing
+    np.set_printoptions(suppress=True); # no sci notatation printing
+
+    # set up the hamiltonian
+    n_leads = (2,1); # left leads, right leads
+    n_imp_sites = 5 #### need to make code ok with this
+    imp_i = [n_leads[0]*2, n_leads[0]*2+1 ]; # should be list for generality
+    norbs = 2*(n_leads[0]+n_leads[1]+n_imp_sites); # num spin orbs
+    nelecs = (int(norbs/2),0);
+
+    # physical params, should always be floats
+    # generic siam params
+    V_leads = 1.0; # hopping
+    V_imp_leads = 0.4; # hopping
+    V_bias = 0; # wait till later to turn on current
+    # molecule specific params
+    D = 0.5
+    E = 0.1
+    alpha = 0.01
+    U = 1.0; # hubbard repulsion
+    mol_params = (D, E, alpha, U);
+    params = (V_leads, V_imp_leads, V_bias, mol_params);
+    
+    # get h1e, h2e, scf object
+    h1e, h2e, molobj, molscf = mol_model( n_leads, n_imp_sites, norbs, nelecs, params,verbose = verbose);
+    
+    # do fci directly from hams
+    direct_FCI(h1e, h2e, norbs, nelecs, verbose = verbose);
+    
+    # from scf instance, do FCI
+    E_fci, v_fci = scf_FCI(molobj, dotscf, verbose = verbose);
+    
+    # prepare in dynamic state by turning on bias
+    V_bias = -0.005;
+    h1e = start_bias(V_bias, imp_i,h1e);
+    if(verbose > 2):
+        print(h1e);
+        
+    # from fci gd state, do time propagation
+    timestop, deltat = 4, 0.1 # time prop params
+    timevals, energyvals, currentvals = td.TimeProp(h1e, h2e, v_fci, mol, dotscf, timestop, deltat, imp_i, V_imp_leads, kernel_mode = "plot", verbose = verbose);
+
+    # plot current vs time
+    plot.GenericPlot(timevals,currentvals,labels=["time","Current","td-FCI on SIAM"]);
+    
+    # write results to external file
+    # should also write code that plots from external file
+    
+    return; # end dot current wrapperß
+        
+    
 
 
     
