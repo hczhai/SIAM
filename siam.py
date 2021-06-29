@@ -563,14 +563,14 @@ def DotConductWrapper():
     imp_i = [n_leads[0]*2, n_leads[0]*2+1 ]; # should be list for generality
     norbs = 2*(n_leads[0]+n_leads[1]+n_imp_sites); # num spin orbs
     nelecs = (int(norbs/2),0);
-    timestop, deltat = 4, 0.1 # time prop params
+    timestop, deltat = 10.0, 0.01 # time prop params
 
     # physical params, should always be floats
     V_leads = 1.0; # hopping
     V_imp_leads = 0.4; # hopping
     V_bias = 0; # wait till later to turn on current
     V_gate = -0.5; # gate voltage on dot
-    murange = min(0,1.2*V_gate), max(0,1.2*V_gate); # which mu vals to sweep
+    murange = min(0,1.5*V_gate), max(0,1.5*V_gate); # which mu vals to sweep
     U = 1.0; # hubbard repulsion
 
     # hold results
@@ -579,7 +579,7 @@ def DotConductWrapper():
     currentvals = [];
 
 
-    for mu in np.linspace(murange[0], murange[1], 30):
+    for mu in np.linspace(murange[0], murange[1], 20):
 
         print("############################################\n\n mu = ",mu)
 
