@@ -476,9 +476,10 @@ def Test():
     ci = CIObject(fcivec, norb, nelec)
     kernel_mode = "plot"; # tell kernel whether to return density matrices or arrs for plotting
     t, E, J = kernel(kernel_mode, eris, ci, tf, dt, i_dot = idot, t_dot = td, verbose = verbose);
+    J = J*np.pi/abs(V);
     
     # plot current vs time
-    plot.GenericPlot(t,J,labels=["time","Current","td-FCI on SIAM"]);
+    plot.GenericPlot(t,J,labels=["time","Current*$\pi / V_{bias}$","td-FCI on SIAM"]);
 
     return; # end test
     

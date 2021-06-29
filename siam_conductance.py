@@ -28,6 +28,7 @@ siam.py
 import plot
 
 import numpy as np
+import matplotlib.pyplot as plt
 
 #################################################
 #### manipulate current data
@@ -44,18 +45,43 @@ def fourier_current():
 def Wrapper():
   
   # unpack data files
-  dataf = "";
-  timevals = np.loadtxt(dataf+"_time.txt");
-  currentvals = np.loadtxt(dataf+"_J.txt");
+  dataf = "DotConductWrapper";
+  timevals = np.loadtxt(dataf+"_t.txt");
+  Jvals = np.loadtxt(dataf+"_J.txt");
   muvals = np.loadtxt(dataf+"_mu.txt");
   
   # truncate for now
-  muvals = muvals[0];
+  muvals = muvals[0:2];
   
   # iter over mu vals to FT
-  for i, mu in enumerate(muvals)
+  for i, mu in enumerate(muvals):
+
+    Jw_vals = np.fft.fft2(np.array([timevals, Jvals]));
+
+  # test the fft2
+  numpts = 1000
+  x = np.linspace(0,10,numpts);
+  y = np.zeros(numpts);
+  square_freq = 1;
+  for i in range(numpts):
+    xval = x[i]
+    if((xval%square_freq) < square_freq/2):
+      y[i] = 100;
+  yFT = np.fft.fft2(np.array([x,y]));
+  plt.plot(x,y)
+  plt.plot(x,yFT[1])
+  plt.show();
   
   return; # end fourier current
+
+
+def MolCurrentPlot():
+
+  # plot data from txt
+  nleads = (2,2);
+  nimp = 5;
+  fname = "dat/MolCurrent_"+str(nleads[0])+"_"+str(nimp)+"_"+str(nleads[1])+".txt";
+  plot.PlotTxt2D(fname, labels = ["time", "Current*$\pi/V_{bias}$", "tdFCI: $d$ orbital, 2 leads on each side"])
 
 
 
@@ -64,4 +90,4 @@ def Wrapper():
 
 if __name__ == "__main__":
   
-  Wrapper();
+  MolCurrentPlot();

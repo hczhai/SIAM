@@ -7,6 +7,8 @@ import numpy as np
 from pyscf import fci, gto, ao2mo, scf
 import functools
 
+#np.set_printoptions(formatter={'float': lambda x: "{0:0.2f}".format(x)})
+
 ##################################################################################
 #### implement 3 lead siam with dot impurity, half filling, spin free method
 ### # spin free formalism means ham summed over spin, orbs are molecular orbs
@@ -58,7 +60,7 @@ def SpinFreeGdState():
     # do fci building from uhf # follows ruojing's implementation exactly
     Pa = np.zeros(norb) # guess density matrices
     Pa[::2] = 1.0
-    Pa = np.diag(Pa)
+    Pa = np.diag(Pa) # put vals of Pa on diagonal of matrix
     Pb = np.zeros(norb)
     Pb[1::2] = 1.0
     Pb = np.diag(Pb)
@@ -73,6 +75,7 @@ def SpinFreeGdState():
     mo_a = mf.mo_coeff[0]  # do fci on top of UHF
     mo_b = mf.mo_coeff[1]
     cisolver_uhf = fci.direct_uhf.FCISolver(mol)
+
     h1e_a = functools.reduce(np.dot, (mo_a.T, mf.get_hcore(), mo_a)) # break up hams by alpha, beta
     h1e_b = functools.reduce(np.dot, (mo_b.T, mf.get_hcore(), mo_b))
     g2e_aa = ao2mo.incore.general(mf._eri, (mo_a,)*4, compact=False)
@@ -142,30 +145,38 @@ def SpinBlindGdState():
 
     # do direct fci
     cisolver = fci.direct_spin1.FCI(); # needs to be spin1 not nosym
+    print(cisolver.spin);
+    cisolver.spin = nelec[0] - nelec[1]
+    print(cisolver.spin);
     edirect, vdirect = cisolver.kernel(h1e,g2e,norb,nelec);
     print("\n- direct fci, norbs = ",norb, ", nelecs = ",nelec);
     print("- E_gd = ", edirect,"\n");
 
     # do fci building from uhf # follows ruojing's implementation exactly
     Pa = np.zeros(norb) # guess density matrices
-    Pa[::2] = 1.0
+    Pa[::4] = 1.0
     Pa = np.diag(Pa)
     Pb = np.zeros(norb)
-    #Pb[1::2] = 1.0
+    Pb[2::4] = 1.0
     Pb = np.diag(Pb)
     mol = gto.M() # make molecule obj
     mol.incore_anyway = True
     mol.nelectron = sum(nelec)
+    mol.spin = nelec[0] - nelec[1];
     mf = scf.UHF(mol) # make scf obj
     mf.get_hcore = lambda *args:h1e # pass hamiltonians to scf
     mf.get_ovlp = lambda *args:np.eye(norb)
     mf._eri = ao2mo.restore(symmetry, g2e, norb)
-    mf.max_cycle = 500;
     mf.kernel(dm0=(Pa,Pb)) # UHF calc of energy
     mo_a = mf.mo_coeff[0]  # do fci on top of UHF
     mo_b = mf.mo_coeff[1]
-    cisolver_uhf = fci.direct_uhf.FCISolver(mol)
-    h1e_a = functools.reduce(np.dot, (mo_a.T, mf.get_hcore(), mo_a)) # break up hams by alpha, beta
+    for i in range(np.shape(mo_a)[0]):
+        for j in range(np.shape(mo_a)[0]):
+            if mo_a[i,j] != mo_b[i,j]:
+                print(i,j,mo_a[i,j],mo_b[i,j])
+
+    cisolver_uhf = fci.direct_uhf.FCISolver(mol);
+    h1e_a = functools.reduce(np.dot, (mo_a.T, mf.get_hcore(), mo_a))
     h1e_b = functools.reduce(np.dot, (mo_b.T, mf.get_hcore(), mo_b))
     g2e_aa = ao2mo.incore.general(mf._eri, (mo_a,)*4, compact=False)
     g2e_aa = g2e_aa.reshape(norb,norb,norb,norb)
@@ -188,6 +199,19 @@ def SpinBlindGdState():
 print("\nSpin blind calculation");
 SpinBlindGdState();
 
+
+
+
+
+
+
+
+
+
+
+#################################################################################################################################
+#### old stuff
+
 def TestRestore():
 
     for sym in [1,4,8]:
@@ -209,7 +233,7 @@ def TestRestore():
         g2e2 = ao2mo.restore(sym, g2e, norb);
         del g2e
 
-        try:
+        if(sym == 1):
             print(sym,np.shape(g2e2))
             for i1 in range(norb):
                 for i2 in range(norb):
@@ -217,19 +241,35 @@ def TestRestore():
                         for i4 in range(norb):
                             if g2e2[i1,i2,i3,i4] != 0:
                                 print("--> g2e2[",i1,i2,i3,i4,"] = ", g2e2[i1,i2,i3,i4]);
-        except:
-            try:
-                print(sym,np.shape(g2e2))
-                for i1 in range(np.shape(g2e2)[0]):
-                    for i2 in range(np.shape(g2e2)[1]):
-                        if g2e2[i1,i2] != 0:
-                            print("--> g2e2[",i1,i2,"] = ", g2e2[i1,i2]);
+        elif(sym == 4):
+            print(sym,np.shape(g2e2))
+            for i1 in range(np.shape(g2e2)[0]):
+                for i2 in range(np.shape(g2e2)[1]):
+                    if g2e2[i1,i2] != 0:
+                        print("--> g2e2[",i1,i2,"] = ", g2e2[i1,i2]);
 
-            except: 
-                print(sym,np.shape(g2e2))
-                for i1 in range(np.shape(g2e2)[0]):
-                    if g2e2[i1] != 0:
-                        print("--> g2e2[",i1,"] = ", g2e2[i1]);
+        elif(sym == 8):
+            print(sym,np.shape(g2e2))
+            for i1 in range(np.shape(g2e2)[0]):
+                if g2e2[i1] != 0:
+                    print("--> g2e2[",i1,"] = ", g2e2[i1]);
 
+TestRestore();
 
-#TestRestore();
+'''
+        #mo_a = np.array([ [0.56,0.0,-0.45,0.0,0.0,0.19,0.0,-0.67],
+                      #[0.0, 0.56, 0.0, -0.45, 0.0, 0.19,0.0,-0.67],
+                    #[0.65,0.0,-0.27,0.0,-.04,0.0,0.71,0.0]]);
+    new_mo_a = np.zeros_like(mo_a);
+    for i in range(np.shape(mo_a)[0]):
+        for j in range(np.shape(mo_a)[1]):
+            if (j > 3):
+                if(j == 4 or j==6): # move right one
+                    new_mo_a[i,j+1] = mo_a[i,j]
+                else: # move left one
+                    new_mo_a[i,j-1] = mo_a[i,j]
+            else:
+                new_mo_a[i,j] = mo_a[i,j]
+    mo_a = np.copy(new_mo_a);
+    mo_b = np.copy(new_mo_a);
+'''

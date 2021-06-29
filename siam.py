@@ -483,7 +483,7 @@ def MolCurrentWrapper():
     # top level inputs
     verbose = 5; # passed along throughout to control printing
     np.set_printoptions(suppress=True); # no sci notation printing
-    quick_run = True;
+    quick_run = False;
 
     # set up the hamiltonian
     if quick_run: # time optimized inputs
@@ -493,7 +493,7 @@ def MolCurrentWrapper():
         norbs = 2*(n_leads[0]+n_leads[1]+n_imp_sites); # num spin orbs
         nelecs = (2,0);
     else:
-        n_leads = (3,3); # left leads, right leads
+        n_leads = (2,2); # left leads, right leads
         n_imp_sites = 5 #### need to make code ok with this
         imp_i = [n_leads[0]*2, n_leads[0]*2+1 ]; # should be list for generality
         norbs = 2*(n_leads[0]+n_leads[1]+n_imp_sites); # num spin orbs
@@ -517,7 +517,8 @@ def MolCurrentWrapper():
     h1e, h2e, molobj, molscf = mol_model( n_leads, n_imp_sites, norbs, nelecs, params,verbose = verbose);
     
     # do fci directly from hams
-    direct_FCI(h1e, h2e, norbs, nelecs, verbose = verbose);
+    if quick_run: # this is just a check and we get nothing out of it
+        direct_FCI(h1e, h2e, norbs, nelecs, verbose = verbose);
     
     # from scf instance, do FCI
     E_fci, v_fci = scf_FCI(molobj, molscf, verbose = verbose);
@@ -532,7 +533,7 @@ def MolCurrentWrapper():
     if quick_run: # short time interval
         timestop, deltat = 2, 0.1 # time prop params
     else:
-        timestop, deltat = 10, 0.1;
+        timestop, deltat = 20, 0.1;
     timevals, energyvals, currentvals = td.TimeProp(h1e, h2e, v_fci, molobj, molscf, timestop, deltat, imp_i, V_imp_leads, kernel_mode = "plot", verbose = verbose);
 
     # renormalize current
@@ -543,7 +544,7 @@ def MolCurrentWrapper():
         plot.GenericPlot(timevals,currentvals,labels=["time","Current*$\pi / V_{bias}$","td-FCI through d orbital impurity"]);
     
     # write results to external file
-    folderstring = "plots/"
+    folderstring = "dat/"
     if quick_run: folderstring += "quick/"
     fstring = folderstring+ "MolCurrent_"+str(n_leads[0])+"_"+str(n_imp_sites)+"_"+str(n_leads[1])+".txt";
     hstring = time.asctime();
@@ -616,6 +617,107 @@ def DotConductWrapper():
         currentvals.append(current);
 
     # write to ext file
+    fstring = "DotConduct_t.txt"
+    np.savetxt(fstring, timevals );
+    fstring = "DotConduct_J.txt"
+    np.savetxt(fstring, currentvals);
+    fstring = "DotConduct_mu.txt"
+    np.savetxt(fstring, muvals);
+
+    return; # end conductance wrapper
+
+
+def MolConductWrapper():
+    '''
+    Extract conductance from multiple current runs at different chemical potentials
+    '''
+
+    # top level inputs
+    verbose = 5; # passed along throughout to control printing
+    np.set_printoptions(suppress=True); # no sci notatation printing
+
+    # set up the hamiltonian
+    n_leads = (2,2); # left leads, right leads
+    n_imp_sites = 1 # code not flexible enough to change this
+    imp_i = [n_leads[0]*2, n_leads[0]*2+1 ]; # should be list for generality
+    norbs = 2*(n_leads[0]+n_leads[1]+n_imp_sites); # num spin orbs
+    nelecs = (int(norbs/2),0);
+    timestop, deltat = 10.0, 0.01 # time prop params
+
+    # physical params, should always be floats
+    # generic siam params
+    V_leads = 1.0; # hopping
+    V_imp_leads = 0.4; # hopping
+    V_bias = 0; # wait till later to turn on current
+    # molecule specific params
+    D = 0.5
+    E = 0.1
+    alpha = 0.01
+    U = 1.0; # hubbard repulsion
+    murange = min(0,1.5*U), max(0,1.5*U); # which mu vals to sweep
+
+    for mu in np.linspace(murange[0], murange[1], 20):
+
+        print("############################################\n\n mu = ",mu)
+
+        # get h1e, h2e, and scf implementation of SIAM with dot as impurity
+        params = V_leads, V_imp_leads, V_bias, mu, V_gate, U;
+        h1e, h2e, mol, dotscf = dot_model(n_leads, n_imp_sites, norbs, nelecs, params, verbose = verbose);
+
+        # from scf instance, do FCI
+        E_fci, v_fci = scf_FCI(mol, dotscf, verbose = verbose);
+
+        # prepare in dynamic state by turning on bias
+        V_bias = -0.005;
+        h1e = start_bias(V_bias, imp_i,h1e);
+        if(verbose > 2):
+            print(h1e)
+
+        # from fci gd state, do time propagation
+        time, energy, current = td.TimeProp(h1e, h2e, v_fci, mol, dotscf, timestop, deltat, imp_i, V_imp_leads, kernel_mode = "plot", verbose = verbose);
+
+        # store results
+        muvals.append(mu);
+        timevals.append(time);
+        currentvals.append(current);
+
+    # write to ext file
+    fstring = "DotConductWrapper_t.txt"
+    np.savetxt(fstring, timevals );
+    fstring = "DotConductWrapper_J.txt"
+    np.savetxt(fstring, currentvals);
+    fstring = "DotConductWrapper_mu.txt"
+    np.savetxt(fstring, muvals);
+
+    return; # end conductance wrapper
+
+
+    for mu in np.linspace(murange[0], murange[1], 20):
+
+        print("############################################\n\n mu = ",mu)
+
+        # get h1e, h2e, and scf implementation of SIAM with dot as impurity
+        params = V_leads, V_imp_leads, V_bias, mu, V_gate, U;
+        h1e, h2e, mol, dotscf = dot_model(n_leads, n_imp_sites, norbs, nelecs, params, verbose = verbose);
+
+        # from scf instance, do FCI
+        E_fci, v_fci = scf_FCI(mol, dotscf, verbose = verbose);
+
+        # prepare in dynamic state by turning on bias
+        V_bias = -0.005;
+        h1e = start_bias(V_bias, imp_i,h1e);
+        if(verbose > 2):
+            print(h1e)
+
+        # from fci gd state, do time propagation
+        time, energy, current = td.TimeProp(h1e, h2e, v_fci, mol, dotscf, timestop, deltat, imp_i, V_imp_leads, kernel_mode = "plot", verbose = verbose);
+
+        # store results
+        muvals.append(mu);
+        timevals.append(time);
+        currentvals.append(current);
+
+    # write to ext file
     fstring = "DotConductWrapper_t.txt"
     np.savetxt(fstring, timevals );
     fstring = "DotConductWrapper_J.txt"
@@ -635,6 +737,6 @@ def DotConductWrapper():
 if(__name__ == "__main__"):
 
     # test machinery on garnet's simple dot model
-    DotConductWrapper();
+    MolCurrentWrapper();
 
 

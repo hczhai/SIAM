@@ -7,12 +7,58 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pyscf as ps
 
+# format matplotlib globally
+
+###############################################################################
+#### plotting from txt file
+
+def PlotTxt2D(fname, handles=[""], styles = [""], labels=["x","y",""]):
+    '''
+    Take 2D np array stored in txt file and plot x v y
+    '''
+
+    # for debugging
+    cfname = "PlotTxt2D";
+
+    # unpack data
+    dat = np.loadtxt(fname);
+    x, y = dat[0], dat[1];
+
+    # check inputs
+    if( type(x) != type(np.zeros(1) ) ): # check that x is an np array
+        raise PlotTypeError(cfname+" 1st arg must be np array.\n");
+    legend=True; # decide whether to implement legend
+    if(handles==[""]): # no handles for legend provided
+        legend = False;
+    if(styles==[]): # no plot style kwargs provided
+        pass;
+        
+    # construct axes
+    fig, ax = plt.subplots();
+    
+    plt.plot(x, y, styles[0], label = handles[0]);
+
+    # format and show
+    ax.set(xlabel = labels[0], ylabel = labels[1], title=labels[2]);
+    if(legend):
+        ax.legend();
+    plt.show();
+
+    return; # end plot text 2d
+
+
+
+###############################################################################
+#### plotting directly
+
 def GenericPlot(x,y, handles=[], styles = [], labels=["x","y",""]):
     '''
+    Quick x vs y plot
+    y can be > 1d and will plot seperate lines
     '''
     
     # for debugging
-    fname = "GenericPlot";
+    cfname = "GenericPlot";
     
     # screen depth of y
     depth = np.shape(y)[0];
@@ -22,7 +68,7 @@ def GenericPlot(x,y, handles=[], styles = [], labels=["x","y",""]):
     
     # check inputs
     if( type(x) != type(np.zeros(1) ) ): # check that x is an np array
-        raise PlotTypeError(fname+" 1st arg must be np array.\n");
+        raise PlotTypeError(cfname+" 1st arg must be np array.\n");
     legend=True;
     if(handles==[]): # no handles for legend provided
         handles = np.full(depth, "");
@@ -43,6 +89,8 @@ def GenericPlot(x,y, handles=[], styles = [], labels=["x","y",""]):
     if(legend):
         ax.legend();
     plt.show();
+
+    return; # end generic plot
 
 
 def BasisPlot(basisdict, labels, comparediff=False):
