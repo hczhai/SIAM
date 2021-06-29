@@ -4,7 +4,15 @@ M^2QM at UF
 June 2021
 
 Template:
-Use FCI exact diag to solve single impurity anderson model (siam)
+Use direct_uhf FCI solver to solve single impurity anderson model (siam)
+Then bias leads and do time dependent fci following Ruojing's method
+
+pyscf formalism:
+- h1e_pq = (p|h|q) p,q spatial orbitals
+- h2e_pqrs = (pq|h|rs) chemists notation, <pr|h|qs> physicists notation
+- all direct_x solvers assume 4fold symmetry from sum_{pqrs} (don't need to do manually)
+- 1/2 out front all 2e terms, so contributions are written as 1/2(2*actual ham term)
+- hermicity: h_pqrs = h_qpsr can absorb factor of 1/2
 
 pyscf/fci module:
 - configuration interaction solvers of form fci.direct_x.FCI()
@@ -13,12 +21,15 @@ pyscf/fci module:
 - direct_nosym assumes only h_pqrs = h_rspq (switch r1, r2 in coulomb integral)
 - direct_spin1 assumes h_pqrs = h_qprs = h_pqsr = h_qpsr
 
-Formalism:
-- h1e_pq = (p|h|q) p,q spatial orbitals
-- h2e_pqrs = (pq|h|rs) chemists notation, <pr|h|qs> physicists notation
-- all direct_x solvers assume 4fold symmetry from sum_{pqrs} (don't need to do manually)
-- 1/2 out front all 2e terms, so contributions are written as 1/2(2*actual ham term)
-- hermicity: h_pqrs = h_qpsr can absorb factor of 1/2
+td fci module:
+- have to run thru direct_uhf solver
+- I use all spin up formalism: only alpha electrons input, only h1e_a and g1e_aa matter to solver
+- benchmarked with dot impurity model from ruojings_td_fci.py
+- TimeProp is main driver
+- turn on bias in leads, pass hamiltonians, molecule, and scf object to time prop
+- outputs current and energy vs time
+
+
 '''
 
 import molecule_5level
