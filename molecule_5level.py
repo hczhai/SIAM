@@ -143,6 +143,7 @@ def Main():
     # top level inputs
     verbose = 2;
     np.set_printoptions(suppress=True); # no sci notatation printing
+    np.set_printoptions(precision = 4)
     
     #### solve with spin blind method
     norbs = 10; # spin orbs, d shell
@@ -150,14 +151,14 @@ def Main():
     nroots = 45; # full 8e, 10 orb basis
 
     # parameters in the hamiltonian
-    alpha = 0.01;
+    alpha = 0.1;
     D = 100.0;
     E = 10.0;
     U = 1000.0;
     E_shift = (nelecs[0] - 2)/2 *U - 18*D  # num paired e's/2 *U
     if(verbose):
         print("\nInputs:","\nalpha = ",alpha,"\nD = ",D,"\nE = ",E,"\nU = ",U);
-        print("E shift = ",E_shift,"\nE/U = ",E/U,"\nalpha/D",alpha/D,"\nalpha/(E^2/U) = ", alpha*U/(E*E) );
+        #print("E shift = ",E_shift,"\nE/U = ",E/U,"\nalpha/D",alpha/D,"\nalpha/(4*E^2/U) = ", alpha*U/(4*E*E),"\nalpha^2/(4*E^2/U) = ", alpha*alpha*U/(4*E*E)  );
 
     #### get analytical energies
 
@@ -168,17 +169,18 @@ def Main():
     # sort and print
     if(verbose):
         print("\n0. Analytical solution from l=1 case")
-        print("Expected energies as E/U, alpha/(E^2/U), alpha/D --> 0:\n- Singlet energy = ", E_S, "\n- T0 energy = ", E_T0, "\n- T+/- energy = ", alpha*alpha/(D+alpha) );
+        print("- Expected energies as E/U, alpha/D --> 0:\n- Singlet energy = ", E_S, "\n- T0 energy = ", alpha*alpha/(4*E*E/U), "\n- T+/- energy = ", alpha*alpha/(D+alpha) );
+        print("- Eff. Ham. energies = ",E_S, E_T0);
+        print("- Expected coeff correction = ", alpha/(np.sqrt(2)*4*E*E/U)); 
 
     # implement h1e, h2e
     h1e_mat = h1e(norbs, D, E, alpha);
     h2e_mat = h2e(norbs, U);
 
-
     # pass ham to FCI solver kernel to diagonalize
     cisolver = fci.direct_nosym.FCI()
     myroots = 45; # don't print out 45
-    range_interest = 5,12
+    range_interest = 0,12
     E_fci, v_fci = cisolver.kernel(h1e_mat, h2e_mat, norbs, nelecs, nroots = 45);
     E_fci.sort();
     spinexps = utils.Spin_exp(v_fci,norbs,nelecs); # evals <S> using fci vecs
@@ -187,11 +189,11 @@ def Main():
         for i in range(range_interest[0],range_interest[1]+1):
             print("- E = ",E_fci[i] - E_shift, ", <S^2> = ",np.linalg.norm(spinexps[i]),", <S_z> = ", spinexps[i][2]);
             if(verbose > 2):
-                print("    ",v_fci[i]);
+                print("    ",v_fci[i].T);
         
     # plot DOS
     sigma = 0.05 # gaussian smearing
-    plot_DOS(E_fci,sigma, verbose = verbose);
+    #plot_DOS(E_fci,sigma, verbose = verbose);
     
     
 ##########################################

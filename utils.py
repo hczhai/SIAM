@@ -35,7 +35,6 @@ def Spin_exp(vs, norbs, nelecs):
     for i in range(0,norbs,2):
         Sy[i,i+1] = -1/2;
         Sy[i+1,i] = 1/2;
-    print(Sy)
     Sz = np.zeros((norbs,norbs));
     for i in range(0,norbs,2):
         Sz[i,i] = 1/2;

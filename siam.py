@@ -264,7 +264,7 @@ def dot_model(nleads, nsites, norbs, nelecs, physical_params,verbose = 0):
 
     # make, combine all 1e hamiltonians
     hl = h_leads(V_leads, nleads); # leads only
-    hb = h_chem(mu, nleads);   # 0 chemical potential
+    hb = h_chem(mu, nleads);   # can addjust lead chemical potential
     hdl = h_imp_leads(V_imp_leads, nsites); # leads talk to dot
     hd = h_dot_1e(V_gate, nsites); # dot
     h1e = stitch_h1e(hd, hdl, hl, hb, nleads, verbose = verbose); # syntax is imp, imp-leads, leads, bias
@@ -304,8 +304,21 @@ def dot_model(nleads, nsites, norbs, nelecs, physical_params,verbose = 0):
 def mol_model(nleads, nsites, norbs, nelecs, physical_params,verbose = 0):
     '''
     Run whole SIAM machinery, with impurity Silas' molecule
-    returns np arrays: 1e hamiltonian, 2e hamiltonian, and scf object
+    returns np arrays: 1e hamiltonian, 2e hamiltonian, molecule obj, and scf object
+
+    Args:
+    - nleads, tuple of ints, left lead sites, right lead sites
+    - nsites, int, num imp sites
+    - norbs, num spin orbs (= 2*(nsites + nleads[0]+nleads[1]))
+    - nelecs, tuple of up and down e's, 2nd must always be zero in spin up formalism
+    - physical params, tuple of:
+        lead hopping, imp hopping, bias voltage, chem potential, tuple of mol params specific to Silas' module (see molecule_5level.py)
     '''
+
+    # checks
+    assert norbs == 2*(nsites + nleads[0]+nleads[1]);
+    assert nelecs[1] == 0;
+    assert nelecs[0] <= norbs;
 
     # unpack inputs
     V_leads, V_imp_leads, V_bias, mu, mol_params = physical_params;
@@ -318,10 +331,10 @@ def mol_model(nleads, nsites, norbs, nelecs, physical_params,verbose = 0):
 
     # make, combine all 1e hamiltonians
     hl = h_leads(V_leads, nleads); # leads only
-    hb = h_chem(mu, nleads);   # bias leads only
+    hb = h_chem(mu, nleads);   # chem potential on leads
     hdl = h_imp_leads(V_imp_leads, nsites); # leads talk to dot
     hd = molecule_5level.h1e(nsites*2,D,E,alpha); # Silas' model
-    h1e = stitch_h1e(hd, hdl, hl, hb, nleads, verbose = verbose); # syntax is imp, imp-leads, leads, bias
+    h1e = stitch_h1e(hd, hdl, hl, hb, nleads, verbose = verbose); # syntax is imp, imp-leads, leads, bias/chem potential
     if(verbose > 2):
         print("\n- Full one electron hamiltonian = \n",h1e);
         
@@ -360,13 +373,13 @@ def mol_model(nleads, nsites, norbs, nelecs, physical_params,verbose = 0):
 #####################################
 #### get energies
 
-def direct_FCI(h1e, h2e, norbs, nelecs, verbose = 0):
+def direct_FCI(h1e, h2e, norbs, nelecs, nroots = 1, verbose = 0):
     '''
     solve gd state with direct FCI
     '''
     
     cisolver = fci.direct_spin1.FCI();
-    E_fci, v_fci = cisolver.kernel(h1e, h2e, norbs, nelecs);
+    E_fci, v_fci = cisolver.kernel(h1e, h2e, norbs, nelecs, nroots = nroots);
     if(verbose):
         print("\nDirect FCI energies, zero bias, norbs = ",norbs,", nelecs = ",nelecs);
         print("- E = ",E_fci);
@@ -374,7 +387,7 @@ def direct_FCI(h1e, h2e, norbs, nelecs, verbose = 0):
     return E_fci, v_fci;
 
 
-def scf_FCI(mol, scf_inst, verbose = 0):
+def scf_FCI(mol, scf_inst, nroots = 1, verbose = 0):
     '''
     '''
 
@@ -404,7 +417,7 @@ def scf_FCI(mol, scf_inst, verbose = 0):
     h2e_tup = (h2e_aa, h2e_ab, h2e_bb)
     
     # run kernel to get exact energy
-    E_fci, v_fci = cisolver.kernel(h1e_tup, h2e_tup, norbs, nelecs)
+    E_fci, v_fci = cisolver.kernel(h1e_tup, h2e_tup, norbs, nelecs, nroots = nroots)
     if(verbose):
         print("\nFCI from UHF, zero bias, norbs = ",norbs,", nelecs = ",nelecs);
         print("- E = ", E_fci);
@@ -467,7 +480,7 @@ def DotCurrentWrapper():
     currentvals = currentvals*np.pi/abs(V_bias);
 
     # plot current vs time
-    plot.GenericPlot(timevals,currentvals,labels=["time","Current*$\pi / V_{bias}$","td-FCI on SIAM (All spin up formalism)"]);
+    plot.GenericPlot(timevals,currentvals,labels=["time","Current*$\pi / |V_{bias}|$","td-FCI on SIAM (All spin up formalism)"]);
     
     # write results to external file
     # should also write code that plots from external file
@@ -533,7 +546,7 @@ def MolCurrentWrapper():
     if quick_run: # short time interval
         timestop, deltat = 2, 0.1 # time prop params
     else:
-        timestop, deltat = 20, 0.1;
+        timestop, deltat = 5, 0.01;
     timevals, energyvals, currentvals = td.TimeProp(h1e, h2e, v_fci, molobj, molscf, timestop, deltat, imp_i, V_imp_leads, kernel_mode = "plot", verbose = verbose);
 
     # renormalize current
@@ -546,7 +559,98 @@ def MolCurrentWrapper():
     # write results to external file
     folderstring = "dat/"
     if quick_run: folderstring += "quick/"
-    fstring = folderstring+ "MolCurrent_"+str(n_leads[0])+"_"+str(n_imp_sites)+"_"+str(n_leads[1])+".txt";
+    fstring = folderstring+ "MolCurrent_fine_"+str(n_leads[0])+"_"+str(n_imp_sites)+"_"+str(n_leads[1])+".txt";
+    hstring = time.asctime();
+    hstring += "\nSpin blind formalism, bias turned on"
+    hstring += "\nInputs:\n- Num. leads = "+str(n_leads)+"\n- Num. impurity sites = "+str(n_imp_sites)+"\n- nelecs = "+str(nelecs)+"\n- V_leads = "+str(V_leads)+"\n- V_imp_leads = "+str(V_imp_leads)+"\n- V_bias = "+str(V_bias)+"\n- D = "+str(D)+"\n- E = "+str(E)+ "\n- alpha = "+str(alpha) +"\n- U = "+str(U)+ "\n- E/U = "+str(E/U)+"\n- alpha/D = "+str(alpha/D)+"\n- alpha/(E^2/U) = "+str(alpha*U/(E*E))+"\n- alpha^2/(E^2/U) = "+str(alpha*alpha**U/(E*E));
+    np.savetxt(fstring, np.array([timevals, currentvals]), header = hstring);
+
+    # plot from external file
+    if quick_run:
+        data = np.loadtxt(fstring);
+        plot.GenericPlot(data[0], data[1],labels=["time","Current*$\pi / |V_{bias}$|","td-FCI through d orbital impurity"]);
+    
+    return; # end mol current wrapper
+
+
+def DebugMolCurrent():
+    '''
+    Same as DotCurrentWrapper but impurity is Silas' molecule model
+    '''
+    
+    # top level inputs
+    verbose = 5; # passed along throughout to control printing
+    np.set_printoptions(suppress=True); # no sci notation printing
+    quick_run = False;
+
+    # set up the hamiltonian
+    n_leads = (1,1); # left leads, right leads
+    n_imp_sites = 5 #### need to make code ok with this
+    imp_i = [n_leads[0]*2, n_leads[0]*2+1 ]; # should be list for generality
+    norbs = 2*(n_leads[0]+n_leads[1]+n_imp_sites); # num spin orbs
+    nelecs = (8,0);
+
+    # physical params, should always be floats
+    # generic siam params
+    V_leads = 0.0; # turn off lead stuff completely to check
+    V_imp_leads = 0.0; 
+    V_bias = 0; 
+    mu = 0; # to keep e's off lead
+    # molecule specific params
+    D = 100
+    E = 10
+    alpha = 0.1
+    U = 1000.0; # hubbard repulsion
+    mol_params = (D, E, alpha, U);
+    params = (V_leads, V_imp_leads, V_bias, mu, mol_params);
+    
+    # get h1e, h2e, scf object
+    h1e, h2e, molobj, molscf = mol_model( n_leads, n_imp_sites, norbs, nelecs, params,verbose = verbose);
+    
+    # do fci directly from hams
+    direct_FCI(h1e, h2e, norbs, nelecs, verbose = verbose);
+    
+    # from scf instance, do FCI
+    E_fci, v_fci = scf_FCI(molobj, molscf, nroots = 60, verbose = verbose);
+    E_shift = (nelecs[0] - 2)/2 *U - 18*D  # num paired e's/2 *U
+    print(E_fci - E_shift);
+
+    # truncate h's and do direct fci
+    trunch1e = np.zeros((10,10));
+    trunch2e = np.zeros((10,10,10,10));
+    for i in range(np.shape(h1e)[0]):
+        for j in range(np.shape(h1e)[1]):
+            if( i > 1 and i < np.shape(h1e)[0]-2 ):
+                if( j > 1 and j < np.shape(h1e)[0]-2 ):
+                    trunch1e[i-2,j-2] = h1e[i,j]
+    print("Truncated run, U=0");
+    print(h1e);
+    print(trunch1e)
+    direct_FCI(trunch1e, trunch2e, 10, nelecs, nroots = 12, verbose = verbose);
+
+
+    return;
+    
+    # prepare in dynamic state by turning on bias
+    V_bias = -0.00;
+    h1e = start_bias(V_bias, imp_i,h1e);
+    if(verbose > 2):
+        print(h1e);
+        
+    timestop, deltat = 2, 0.01 # time prop params
+    timevals, energyvals, currentvals = td.TimeProp(h1e, h2e, v_fci, molobj, molscf, timestop, deltat, imp_i, V_imp_leads, kernel_mode = "plot", verbose = verbose);
+
+    # renormalize current
+    currentvals = currentvals*np.pi/abs(V_bias);
+
+    # plot current vs time
+    if quick_run: # long runs just write data
+        plot.GenericPlot(timevals,currentvals,labels=["time","Current*$\pi / |V_{bias}$|","td-FCI through d orbital impurity"]);
+    
+    # write results to external file
+    folderstring = "dat/"
+    if quick_run: folderstring += "quick/"
+    fstring = folderstring+ "MolCurrent_fine_"+str(n_leads[0])+"_"+str(n_imp_sites)+"_"+str(n_leads[1])+".txt";
     hstring = time.asctime();
     hstring += "\nSpin blind formalism, bias turned on"
     hstring += "\nInputs:\n- Num. leads = "+str(n_leads)+"\n- Num. impurity sites = "+str(n_imp_sites)+"\n- nelecs = "+str(nelecs)+"\n- V_leads = "+str(V_leads)+"\n- V_imp_leads = "+str(V_imp_leads)+"\n- V_bias = "+str(V_bias)+"\n- D = "+str(D)+"\n- E = "+str(E)+ "\n- alpha = "+str(alpha) +"\n- U = "+str(U)+ "\n- E/U = "+str(E/U)+"\n- alpha/D = "+str(alpha/D)+"\n- alpha/(E^2/U) = "+str(alpha*U/(E*E))+"\n- alpha^2/(E^2/U) = "+str(alpha*alpha**U/(E*E));
@@ -558,6 +662,7 @@ def MolCurrentWrapper():
         plot.GenericPlot(data[0], data[1],labels=["time","Current*$\pi / V_{bias}$","td-FCI through d orbital impurity"]);
     
     return; # end mol current wrapper
+
 
 
 def DotConductWrapper():
@@ -630,6 +735,8 @@ def DotConductWrapper():
 def MolConductWrapper():
     '''
     Extract conductance from multiple current runs at different chemical potentials
+
+    NOT ready
     '''
 
     # top level inputs
@@ -736,7 +843,9 @@ def MolConductWrapper():
 
 if(__name__ == "__main__"):
 
+    DebugMolCurrent();
+
     # test machinery on garnet's simple dot model
-    MolCurrentWrapper();
+    #MolCurrentWrapper();
 
 
