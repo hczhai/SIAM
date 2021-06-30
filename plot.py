@@ -44,7 +44,7 @@ def PlotTxt2D(fname, handles=[""], styles = [""], labels=["x","y",""]):
         ax.legend();
     plt.show();
 
-    return; # end plot text 2d
+    return x, y; # end plot text 2d
 
 
 
@@ -91,6 +91,19 @@ def GenericPlot(x,y, handles=[], styles = [], labels=["x","y",""]):
     plt.show();
 
     return; # end generic plot
+
+
+def ESpectrumPlot(Evals, title = ""):
+
+    x = np.array([0,1]);
+    y = np.zeros((len(Evals), 2));
+    for i in range(len(Evals)):
+        E = Evals[i];
+        y[i,0] = E;
+        y[i,1] = E;
+
+    #GenericPlot(x,y,labels = ["","Energy", title+" Energy Spectrum"]);
+    return x,y;
 
 
 def BasisPlot(basisdict, labels, comparediff=False):
@@ -200,3 +213,17 @@ def CorrelPlot(datadict, correl_key, labels):
     
     #show
     plt.show();
+
+
+###################################################################################
+#### exec code
+
+if __name__ == "__main__":
+
+    Espec = [-121.99, -121.99, -121.99, -121.99, -81.99, -81.99,-81.99,-81.99,-1.622, 0.00007, 0.00007, 0.0237 ]
+    labels = np.full(len(Espec), "");
+    labels[8] = "S";
+    labels[9] = "T+"
+    labels[10] = "T-"
+    labels[11] = "T0"
+    ESpectrumPlot(Espec);

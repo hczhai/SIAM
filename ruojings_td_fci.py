@@ -4,7 +4,7 @@ Author: Ruojing Peng
 '''
 import plot
 
-from pyscf import lib, fci, cc
+from pyscf import lib, fci, scf, gto, ao2mo
 from pyscf.fci import direct_uhf, direct_nosym, cistring
 import numpy as np
 einsum = lib.einsum
@@ -58,6 +58,16 @@ def compute_update(ci, eris, h, RK=4):
 #### measure observables from density matrices
 
 def compute_energy(d1, d2, eris, time=None):
+    '''
+    Ruojing's code
+    Computes <H> by
+        1) getting h1e, h2e from eris object
+        2) contracting with density matrix
+
+    I overload this function by passing it eris w/ arb op x stored
+    then ruojings code gets <x> for any eris operator x
+    '''
+
     h1e_a, h1e_b = eris.h1e
     g2e_aa, g2e_ab, g2e_bb = eris.g2e
     h1e_a = np.array(h1e_a,dtype=complex)
@@ -128,12 +138,14 @@ def compute_current_spinblind(dot_i,t,d1,d2,mocoeffs,norbs):
 
     print(dot_i)
 
-    # operator
+    # current operator (1e only)
     J = np.zeros((norbs,norbs));
-    for doti in range(dot_i[0], dot_i[-1], 2):
-        J[doti - 2,doti] = -t/2;  # up spin to left up spin
+
+    # iter over dot sites to fill current op
+    for doti in range(dot_i[0], dot_i[-1]+1, 2): # doti is up, doti+1 is down # +1 because dot_i is incluse but range is exclusive
+        J[doti - 2,doti] = -t/2;  # dot up spin to left up spin # left moving is -
         J[doti+1-2,doti+1] = -t/2; # down to down
-        J[doti,doti - 2] =  t/2; # hc
+        J[doti,doti - 2] =  t/2; # left up spin to dot up spin # hc of 2 above # right moving is +
         J[doti+1, doti+1-2] = t/2; # hc
         J[doti + 2,doti] = t/2;  # up spin to right up spin
         J[doti+1+2,doti+1] = t/2; # down to down
@@ -142,7 +154,7 @@ def compute_current_spinblind(dot_i,t,d1,d2,mocoeffs,norbs):
     
     # have to store this operator as an eris object
     J_eris = ERIs(J, np.zeros((norbs,norbs,norbs,norbs)), mocoeffs)
-    J_val = compute_energy(d1,d2, J_eris);
+    J_val = compute_energy(d1,d2, J_eris); # this func of ruojings gets <x> for whatever operator x is stored in eris arg
     J_val = np.imag(J_val);
     return J_val;
 
@@ -355,6 +367,9 @@ def TimeProp(h1e, h2e, fcivec, mol,  scf_inst, time_stop, time_step, i_dot, t_do
     '''
 
     # assertion statements to check inputs
+    assert( np.shape(h1e)[0] == np.shape(h2e)[0]);
+    assert( type(mol) == type(gto.M() ) );
+    assert( type(scf_inst) == type(scf.UHF(mol) ) );
     assert(type(i_dot) == type([]) );
 
     # unpack
@@ -383,14 +398,13 @@ def Test():
     '''
     
     import functools
-    from pyscf import gto,scf,ao2mo
         
     # top level inputs
-    verbose = 3;
+    verbose = 5;
 
     # physical inputs
-    ll = 2 # number of left leads
-    lr = 1 # number of right leads
+    ll = 3 # number of left leads
+    lr = 2 # number of right leads
     t = 1.0 # lead hopping
     td = 0.4 # dot-lead hopping
     U = 1.0 # dot interaction
@@ -470,16 +484,19 @@ def Test():
         h1e[i,i] = V/2
     for i in range(idot+1,norb):
         h1e[i,i] = -V/2
-    tf = 4.0
+    tf = 10.0
     dt = 0.01
     eris = ERIs(h1e, g2e, mf.mo_coeff) # diff h1e than in uhf, thus time dependence
     ci = CIObject(fcivec, norb, nelec)
     kernel_mode = "plot"; # tell kernel whether to return density matrices or arrs for plotting
     t, E, J = kernel(kernel_mode, eris, ci, tf, dt, i_dot = idot, t_dot = td, verbose = verbose);
+
+    # normalize vals
     J = J*np.pi/abs(V);
+    E = E/E[0];
     
     # plot current vs time
-    plot.GenericPlot(t,J,labels=["time","Current*$\pi / V_{bias}$","td-FCI on SIAM"]);
+    plot.GenericPlot(t,[J, E],labels=["time (dt = "+str(dt)+")","Current*$\pi / |V_{bias}|$","td-FCI through dot impurity"], handles = ["current", "gd state E/$E_{initial}$"]);
 
     return; # end test
     
