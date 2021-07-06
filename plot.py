@@ -12,7 +12,7 @@ import pyscf as ps
 ###############################################################################
 #### plotting from txt file
 
-def PlotTxt2D(fname, handles=[""], styles = [""], labels=["x","y",""]):
+def PlotTxt2D(fname, show = False, handles=[""], styles = [""], labels=["x","y",""]):
     '''
     Take 2D np array stored in txt file and plot x v y
     '''
@@ -42,7 +42,8 @@ def PlotTxt2D(fname, handles=[""], styles = [""], labels=["x","y",""]):
     ax.set(xlabel = labels[0], ylabel = labels[1], title=labels[2]);
     if(legend):
         ax.legend();
-    plt.show();
+        
+    if show: plt.show();
 
     return x, y; # end plot text 2d
 

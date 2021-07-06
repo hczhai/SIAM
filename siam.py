@@ -326,8 +326,10 @@ def mol_model(nleads, nsites, norbs, nelecs, physical_params,verbose = 0):
     D, E, alpha, U = mol_params;
 
     if(verbose): # print inputs
-        print("\nInputs:\n- Num. leads = ",nleads,"\n- Num. impurity sites = ",nsites,"\n- nelecs = ",nelecs,"\n- V_leads = ",V_leads,"\n- V_imp_leads = ",V_imp_leads,"\n- V_bias = ",V_bias,"\n- mu = ",mu,"\n- D = ",D,"\n- E = ",E, "\n- alpha = ",alpha, "\n- U = ",U, "\n- E/U = ",E/U,"\n- alpha/D = ",alpha/D,"\n- alpha/(E^2/U) = ",alpha*U/(E*E),"\n- alpha^2/(E^2/U) = ",alpha*alpha**U/(E*E) );
-
+        try:
+            print("\nInputs:\n- Num. leads = ",nleads,"\n- Num. impurity sites = ",nsites,"\n- nelecs = ",nelecs,"\n- V_leads = ",V_leads,"\n- V_imp_leads = ",V_imp_leads,"\n- V_bias = ",V_bias,"\n- mu = ",mu,"\n- D = ",D,"\n- E = ",E, "\n- alpha = ",alpha, "\n- U = ",U, "\n- E/U = ",E/U,"\n- alpha/D = ",alpha/D,"\n- alpha/(E^2/U) = ",alpha*U/(E*E),"\n- alpha^2/(E^2/U) = ",alpha*alpha**U/(E*E) );
+        except: 
+            print("\nInputs:\n- Num. leads = ",nleads,"\n- Num. impurity sites = ",nsites,"\n- nelecs = ",nelecs,"\n- V_leads = ",V_leads,"\n- V_imp_leads = ",V_imp_leads,"\n- V_bias = ",V_bias)
     #### make full system ham from inputs
 
     # make, combine all 1e hamiltonians
@@ -523,9 +525,9 @@ def MolCurrentWrapper():
     mu = 0; # 0 chem potential
     # molecule specific params
     D = 0.5
-    E = 0.1
-    alpha = 0.01
-    U = 1.0; # hubbard repulsion
+    E = 0.0
+    alpha = 0.0
+    U = 0.0; # hubbard repulsion
     mol_params = (D, E, alpha, U);
     params = (V_leads, V_imp_leads, V_bias, mu, mol_params);
     
@@ -537,7 +539,12 @@ def MolCurrentWrapper():
         direct_FCI(h1e, h2e, norbs, nelecs, verbose = verbose);
     
     # from scf instance, do FCI
-    E_fci, v_fci = scf_FCI(molobj, molscf, verbose = verbose);
+    if quick_run:
+        E_fci, v_fci = scf_FCI(molobj, molscf, nroots = 12, verbose = verbose);
+        print(E_fci);
+        return;
+    else:
+        E_fci, v_fci = scf_FCI(molobj, molscf, verbose = verbose);
     
     # prepare in dynamic state by turning on bias
     V_bias = -0.005;
@@ -549,7 +556,7 @@ def MolCurrentWrapper():
     if quick_run: # short time interval
         timestop, deltat = 1, 0.1 # time prop params
     else:
-        timestop, deltat = 20.0, 0.01;
+        timestop, deltat = 20.0, 0.1;
     timevals, energyvals, currentvals = td.TimeProp(h1e, h2e, v_fci, molobj, molscf, timestop, deltat, imp_i, V_imp_leads, kernel_mode = "plot", verbose = verbose);
 
     # renormalize current
@@ -562,10 +569,13 @@ def MolCurrentWrapper():
     # write results to external file
     folderstring = "dat/"
     if quick_run: folderstring += "quick/"
-    fstring = folderstring+ "MolCurrentWrapper_"+str(n_leads[0])+"_"+str(n_imp_sites)+"_"+str(n_leads[1]);
+    fstring = folderstring+ "MolCurrentWrapper000_"+str(n_leads[0])+"_"+str(n_imp_sites)+"_"+str(n_leads[1]);
     hstring = time.asctime();
     hstring += "\nSpin blind formalism, bias turned on"
-    hstring += "\nInputs:\n- Num. leads = "+str(n_leads)+"\n- Num. impurity sites = "+str(n_imp_sites)+"\n- nelecs = "+str(nelecs)+"\n- V_leads = "+str(V_leads)+"\n- V_imp_leads = "+str(V_imp_leads)+"\n- V_bias = "+str(V_bias)+"\n- D = "+str(D)+"\n- E = "+str(E)+ "\n- alpha = "+str(alpha) +"\n- U = "+str(U)+ "\n- E/U = "+str(E/U)+"\n- alpha/D = "+str(alpha/D)+"\n- alpha/(E^2/U) = "+str(alpha*U/(E*E))+"\n- alpha^2/(E^2/U) = "+str(alpha*alpha**U/(E*E));
+    try:
+        hstring += "\nInputs:\n- Num. leads = "+str(n_leads)+"\n- Num. impurity sites = "+str(n_imp_sites)+"\n- nelecs = "+str(nelecs)+"\n- V_leads = "+str(V_leads)+"\n- V_imp_leads = "+str(V_imp_leads)+"\n- V_bias = "+str(V_bias)+"\n- D = "+str(D)+"\n- E = "+str(E)+ "\n- alpha = "+str(alpha) +"\n- U = "+str(U)+ "\n- E/U = "+str(E/U)+"\n- alpha/D = "+str(alpha/D)+"\n- alpha/(E^2/U) = "+str(alpha*U/(E*E))+"\n- alpha^2/(E^2/U) = "+str(alpha*alpha**U/(E*E));
+    except:
+        hstring += "\nInputs:\n- Num. leads = "+str(n_leads)+"\n- Num. impurity sites = "+str(n_imp_sites)+"\n- nelecs = "+str(nelecs)+"\n- V_leads = "+str(V_leads)+"\n- V_imp_leads = "+str(V_imp_leads)+"\n- V_bias = "+str(V_bias)+"\n- D = "+str(D)+"\n- E = "+str(E)+ "\n- alpha = "+str(alpha) +"\n- U = "+str(U);
     np.savetxt(fstring+"_J.txt", np.array([timevals, currentvals]), header = hstring);\
     np.savetxt(fstring+"_E.txt", np.array([timevals, energyvals]), header = hstring);
 

@@ -80,7 +80,8 @@ def DotCurrentData(n_leads, nelecs, timestop, deltat, mu, V_gate, verbose = 0):
     h1e, h2e, mol, dotscf = siam.dot_model(n_leads, n_imp_sites, norbs, nelecs, params, verbose = verbose);
     
     # from scf instance, do FCI
-    E_fci, v_fci = siam.scf_FCI(mol, dotscf, verbose = verbose);
+    E_fci, v_fci = siam.scf_FCI(mol, dotscf, nroots = 12, verbose = verbose);
+    print(E_fci)
 
     # prepare in dynamic state by turning on bias
     V_bias = -0.005;
@@ -103,7 +104,7 @@ def DotCurrentData(n_leads, nelecs, timestop, deltat, mu, V_gate, verbose = 0):
     fstring = folderstring+ str(n_leads[0])+"_"+str(n_imp_sites)+"_"+str(n_leads[1])+"_e"+str(nelecs[0])+"_mu"+str(mu)+"_Vg"+str(V_gate)
     hstring = time.asctime();
     hstring += "\nSpin blind formalism, bias turned off, lead sites decoupled"
-    hstring += "\nInputs:\n- Num. leads = "+str(n_leads)+"\n- Num. impurity sites = "+str(n_imp_sites)+"\n- nelecs = "+str(nelecs)+"\n-vi V_leads = "+str(V_leads)+"\n- V_imp_leads = "+str(V_imp_leads)+"\n- V_bias = "+str(V_bias)+"\n- mu = "+str(mu) +"\n- V_gate = "+str(V_gate);
+    hstring += "\nInputs:\n- Num. leads = "+str(n_leads)+"\n- Num. impurity sites = "+str(n_imp_sites)+"\n- nelecs = "+str(nelecs)+"\n- V_leads = "+str(V_leads)+"\n- V_imp_leads = "+str(V_imp_leads)+"\n- V_bias = "+str(V_bias)+"\n- mu = "+str(mu) +"\n- V_gate = "+str(V_gate)+"\n- U = "+str(U);
     np.savetxt(fstring+"_J.txt", np.array([timevals, currentvals]), header = hstring);
     np.savetxt(fstring+"_E.txt", np.array([timevals, energyvals]), header = hstring);
     print("Saved t, E, J data to "+fstring);
@@ -175,7 +176,7 @@ def MolCurrentPlot():
     # get current data from txt
     nleads = (2,2);
     nimp = 5;
-    fname = "dat/MolCurrentWrapper_"+str(nleads[0])+"_"+str(nimp)+"_"+str(nleads[1]);
+    fname = "dat/MolCurrentWrapper000_"+str(nleads[0])+"_"+str(nimp)+"_"+str(nleads[1]);
     xJ, yJ = plot.PlotTxt2D(fname+"_J.txt"); #current
     xE, yE = plot.PlotTxt2D(fname+"_E.txt"); # energy
     yE = yE/yE[0] - 1; # normalize energy to 0
@@ -183,43 +184,140 @@ def MolCurrentPlot():
     dt = (tf-ti)/len(xJ);
 
     # control layout of plots
-    ax1 = plt.subplot2grid((4, 3), (0, 0))               # energy spectrum, top left
-    ax2 = plt.subplot2grid((4, 3), (0, 1), colspan = 2)               # freqs top right
-    ax3 = plt.subplot2grid((4, 3), (1, 0), colspan=3, rowspan=2) # J vs t
-    ax4 = plt.subplot2grid((4, 3), (3, 0), colspan=3)            # E vs t
+    ax1 = plt.subplot2grid((5, 3), (0, 0), rowspan = 2)               # energy spectrum, top left
+    ax2 = plt.subplot2grid((5, 3), (0, 1), rowspan = 2, colspan = 2)               # freqs top right
+    ax3 = plt.subplot2grid((5, 3), (2, 0), colspan=3, rowspan=2) # J vs t
+    ax4 = plt.subplot2grid((5, 3), (4, 0), colspan=3)            # E vs t
 
     # plot energy spectrum 
-    Energies = [0,1,2,3]; # dummies for now
+    Energies = [-11.96,-11.56,-11.55, -11.34, -11.31]; 
+    Energies = [0,1,2];
     xElevels, yElevels = plot.ESpectrumPlot(Energies);
     for E in yElevels: # each energy level is sep line
         ax1.plot(xElevels, E);
     ax1.set_ylabel("Energy (a.u.)")
+    ax1.grid(which = 'both')
     ax1.tick_params(axis = 'x', which = 'both', bottom = False, top = False, labelbottom = False);
 
     # plot frequencies
-    Fnorm, freq = Fourier(yJ, 1/dt); # gives dominant frequencies # not yet working
+    Fnorm, freq = Fourier(yJ, 1/dt, angular = True); # gives dominant frequencies # not yet working
     ax2.plot(freq, Fnorm);
     ax2.set_xlabel("$\omega$ (2$\pi$/s)")
 
     if False: # compare with dominant freq
-        wmax = Fourier(yJ, 1/dt, dominant = 3); # gets dominant freq
+        wmax = Fourier(yJ, 1/dt, angular = True, dominant = 1); # gets dominant freq
         ampl_formax = np.amax(yJ)/2; # amplitude when plotting dominant freq
-        ax3.plot(xJ, ampl_formax*(np.sin(wmax[0]*xJ)+np.sin(wmax[2]*xJ) ), linestyle = "dashed")
+        ax3.plot(xJ, ampl_formax*(np.sin(wmax[0]*xJ) ), linestyle = "dashed");
 
     # plot J vs t on bottom 
     ax3.plot(xJ, yJ);
     ax3.set_title("td-FCI through $d$ orbital, 2 lead sites on each side");
-    ax3.set_xlabel("time (dt = 0.01 s)");
+    ax3.set_xlabel("time (dt = 0.1 s)");
     ax3.set_ylabel("Current*$\pi/V_{bias}$");
 
     # plot E vs t on bottom  
     ax4.plot(xE, yE);
-    ax4.set_xlabel("time (dt = 0.01 s)");
+    ax4.set_xlabel("time (dt = 0.1 s)");
     ax4.set_ylabel("$E/E_i$ - 1");
     #ax4.get_yaxis().get_major_formatter()._set_offset(1)
 
     # config and show
     plt.tight_layout();
+    plt.show();
+
+    return; # end mol current plot
+
+
+def UnpackDotData(folder, nleads, nimp, nelecs, mu, Vg):
+
+    assert (( len(mu) == 1 and len(Vg) > 1) ) #or (len(mu) > 1 and len(Vg) == 1) );
+
+    xJvals = [];
+    yJvals = [];
+    xEvals = [];
+    yEvals = [];
+
+    for i in range(len(Vg)):
+
+        # get data from txt file
+        V = Vg[i];
+        m = mu[0]
+        fname = folder+str(nleads[0])+"_"+str(nimp)+"_"+str(nleads[1]);
+        fname += "_e"+str(nelecs[0])+"_mu"+str(m)+"_Vg"+str(V)
+        xJ, yJ = plot.PlotTxt2D(fname+"_J.txt"); #current
+        xE, yE = plot.PlotTxt2D(fname+"_E.txt"); # energy
+        xJvals.append(xJ);
+        yJvals.append(yJ);
+        xEvals.append(xE);
+        yEvals.append(yE);
+
+
+    return xJvals, yJvals, xEvals, yEvals; # end unpack dot data
+
+
+def DotCurrentPlot():
+
+    # control layout of plots
+    ax1 = plt.subplot2grid((5, 3), (0, 0), rowspan = 2)               # energy spectrum, top left
+    ax2 = plt.subplot2grid((5, 3), (0, 1), rowspan = 2, colspan = 2)               # freqs top right
+    ax3 = plt.subplot2grid((5, 3), (2, 0), colspan=3, rowspan=2) # J vs t
+    ax4 = plt.subplot2grid((5, 3), (4, 0), colspan=3)            # E vs t
+
+    # global formatting
+    mystyle = 'solid';
+    mycolor = 'tab:blue'
+
+    # get current data from txt
+    nleads = (4,4);
+    nimp = 1;
+    nelecs, mu, Vg = (9,0), [0], [-1.0,-0.5]; # physical inputs
+    fname = "dat/DotCurrentData/";
+    xJ, yJ, xE, yE = UnpackDotData(fname, nleads, nimp, nelecs, mu, Vg);
+
+    # e spectrum must be done manually
+    Energies = [-10.24, -9.68, -9.52, -9.30, -9.19]; # dummies for now
+    xElevels, yElevels = plot.ESpectrumPlot(Energies);
+    for E in yElevels: # each energy level is sep line
+        ax1.plot(xElevels, E, color = mycolor);
+    # repeat for Vg = -0.5
+    Energies = [-9.70, -8.91, -8.87, -8.70, -8.47]; # dummies for now
+    xElevels, yElevels = plot.ESpectrumPlot(Energies);
+    xElevels += 1;
+    for E in yElevels: # each energy level is sep line
+        ax1.plot(xElevels, E, color = 'tab:orange');
+    ax1.set_ylabel("Energy (a.u.)")
+    ax1.grid(which = 'both')
+    ax1.tick_params(axis = 'x', which = 'both', bottom = False, top = False, labelbottom = False);
+
+    for i in range(len(Vg)):
+
+        if i == 1: mycolor = 'tab:orange';
+
+        yE[i] = yE[i]/yE[i][0] - 1; # normalize energy to 0
+        ti, tf = xJ[i][0], xJ[i][-1]
+        dt = (tf-ti)/len(xJ[i]);
+
+        # plot frequencies
+        Fnorm, freq = Fourier(yJ[i], 1/dt, angular = True); # gives dominant frequencies
+        ax2.plot(freq, Fnorm, color = mycolor, linestyle = mystyle);
+        ax2.set_xlabel("$\omega$ (2$\pi$/s)")
+        ax2.set_ylabel("Fourier amp.")
+
+        # plot J vs t on bottom 
+        ax3.plot(xJ[i], yJ[i], label = "Vg = "+str(Vg[i]) , color = mycolor, linestyle = mystyle );
+        ax3.set_title("td-FCI through dot, 4 lead sites on each side");
+        ax3.set_xlabel("time (dt = 0.01 s)");
+        ax3.set_ylabel("Current*$\pi/V_{bias}$");
+
+        # plot E vs t on bottom  
+        ax4.plot(xE[i], yE[i] , color = mycolor, linestyle = mystyle);
+        ax4.set_xlabel("time (dt = 0.01 s)");
+        ax4.set_ylabel("$E/E_i$ - 1");
+
+
+    # config and show
+    plt.tight_layout();
+    ax3.legend();
     plt.show();
 
     return; # end mol current plot
@@ -287,6 +385,7 @@ def DotDataVsVgate():
     for Vg in np.linspace(-1.0, 1.0, 5):
 
         # run code
+        Vg = -0.5
         DotCurrentData(nleads, nelecs, tf, dt, mu, Vg, verbose = 5);
 
     
@@ -294,15 +393,5 @@ def DotDataVsVgate():
 #### exec code
 
 if __name__ == "__main__":
-
-    if False:
-        xi, xf, nx = 0, 10, 1024;
-        dx = (xf - xi)/nx
-        x = np.linspace(xi, xf, nx)
-        y = np.sin(2*np.pi*x)+np.sin(4*2*np.pi*x)+np.sin(8*2*np.pi*x)
-
-        FT, nu = Fourier(y, 1/dx, shorten = True);
-        plt.plot(nu, FT);
-        plt.show();
 
     MolCurrentPlot();
