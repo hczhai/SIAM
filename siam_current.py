@@ -36,7 +36,7 @@ import matplotlib.pyplot as plt
 #################################################
 #### get current data
 
-def DotCurrentData(n_leads, nelecs, timestop, deltat, mu, V_gate, verbose = 0):
+def DotCurrentData(n_leads, nelecs, timestop, deltat, mu, V_gate, prefix = "", verbose = 0):
     '''
     More flexible version of siam.py DotDCurrentWrapper with inputs allowing tuning of nelecs, mu, Vgate
 
@@ -100,7 +100,7 @@ def DotCurrentData(n_leads, nelecs, timestop, deltat, mu, V_gate, verbose = 0):
     
     # write results to external file
     folderstring = "dat/DotCurrentData/";
-    fstring = folderstring+ str(n_leads[0])+"_"+str(n_imp_sites)+"_"+str(n_leads[1])+"_e"+str(nelecs[0])+"_mu"+str(mu)+"_Vg"+str(V_gate)
+    fstring = folderstring+prefix+ str(n_leads[0])+"_"+str(n_imp_sites)+"_"+str(n_leads[1])+"_e"+str(nelecs[0])+"_mu"+str(mu)+"_Vg"+str(V_gate)
     hstring = time.asctime();
     hstring += "\nSpin blind formalism, bias turned off, lead sites decoupled"
     hstring += "\nInputs:\n- Num. leads = "+str(n_leads)+"\n- Num. impurity sites = "+str(n_imp_sites)+"\n- nelecs = "+str(nelecs)+"\n- V_leads = "+str(V_leads)+"\n- V_imp_leads = "+str(V_imp_leads)+"\n- V_bias = "+str(V_bias)+"\n- mu = "+str(mu) +"\n- V_gate = "+str(V_gate)+"\n- U = "+str(U);
@@ -365,6 +365,67 @@ def DebugPlot():
     ax2.set_xlabel("Time (s)");
     #ax2.legend();
     plt.show();
+    
+    
+def dtVsdE():
+
+    # system inputs
+    nleads = (4,4);
+    nelecs = (nleads[0] + nleads[1] + 1,0); # half filling
+    mu = 0;
+    Vg = -1.0;
+
+    # time step is variable
+    tf = 1.0;
+    dts = [0.2, 0.1, 0.02, 0.01, 0.002, 0.001];
+    
+    for dt in dts:
+    
+        # run code
+        print("****    ",dt);
+        prefix = "dt"+str(dt)+"_";
+        DotCurrentData(nleads, nelecs, tf, dt, mu, Vg, prefix = prefix, verbose = 5);
+        
+        
+def PlotdtdE():
+
+    # system inputs
+    nleads = (4,4);
+    nimp = 1;
+    nelecs = (nleads[0] + nleads[1] + 1,0); # half filling
+    mu = 0;
+    Vg = -1.0;
+
+    # time step is variable
+    tf = 1.0;
+    dts = [0.2, 0.1, 0.02, 0.01, 0.002, 0.001];
+    dts = [0.2, 0.1]
+    
+    # delta E vs dt data
+    dEvals = np.zeros(len(dts));
+    dtvals = np.array(dts);
+    
+    # start the file name string
+    folderstring = "dat/DotCurrentData/";
+    
+    # unpack each _E.txt file
+    for i in range(len(dts)):
+    
+        dt = dts[i];
+        dt
+    
+        # get arr from the txt file
+        fstring = folderstring+"dt"+str(dt)+"_"+ str(nleads[0])+"_"+str(nimp)+"_"+str(nleads[1])+"_e"+str(nelecs[0])+"_mu"+str(mu)+"_Vg"+str(Vg);
+        dtdE_arr = np.loadtxt(fstring+"_E.txt");
+        
+        # what we eant is Ef-Ei
+        dEvals[i] = dtdE_arr[1,-1] - dtdE_arr[1,0];
+        
+    # plot results
+    plt.plot(dtvals, dEvals);
+    plt.show();
+        
+    return # end plot dt dE
 
 
 def DotDataVsVgate():
@@ -376,12 +437,12 @@ def DotDataVsVgate():
     # system inputs
     nleads = (4,4);
     nelecs = (nleads[0] + nleads[1] + 1,0); # half filling
-    tf = 10.0
-    dt = 0.1
+    tf = 30.0
+    dt = 0.01
 
     # tunable phys params
     mu = 0
-    for Vg in np.linspace(0.0, 1.0, 3):
+    for Vg in np.linspace(-1.0, 1.0, 5):
 
         # run code
         DotCurrentData(nleads, nelecs, tf, dt, mu, Vg, verbose = 5);
@@ -392,4 +453,7 @@ def DotDataVsVgate():
 
 if __name__ == "__main__":
 
-    DotCurrentPlot();
+    PlotdtdE();
+    
+    # TODO: get better freq resolution on dot current vs Vgate
+    #DotDataVsVgate();
