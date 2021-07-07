@@ -399,7 +399,7 @@ def PlotdtdE():
     # time step is variable
     tf = 1.0;
     dts = [0.2, 0.1, 0.02, 0.01, 0.002, 0.001];
-    dts = [0.2, 0.1]
+    dts = [0.2, 0.1, 0.02, 0.01]
     
     # delta E vs dt data
     dEvals = np.zeros(len(dts));
@@ -412,7 +412,6 @@ def PlotdtdE():
     for i in range(len(dts)):
     
         dt = dts[i];
-        dt
     
         # get arr from the txt file
         fstring = folderstring+"dt"+str(dt)+"_"+ str(nleads[0])+"_"+str(nimp)+"_"+str(nleads[1])+"_e"+str(nelecs[0])+"_mu"+str(mu)+"_Vg"+str(Vg);
@@ -423,6 +422,9 @@ def PlotdtdE():
         
     # plot results
     plt.plot(dtvals, dEvals);
+    plt.xlabel("time step");
+    plt.ylabel("E(t=1.0) - E(t=0.0)");
+    plt.title("$\Delta E$ vs dt, dot model, 4 leads each side");
     plt.show();
         
     return # end plot dt dE
