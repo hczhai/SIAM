@@ -269,7 +269,7 @@ def DotCurrentPlot():
     # get current data from txt
     nleads = (4,4);
     nimp = 1;
-    nelecs, mu, Vg = (9,0), [0], [-1.0,-0.5,0.0]; # physical inputs
+    nelecs, mu, Vg = (9,0), [0], [-1.0,-0.5,0.0, 0.5, 1.0]; # physical inputs
     fname = "dat/DotCurrentData/";
     xJ, yJ, xE, yE = UnpackDotData(fname, nleads, nimp, nelecs, mu, Vg);
 
