@@ -80,8 +80,7 @@ def DotCurrentData(n_leads, nelecs, timestop, deltat, mu, V_gate, verbose = 0):
     h1e, h2e, mol, dotscf = siam.dot_model(n_leads, n_imp_sites, norbs, nelecs, params, verbose = verbose);
     
     # from scf instance, do FCI
-    E_fci, v_fci = siam.scf_FCI(mol, dotscf, nroots = 12, verbose = verbose);
-    print(E_fci)
+    E_fci, v_fci = siam.scf_FCI(mol, dotscf, verbose = verbose);
 
     # prepare in dynamic state by turning on bias
     V_bias = -0.005;
@@ -142,6 +141,9 @@ def Fourier(signal, samplerate, angular = False, dominant = 0, shorten = False):
     if np.isrealobj(signal): # real signals have only positive freqs
         # truncate FT, nu to nu > 0
         FT, nu = FT[int(nx/2):], nu[int(nx/2):]
+        
+    # show freq resolution # dnu = 1/(tf - ti)
+    #print("dnu = ", nu[1] - nu[0] );
 
     # if asked, convert to omega
     if angular: nu = nu*2*np.pi;
@@ -163,8 +165,6 @@ def Fourier(signal, samplerate, angular = False, dominant = 0, shorten = False):
 
         return nu_maxvals; # end here instead
 
-    # if asked, cut off empty high frequencies  
-
     return  FT, nu;
 
 
@@ -176,7 +176,7 @@ def MolCurrentPlot():
     # get current data from txt
     nleads = (2,2);
     nimp = 5;
-    fname = "dat/MolCurrentWrapper000_"+str(nleads[0])+"_"+str(nimp)+"_"+str(nleads[1]);
+    fname = "dat/MolCurrentWrapper_"+str(nleads[0])+"_"+str(nimp)+"_"+str(nleads[1]);
     xJ, yJ = plot.PlotTxt2D(fname+"_J.txt"); #current
     xE, yE = plot.PlotTxt2D(fname+"_E.txt"); # energy
     yE = yE/yE[0] - 1; # normalize energy to 0
@@ -190,8 +190,7 @@ def MolCurrentPlot():
     ax4 = plt.subplot2grid((5, 3), (4, 0), colspan=3)            # E vs t
 
     # plot energy spectrum 
-    Energies = [-11.96,-11.56,-11.55, -11.34, -11.31]; 
-    Energies = [0,1,2];
+    Energies = [-11.96,-11.56,-11.55, -11.34, -11.31];
     xElevels, yElevels = plot.ESpectrumPlot(Energies);
     for E in yElevels: # each energy level is sep line
         ax1.plot(xElevels, E);
@@ -270,7 +269,7 @@ def DotCurrentPlot():
     # get current data from txt
     nleads = (4,4);
     nimp = 1;
-    nelecs, mu, Vg = (9,0), [0], [-1.0,-0.5]; # physical inputs
+    nelecs, mu, Vg = (9,0), [0], [-1.0,-0.5,0.0]; # physical inputs
     fname = "dat/DotCurrentData/";
     xJ, yJ, xE, yE = UnpackDotData(fname, nleads, nimp, nelecs, mu, Vg);
 
@@ -299,19 +298,19 @@ def DotCurrentPlot():
 
         # plot frequencies
         Fnorm, freq = Fourier(yJ[i], 1/dt, angular = True); # gives dominant frequencies
-        ax2.plot(freq, Fnorm, color = mycolor, linestyle = mystyle);
+        ax2.plot(freq, Fnorm);
         ax2.set_xlabel("$\omega$ (2$\pi$/s)")
         ax2.set_ylabel("Fourier amp.")
 
         # plot J vs t on bottom 
-        ax3.plot(xJ[i], yJ[i], label = "Vg = "+str(Vg[i]) , color = mycolor, linestyle = mystyle );
+        ax3.plot(xJ[i], yJ[i], label = "$V_g$ = "+str(Vg[i]));
         ax3.set_title("td-FCI through dot, 4 lead sites on each side");
-        ax3.set_xlabel("time (dt = 0.01 s)");
+        ax3.set_xlabel("time (dt = 0.1 s)");
         ax3.set_ylabel("Current*$\pi/V_{bias}$");
 
         # plot E vs t on bottom  
-        ax4.plot(xE[i], yE[i] , color = mycolor, linestyle = mystyle);
-        ax4.set_xlabel("time (dt = 0.01 s)");
+        ax4.plot(xE[i], yE[i] );
+        ax4.set_xlabel("time (dt = 0.1 s)");
         ax4.set_ylabel("$E/E_i$ - 1");
 
 
@@ -378,14 +377,13 @@ def DotDataVsVgate():
     nleads = (4,4);
     nelecs = (nleads[0] + nleads[1] + 1,0); # half filling
     tf = 10.0
-    dt = 0.01
+    dt = 0.1
 
     # tunable phys params
     mu = 0
-    for Vg in np.linspace(-1.0, 1.0, 5):
+    for Vg in np.linspace(0.0, 1.0, 3):
 
         # run code
-        Vg = -0.5
         DotCurrentData(nleads, nelecs, tf, dt, mu, Vg, verbose = 5);
 
     
@@ -394,4 +392,4 @@ def DotDataVsVgate():
 
 if __name__ == "__main__":
 
-    MolCurrentPlot();
+    DotCurrentPlot();
