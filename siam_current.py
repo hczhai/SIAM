@@ -31,6 +31,7 @@ import ruojings_td_fci as td
 
 import time
 import numpy as np
+import scipy
 import matplotlib.pyplot as plt
 
 #################################################
@@ -378,6 +379,7 @@ def dtVsdE():
     # time step is variable
     tf = 1.0;
     dts = [0.2, 0.1, 0.02, 0.01, 0.002, 0.001];
+    dts = [0.167, 0.0167]
     
     for dt in dts:
     
@@ -398,8 +400,7 @@ def PlotdtdE():
 
     # time step is variable
     tf = 1.0;
-    dts = [0.2, 0.1, 0.02, 0.01, 0.002, 0.001];
-    dts = [0.2, 0.1, 0.02, 0.01]
+    dts = [0.2, 0.167, 0.1, 0.02, 0.0167, 0.01]
     
     # delta E vs dt data
     dEvals = np.zeros(len(dts));
@@ -420,11 +421,26 @@ def PlotdtdE():
         # what we eant is Ef-Ei
         dEvals[i] = dtdE_arr[1,-1] - dtdE_arr[1,0];
         
+    # fit to quadratic
+    quad = np.polyfit(dtvals, dEvals, 2);
+    tspace = np.linspace(dtvals[0], dtvals[-1], 100);
+    quadvals = tspace*tspace*quad[0] + tspace*quad[1] + quad[2];
+    
+    # fit to exp
+    def e_x(x,a):
+        return np.exp(a*x);
+    fit = scipy.optimize.curve_fit(e_x, dtvals, dEvals);
+    print(fit);
+    fitvals = e_x(tspace, fit[1][0]);
+        
     # plot results
-    plt.plot(dtvals, dEvals);
+    plt.plot(dtvals, dEvals, label = "data");
+    plt.plot(tspace, quadvals, label ="Quadratic fit");
+    plt.plot(tspace, fitvals, label ="Exponential fit");
     plt.xlabel("time step");
     plt.ylabel("E(t=1.0) - E(t=0.0)");
-    plt.title("$\Delta E$ vs dt, dot model, 4 leads each side");
+    plt.title("$\Delta E$ vs dt, 4 leads each side");
+    plt.legend();
     plt.show();
         
     return # end plot dt dE
@@ -455,7 +471,18 @@ def DotDataVsVgate():
 
 if __name__ == "__main__":
 
+    # compare energy drift as time step gets smaller
     PlotdtdE();
     
+    # how dominant freq depends on length of chain, for dot identical to lead site
+    for chainlength in [1,2,3,4]:
+    
+        nleads = chainlength, chainlength;
+        nelecs = (2*chainlength+1,0); # half filling
+        tf = 12.0
+        dt = 0.01
+        mu = 0.0
+        Vg = 0.0
+    
     # TODO: get better freq resolution on dot current vs Vgate
-    #DotDataVsVgate();
+    # # done on desktop
