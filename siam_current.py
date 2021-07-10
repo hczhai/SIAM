@@ -427,16 +427,16 @@ def PlotdtdE():
     quadvals = tspace*tspace*quad[0] + tspace*quad[1] + quad[2];
     
     # fit to exp
-    def e_x(x,a):
-        return np.exp(a*x);
+    mya = 2
+    def e_x(x,a,b,c):
+        return a*np.exp(b*x) + c;
     fit = scipy.optimize.curve_fit(e_x, dtvals, dEvals);
-    print(fit);
-    fitvals = e_x(tspace, fit[1][0]);
+    fitvals = e_x(tspace, *fit[0]);
         
     # plot results
     plt.plot(dtvals, dEvals, label = "data");
-    plt.plot(tspace, quadvals, label ="Quadratic fit");
-    plt.plot(tspace, fitvals, label ="Exponential fit");
+    plt.plot(tspace, quadvals, label ="Quadratic fit: $y = ax^2 + bx + c$");
+    plt.plot(tspace, fitvals, label ="Exponential fit: $y= ae^{bx} + c$");
     plt.xlabel("time step");
     plt.ylabel("E(t=1.0) - E(t=0.0)");
     plt.title("$\Delta E$ vs dt, 4 leads each side");
