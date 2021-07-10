@@ -118,7 +118,7 @@ h1e_sb[2,0] = t+T;
 h1e_sb[1,3] = t-T;
 h1e_sb[3,1] = t-T;
 
-# hubbard: 1/2(2*2U) total contribution
+# hubbard: 1/2(2*2U) total contribution TODO: revise
 if True:
     h2e_sb[0,0,1,1] = 2*U; # since pr,qs = 01,01 -> pr,qs^* = 01,01 can't absorb 1/2
     h2e_sb[2,2,3,3] = 2*U;
@@ -145,29 +145,3 @@ if(verbose):
             print(v);
         
 
-'''
-#### rotate around singlet state
-print("\n*******");
-
-# the get singlet (the gd state) to rotate around (nonzero elems only)
-singlet = v_sb[0];
-triplet = v_sb[1];
-singlet_rot = []
-triplet_rot = []
-for i,e in enumerate(triplet): # get nonzero elems from triplet
-    if(abs(e) > 1e-2):
-        singlet_rot.append(singlet[i]);
-        triplet_rot.append(triplet[i]);
-singlet_rot = np.array(singlet_rot); # already norm'd !
-singlet_rot = singlet_rot.flatten();
-triplet_rot = np.array(triplet_rot);
-triplet_rot = triplet_rot.flatten();
-print(triplet_rot);
-#now norm of singlet_rot needs to be angle of rotation
-angle_rot = np.arccos(triplet_rot[0]);
-print(angle_rot);
-singlet_rot = singlet_rot*angle_rot;
-R_inst = sp.spatial.transform.Rotation.from_rotvec(singlet_rot); # encodes rot vector as Rotation instance
-triplet_p = R_inst.apply(triplet_rot);
-print(triplet_p);
-'''
