@@ -68,13 +68,13 @@ def DotCurrentData(n_leads, nelecs, timestop, deltat, mu, V_gate, prefix = "", v
     norbs = 2*(n_leads[0]+n_leads[1]+n_imp_sites); # num spin orbs
     # nelecs left as tunable
 
-    # physical params, should always be floats
+    # physical params, should always be floats ### edited from stds for chain length investig
     V_leads = 1.0; # hopping
-    V_imp_leads = 0.4; # hopping
+    V_imp_leads = 1.0; # hopping
     V_bias = 0; # wait till later to turn on current
     # chemical potential left as tunable
     # gate voltage on dot left as tunable
-    U = 1.0; # hubbard repulsion
+    U = 0.0; # hubbard repulsion
     params = V_leads, V_imp_leads, V_bias, mu, V_gate, U;
 
     # get h1e, h2e, and scf implementation of SIAM with dot as impurity
@@ -387,63 +387,6 @@ def dtVsdE():
         print("****    ",dt);
         prefix = "dt"+str(dt)+"_";
         DotCurrentData(nleads, nelecs, tf, dt, mu, Vg, prefix = prefix, verbose = 5);
-        
-        
-def PlotdtdE():
-
-    # system inputs
-    nleads = (4,4);
-    nimp = 1;
-    nelecs = (nleads[0] + nleads[1] + 1,0); # half filling
-    mu = 0;
-    Vg = -1.0;
-
-    # time step is variable
-    tf = 1.0;
-    dts = [0.2, 0.167, 0.1, 0.02, 0.0167, 0.01]
-    
-    # delta E vs dt data
-    dEvals = np.zeros(len(dts));
-    dtvals = np.array(dts);
-    
-    # start the file name string
-    folderstring = "dat/DotCurrentData/";
-    
-    # unpack each _E.txt file
-    for i in range(len(dts)):
-    
-        dt = dts[i];
-    
-        # get arr from the txt file
-        fstring = folderstring+"dt"+str(dt)+"_"+ str(nleads[0])+"_"+str(nimp)+"_"+str(nleads[1])+"_e"+str(nelecs[0])+"_mu"+str(mu)+"_Vg"+str(Vg);
-        dtdE_arr = np.loadtxt(fstring+"_E.txt");
-        
-        # what we eant is Ef-Ei
-        dEvals[i] = dtdE_arr[1,-1] - dtdE_arr[1,0];
-        
-    # fit to quadratic
-    quad = np.polyfit(dtvals, dEvals, 2);
-    tspace = np.linspace(dtvals[0], dtvals[-1], 100);
-    quadvals = tspace*tspace*quad[0] + tspace*quad[1] + quad[2];
-    
-    # fit to exp
-    mya = 2
-    def e_x(x,a,b,c):
-        return a*np.exp(b*x) + c;
-    fit = scipy.optimize.curve_fit(e_x, dtvals, dEvals);
-    fitvals = e_x(tspace, *fit[0]);
-        
-    # plot results
-    plt.plot(dtvals, dEvals, label = "data");
-    plt.plot(tspace, quadvals, label ="Quadratic fit: $y = ax^2 + bx + c$");
-    plt.plot(tspace, fitvals, label ="Exponential fit: $y= ae^{bx} + c$");
-    plt.xlabel("time step");
-    plt.ylabel("E(t=1.0) - E(t=0.0)");
-    plt.title("$\Delta E$ vs dt, 4 leads each side");
-    plt.legend();
-    plt.show();
-        
-    return # end plot dt dE
 
 
 def DotDataVsVgate():
@@ -470,9 +413,6 @@ def DotDataVsVgate():
 #### exec code
 
 if __name__ == "__main__":
-
-    # compare energy drift as time step gets smaller
-    PlotdtdE();
     
     # how dominant freq depends on length of chain, for dot identical to lead site
     for chainlength in [1,2,3,4]:
@@ -483,6 +423,12 @@ if __name__ == "__main__":
         dt = 0.01
         mu = 0.0
         Vg = 0.0
+        
+        # get data for diff chain lengths
+        folder = "chain/"
+        DotCurrentData(nleads, nelecs, tf, dt, mu, Vg, prefix = folder, verbose = 5);
+        
+        
     
     # TODO: get better freq resolution on dot current vs Vgate
     # # done on desktop

@@ -1,5 +1,5 @@
 '''
-pyblock_playground.py
+pyblock/sandbox.py
 
 Mess around with pyblock3
 
@@ -41,11 +41,13 @@ g2e[2,2,3,3] = U;
 g2e[3,3,2,2] = U;
 
 # store hamiltonian in fcidump
-hdump = fcidump.FCIDUMP(n_sites = norbs, n_elec = nelecs, h1e = h1e, g2e = g2e)
+# syntax: point group, num MOs, total num elecs (int), 2S = na - nb, h1e, g2e
+# I use ASU formalism so MOs are spin orbs
+hdump = fcidump.FCIDUMP(pg = 'c1', n_sites = norbs, n_elec = sum(nelecs), twos = nelecs[1] - nelecs[0], h1e = h1e, g2e = g2e)
 if verbose: print("Created fcidump");
 
 # get hamiltonian from fcidump
-h = hamiltonian.Hamiltonian(hdump);
+h = hamiltonian.Hamiltonian(hdump, True);
 h_mpo = h.build_qc_mpo(); # hamiltonian as matrix product operator (DMRG lingo)
+if verbose: print("Built H as MPO");
 
-# TODO: pyblock3.algebra only imports w/in GitHub/pyblock3 repo clone. fix this

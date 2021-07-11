@@ -17,21 +17,24 @@ pyscf/fci module:
 
 Formalism:
 - h1e_pq = (p|h|q) p,q spatial orbitals
-- h2e_pqrs = (pq|h|rs) chemists notation, <pr|h|qs> physicists notation
+- g2e_pqrs = (pq|h|rs) chemists notation, <pr|h|qs> physicists notation
 - all direct_x solvers assume 4fold symmetry from sum_{pqrs} (don't need to do manually)
 - 1/2 out front all 2e terms, so contributions are written as 1/2(2*actual ham term)
-- hermicity: h_pqrs = h_qpsr can absorb factor of 1/2
+- particle interchange symmetry: g_pqrs = g_rspq usually absorbs factor of 2
 
 Specific problem:
 2 site hubbard model
 '''
 
 import utils
+import numbers
 
 import numpy as np
 import scipy as sp
 from pyscf import fci
+from pyblock3 import fcidump, hamiltonian
 
+# top level inputs
 verbose = 2;
 np.set_printoptions(suppress=True); # no sci notatation printing
 
@@ -39,11 +42,10 @@ np.set_printoptions(suppress=True); # no sci notatation printing
 # hamiltonian params must be floats
 epsilon1 = 0.0; # on site energy, site 1
 epsilon2 = 0.0; # site 2
-t = 2.0 # hopping
-U = 1000.0 # hubbard repulsion strength
+t = 3.0 # hopping
+U = 100.0 # hubbard repulsion strength
 if(verbose):
     print("\nInputs:\nepsilon1 = ",epsilon1,"\nepsilon2 = ",epsilon2,"\nt = ",t,"\nU = ",U);
-    #print("t/U = ",t/U);
     
 # analytical solution by exact diag
 H_exact = np.array([[U+2*epsilon1,0,-t,t],[0,U+2*epsilon2,t,-t],[-t,t,epsilon1+epsilon2,0],[t,-t,0,epsilon1+epsilon2]]);
@@ -64,7 +66,7 @@ nroots = 6;
 # implement h1e and h2e
 # doing it this way forces floats which is a good fail safe
 h1e = np.zeros((norbs,norbs));
-h2e = np.zeros((norbs,norbs,norbs,norbs));
+g2e = np.zeros((norbs,norbs,norbs,norbs));
 
 # put in on site energy
 h1e[0,0] = epsilon1;
@@ -75,73 +77,109 @@ h1e[0,1] = t;
 h1e[1,0] = t;
 
 # hubbard
-h2e[0,0,0,0] += U;
-h2e[1,1,1,1] += U;
+g2e[0,0,0,0] += U;
+g2e[1,1,1,1] += U;
 
 # implement FCISolver object
-cisolver = fci.direct_nosym.FCI();
+cisolver = fci.direct_spin1.FCI(); # # doesn't matter if nosym or spin1
 cisolver.max_cycle = 100; # max number of iterations
 cisolver.conv_tol = 1e-8; # energy convergence
 
 # kernel takes (1e ham, 2e ham, num orbitals, num electrons
 # returns eigvals and eigvecs of ham (in what basis?)
-E_fci, v_fci = cisolver.kernel(h1e, h2e, norbs, nelecs, nroots = nroots);
+E_fci, v_fci = cisolver.kernel(h1e, g2e, norbs, nelecs, nroots = nroots);
 if(verbose):
-    print("\n1. nelecs = ",nelecs, " nroots = ",nroots); # this matches analytical gd state
+    print("\n1. Spin free formalism: nelecs = ",nelecs, " nroots = ",nroots); # this matches analytical gd state
     print("FCI energies = ", E_fci);
     if(verbose > 2):
         print(v_fci);
 
 ######################################################################
-#### use spin blind method to solve hubbard
+#### use all spin up formalism (ASU) method to solve hubbard
 
-# spin blind = put all electrons as up and make p,q... spin orbitals
+# ASU = put all electrons as up and make p,q... spin orbitals
 nelecs = (2,0); # put in all spins as spin up
 norbs = 4;      # spin orbs ie 1alpha, 1beta, 2alpha, 2beta -> 0,1,2,3
 nroots = 6;
 
 # implement h1e and h2e
 # doing it this way forces floats which is a good fail safe
-h1e_sb = np.zeros((norbs,norbs));
-h2e_sb = np.zeros((norbs,norbs,norbs,norbs));
+h1e_asu = np.zeros((norbs,norbs));
+g2e_asu = np.zeros((norbs,norbs,norbs,norbs));
 
 # on site energy
-h1e_sb[0,0] = epsilon1;
-h1e_sb[1,1] = epsilon1;
-h1e_sb[2,2] = epsilon2;
-h1e_sb[3,3] = epsilon2;
+h1e_asu[0,0] = epsilon1;
+h1e_asu[1,1] = epsilon1;
+h1e_asu[2,2] = epsilon2;
+h1e_asu[3,3] = epsilon2;
 
-# hopping
-T = t/1e9
-h1e_sb[0,2] = t+T;
-h1e_sb[2,0] = t+T;
-h1e_sb[1,3] = t-T;
-h1e_sb[3,1] = t-T;
+# 1 particle terms: hopping
+T = t/1e9 # break degeneracy to make wfs right
+h1e_asu[0,2] = t+T;
+h1e_asu[2,0] = t+T;
+h1e_asu[1,3] = t-T;
+h1e_asu[3,1] = t-T;
 
-# hubbard: 1/2(2*2U) total contribution TODO: revise
-if True:
-    h2e_sb[0,0,1,1] = 2*U; # since pr,qs = 01,01 -> pr,qs^* = 01,01 can't absorb 1/2
-    h2e_sb[2,2,3,3] = 2*U;
-else: # this way also works, different shuffling of a's
-    h2e_sb[0,1,1,0] = -U;  # use hermicity to absorb factor of 1/2
-    h2e_sb[1,0,0,1] = -U;  # pr,qs = 01,10 -> pr,qs^* = 10,01
-    h2e_sb[2,3,3,2] = -U;
-    h2e_sb[3,2,2,3] = -U;
+# 2 particle terms: hubbard
+g2e_asu[0,0,1,1] = U;
+g2e_asu[1,1,0,0] = U;  # interchange particle labels
+g2e_asu[2,2,3,3] = U;
+g2e_asu[3,3,2,2] = U;
 
 # implement FCISolver object
-cisolver_sb = fci.direct_spin1.FCI();
+cisolver_asu = fci.direct_spin1.FCI(); # doesn't matter if nosym or spin1
 
 # kernel takes (1e ham, 2e ham, num orbitals, num electrons
 # returns eigvals and eigvecs of ham (in what basis?)
-E_sb, v_sb = cisolver_sb.kernel(h1e_sb, h2e_sb, norbs, nelecs, nroots = nroots);
-spinexps = utils.Spin_exp(v_sb,norbs,nelecs); # evals <S> using fci vecs
+E_asu, v_asu = cisolver_asu.kernel(h1e_asu, g2e_asu, norbs, nelecs, nroots = nroots);
+spinexps = utils.Spin_exp(v_asu,norbs,nelecs); # evals <S> using fci vecs
 E_formatter = "{0:6.6f}"
 if(verbose):
-    print("\n2. nelecs = ",nelecs, " nroots = ",nroots);
-    for i, v in enumerate(v_sb):
-        Eform = E_formatter.format(E_sb[i]);
-        print("- E = ",Eform, ", <S_x> = ", spinexps[i][1], "<S_z> = ", spinexps[i][2]);
+    print("\n2. All spin up formalism: nelecs = ",nelecs, " nroots = ",nroots);
+    for i, v in enumerate(v_asu):
+        Eform = E_formatter.format(E_asu[i]);
+        print("- E = ",Eform, ", <S> = ", spinexps[i],);
         if(verbose > 2):
             print(v);
+            
+            
+######################################################################
+#### use dmrg to solve hubbard
+
+import os
+import pickle
+from pyblock3.algebra.mpe import MPE, CachedMPE
+from pyblock3.symbolic.expr import OpElement, OpNames
+from pyblock3.algebra.symmetry import SZ
+
+# top level inputs
+bond_dim = 500;   # explain
+bond_dim_i = 250;
+
+if(verbose): print("\n3. DMRG (All spin up): nelecs = ",nelecs, " nroots = ",nroots);
+
+# store hamiltonian matrices in fcidump
+# syntax: point group, num MOs, total num elecs (int), 2S = na - nb, h1e, g2e
+# I use ASU formalism so MOs are spin orbs
+hdump = fcidump.FCIDUMP(pg = 'c1', n_sites = norbs, n_elec = sum(nelecs), twos = nelecs[1] - nelecs[0], h1e = h1e_asu, g2e = g2e_asu)
+if verbose: print("- Created fcidump");
+
+# get hamiltonian from fcidump
+# now instead of np arrays it is a pyblock3 Hamiltonian class
+h = hamiltonian.Hamiltonian(hdump, True);
+h_mpo = h.build_qc_mpo(); # hamiltonian as matrix product operator (DMRG lingo)
+#mpo, error = h_mpo.compress(flat = True, left=True, cutoff=1E-9, norm_cutoff=1E-9)
+if verbose: print("- Built H as MPO");
+
+# initial ansatz and energy
+psi_mps = h.build_mps(bond_dim_i); # multiplies as np array
+if True: # test code
+    print('MPO = ', h_mpo.show_bond_dims())
+    #print('MPO = ', mpo.show_bond_dims())
+    print('MPS = ', psi_mps.show_bond_dims())
+psi_sq = np.dot(psi_mps.conj(), psi_mps);
+E_psi = np.dot(psi_mps.conj(), h_mpo @ psi_mps)/psi_sq; # initial exp value of energy
+print("- Energy = ", E_psi);
+
         
 
