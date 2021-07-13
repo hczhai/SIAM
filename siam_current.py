@@ -437,16 +437,21 @@ def DotDataVsVgate():
     '''
 
     # system inputs
-    nleads = (4,4);
+    nleads = (3,3);
     nelecs = (nleads[0] + nleads[1] + 1,0); # half filling
-    tf = 30.0
-    dt = 0.01
+    tf = 40.0
+    dt = 0.005
 
     # tunable phys params
     mu = 0
-    for Vg in np.linspace(-1.0, 1.0, 5):
+    for Vg in np.linspace(-1.0, 1.0, 9):
 
         # run code
+        DotCurrentData(nleads, nelecs, tf, dt, mu, Vg, verbose = 5);
+
+    Vg = -0.5;
+    for mu in np.linspace(-1.0,0.0,9):
+
         DotCurrentData(nleads, nelecs, tf, dt, mu, Vg, verbose = 5);
 
     
@@ -454,8 +459,6 @@ def DotDataVsVgate():
 #### exec code
 
 if __name__ == "__main__":
-
-    PlotdtdE();
     
     # TODO: get better freq resolution on dot current vs Vgate
-    #DotDataVsVgate();
+    DotDataVsVgate();
