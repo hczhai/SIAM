@@ -94,6 +94,10 @@ def GenericPlot(x,y, handles=[], styles = [], labels=["x","y",""]):
     return; # end generic plot
 
 
+###############################################################################
+#### very specific plot functions
+
+
 def ESpectrumPlot(Evals, title = ""):
 
     x = np.array([0,1]);
@@ -167,6 +171,118 @@ def BasisPlot(basisdict, labels, comparediff=False):
     plt.show();
 
     return; #### end basis plot
+    
+    
+def PlotdtdE():
+
+    # system inputs
+    nleads = (4,4);
+    nimp = 1;
+    nelecs = (nleads[0] + nleads[1] + 1,0); # half filling
+    mu = 0;
+    Vg = -1.0;
+
+    # time step is variable
+    tf = 1.0;
+    dts = [0.2, 0.167, 0.1, 0.02, 0.0167, 0.01]
+
+    # delta E vs dt data
+    dEvals = np.zeros(len(dts));
+    dtvals = np.array(dts);
+
+    # start the file name string
+    folderstring = "dat/DotCurrentData/";
+
+    # unpack each _E.txt file
+    for i in range(len(dts)):
+
+        dt = dts[i];
+
+        # get arr from the txt file
+        fstring = folderstring+"dt"+str(dt)+"_"+ str(nleads[0])+"_"+str(nimp)+"_"+str(nleads[1])+"_e"+str(nelecs[0])+"_mu"+str(mu)+"_Vg"+str(Vg);
+        dtdE_arr = np.loadtxt(fstring+"_E.txt");
+        
+        # what we eant is Ef-Ei
+        dEvals[i] = dtdE_arr[1,-1] - dtdE_arr[1,0];
+        
+    # fit to quadratic
+    quad = np.polyfit(dtvals, dEvals, 2);
+    tspace = np.linspace(dtvals[0], dtvals[-1], 100);
+    quadvals = tspace*tspace*quad[0] + tspace*quad[1] + quad[2];
+
+    # fit to exp
+    def e_x(x,a,b,c):
+        return a*np.exp(b*x) + c;
+    fit = scipy.optimize.curve_fit(e_x, dtvals, dEvals);
+    fitvals = e_x(tspace, *fit[0]);
+    
+    # plot results
+    plt.plot(dtvals, dEvals, label = "data");
+    plt.plot(tspace, quadvals, label ="Quadratic fit: $y = ax^2 + bx + c$");
+    plt.plot(tspace, fitvals, label ="Exponential fit: $y= ae^{bx} + c$");
+    plt.xlabel("time step");
+    plt.ylabel("E(t=1.0) - E(t=0.0)");
+    plt.title("$\Delta E$ vs dt, 4 leads each side");
+    plt.legend();
+    plt.show();
+        
+    return # end plot dt dE
+
+
+def PlotFiniteSize():
+
+    # return vals
+    chainlengths = np.array([1,2,3]);
+    TimePeriods = np.zeros(len(chainlengths) );
+
+    # prep plot
+    fig, (ax1, ax2) = plt.subplots(2);
+    
+    # how dominant freq depends on length of chain, for dot identical to lead site
+    for chaini in range(len(chainlengths) ):
+
+        chainlength = chainlengths[chaini];
+        nleads = chainlength, chainlength;
+        nelecs = (2*chainlength+1,0); # half filling
+        tf = 12.0
+        dt = 0.01
+        mu = [0.0]
+        Vg = [0.0]
+
+        # plot J data for diff chain lengths
+        folder = "dat/DotCurrentData/chain/"
+        x, J, dummy, dummy = UnpackDotData(folder, nleads, 1, nelecs, mu, Vg);
+        x, J = x[0], J[0] ; # unpack lists
+        ax1.plot(x,J, label = str(nelecs[0])+" sites");
+
+        # get time period data
+        for xi in range(len(x)): # iter over time
+            if( J[xi] < 0 and J[xi+1] > 0): # indicates full period
+                TimePeriods[chaini] = x[xi];
+                break;
+
+    # format J vs t plot (ax1)
+    ax1.legend();
+    ax1.axhline(color = "grey", linestyle = "dashed")
+    ax1.set_xlabel("time (dt = 0.01 s)");
+    ax1.set_ylabel("$J*\pi/|V_{bias}|$");
+    ax1.set_title("Finite size effects");
+
+    # second plot: time period vs chain length
+    numsites = 2*chainlengths + 1;
+    ax2.plot(numsites, TimePeriods, label = "Data", color = "black");
+    linear = np.polyfit(numsites, TimePeriods, 1); # plot linear fit
+    linearvals = numsites*linear[0] + linear[1];
+    ax2.plot(numsites, linearvals, label = "Linear fit, m = "+str(linear[0])[:6], color = "grey", linestyle = "dashed");
+    
+    ax2.legend();
+    ax2.set_xlabel("Number of sites")
+    ax2.set_ylabel("Time Period (s)");
+
+    # show
+    plt.show();
+    return; # end plot finite size
+
     
     
 def CorrelPlot(datadict, correl_key, labels):

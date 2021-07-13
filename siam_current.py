@@ -31,6 +31,7 @@ import ruojings_td_fci as td
 
 import time
 import numpy as np
+import scipy
 import matplotlib.pyplot as plt
 
 #################################################
@@ -67,13 +68,13 @@ def DotCurrentData(n_leads, nelecs, timestop, deltat, mu, V_gate, prefix = "", v
     norbs = 2*(n_leads[0]+n_leads[1]+n_imp_sites); # num spin orbs
     # nelecs left as tunable
 
-    # physical params, should always be floats
+    # physical params, should always be floats ### edited from stds for chain length investig
     V_leads = 1.0; # hopping
-    V_imp_leads = 0.4; # hopping
+    V_imp_leads = 1.0; # hopping
     V_bias = 0; # wait till later to turn on current
     # chemical potential left as tunable
     # gate voltage on dot left as tunable
-    U = 1.0; # hubbard repulsion
+    U = 0.0; # hubbard repulsion
     params = V_leads, V_imp_leads, V_bias, mu, V_gate, U;
 
     # get h1e, h2e, and scf implementation of SIAM with dot as impurity
@@ -229,27 +230,31 @@ def MolCurrentPlot():
 
 def UnpackDotData(folder, nleads, nimp, nelecs, mu, Vg):
 
-    assert (( len(mu) == 1 and len(Vg) > 1) ) #or (len(mu) > 1 and len(Vg) == 1) );
+    assert( isinstance(mu, list) and isinstance(Vg, list) );
 
     xJvals = [];
     yJvals = [];
     xEvals = [];
     yEvals = [];
 
-    for i in range(len(Vg)):
+    if( len(mu) == 1): # not getting diff mu vals
+        for i in range(len(Vg)):
 
-        # get data from txt file
-        V = Vg[i];
-        m = mu[0]
-        fname = folder+str(nleads[0])+"_"+str(nimp)+"_"+str(nleads[1]);
-        fname += "_e"+str(nelecs[0])+"_mu"+str(m)+"_Vg"+str(V)
-        xJ, yJ = plot.PlotTxt2D(fname+"_J.txt"); #current
-        xE, yE = plot.PlotTxt2D(fname+"_E.txt"); # energy
-        xJvals.append(xJ);
-        yJvals.append(yJ);
-        xEvals.append(xE);
-        yEvals.append(yE);
+            # get data from txt file
+            V = Vg[i];
+            m = mu[0]
+            fname = folder+str(nleads[0])+"_"+str(nimp)+"_"+str(nleads[1]);
+            fname += "_e"+str(nelecs[0])+"_mu"+str(m)+"_Vg"+str(V)
+            xJ, yJ = np.loadtxt(fname+"_J.txt");
+            xE, yE = np.loadtxt(fname+"_E.txt");
+            xJvals.append(xJ);
+            yJvals.append(yJ);
+            xEvals.append(xE);
+            yEvals.append(yE);
 
+
+    else:
+        raise Exception("list of mu vals not yet supported in UnpackDotData");
 
     return xJvals, yJvals, xEvals, yEvals; # end unpack dot data
 
@@ -378,6 +383,7 @@ def dtVsdE():
     # time step is variable
     tf = 1.0;
     dts = [0.2, 0.1, 0.02, 0.01, 0.002, 0.001];
+    dts = [0.167, 0.0167]
     
     for dt in dts:
     
@@ -385,49 +391,6 @@ def dtVsdE():
         print("****    ",dt);
         prefix = "dt"+str(dt)+"_";
         DotCurrentData(nleads, nelecs, tf, dt, mu, Vg, prefix = prefix, verbose = 5);
-        
-        
-def PlotdtdE():
-
-    # system inputs
-    nleads = (4,4);
-    nimp = 1;
-    nelecs = (nleads[0] + nleads[1] + 1,0); # half filling
-    mu = 0;
-    Vg = -1.0;
-
-    # time step is variable
-    tf = 1.0;
-    dts = [0.2, 0.1, 0.02, 0.01, 0.002, 0.001];
-    dts = [0.2, 0.1, 0.02, 0.01]
-    
-    # delta E vs dt data
-    dEvals = np.zeros(len(dts));
-    dtvals = np.array(dts);
-    
-    # start the file name string
-    folderstring = "dat/DotCurrentData/";
-    
-    # unpack each _E.txt file
-    for i in range(len(dts)):
-    
-        dt = dts[i];
-    
-        # get arr from the txt file
-        fstring = folderstring+"dt"+str(dt)+"_"+ str(nleads[0])+"_"+str(nimp)+"_"+str(nleads[1])+"_e"+str(nelecs[0])+"_mu"+str(mu)+"_Vg"+str(Vg);
-        dtdE_arr = np.loadtxt(fstring+"_E.txt");
-        
-        # what we eant is Ef-Ei
-        dEvals[i] = dtdE_arr[1,-1] - dtdE_arr[1,0];
-        
-    # plot results
-    plt.plot(dtvals, dEvals);
-    plt.xlabel("time step");
-    plt.ylabel("E(t=1.0) - E(t=0.0)");
-    plt.title("$\Delta E$ vs dt, dot model, 4 leads each side");
-    plt.show();
-        
-    return # end plot dt dE
 
 
 def DotDataVsVgate():
@@ -454,11 +417,14 @@ def DotDataVsVgate():
 
         DotCurrentData(nleads, nelecs, tf, dt, mu, Vg, verbose = 5);
 
+    return; # end dot data vs V gate
+
+
     
 #################################################
 #### exec code
 
-if __name__ == "__main__":
-    
-    # TODO: get better freq resolution on dot current vs Vgate
-    DotDataVsVgate();
+if __name__ == "__main__"):
+
+    pass;
+
