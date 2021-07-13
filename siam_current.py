@@ -230,7 +230,8 @@ def MolCurrentPlot():
 
 def UnpackDotData(folder, nleads, nimp, nelecs, mu, Vg):
 
-    assert( isinstance(mu, list) and isinstance(Vg, list) );
+    assert( isinstance(mu, list) or isinstance(mu, np.ndarray) );
+    assert( isinstance(Vg, list) or isinstance(Vg, np.ndarray) );
 
     xJvals = [];
     yJvals = [];
@@ -245,6 +246,7 @@ def UnpackDotData(folder, nleads, nimp, nelecs, mu, Vg):
             m = mu[0]
             fname = folder+str(nleads[0])+"_"+str(nimp)+"_"+str(nleads[1]);
             fname += "_e"+str(nelecs[0])+"_mu"+str(m)+"_Vg"+str(V)
+            print("- Reading data from "+fname);
             xJ, yJ = np.loadtxt(fname+"_J.txt");
             xE, yE = np.loadtxt(fname+"_E.txt");
             xJvals.append(xJ);
@@ -272,19 +274,21 @@ def DotCurrentPlot():
     mycolor = 'tab:blue'
 
     # get current data from txt
-    nleads = (4,4);
+    nleads = (3,3);
     nimp = 1;
-    nelecs, mu, Vg = (9,0), [0], [-1.0,-0.5,0.0, 0.5, 1.0]; # physical inputs
+    nelecs = (sum(nleads)+1,0); # half filling
+    mu, Vg = [0], np.linspace(-1.0, 1.0, 9); # physical inputs
+    mu, Vg = [0], [-1.0, -0.5];
     fname = "dat/DotCurrentData/";
     xJ, yJ, xE, yE = UnpackDotData(fname, nleads, nimp, nelecs, mu, Vg);
 
     # e spectrum must be done manually
-    Energies = [-10.24, -9.68, -9.52, -9.30, -9.19]; # dummies for now
+    Energies = [-10.24, -9.68, -9.52, -9.30, -9.19]; 
     xElevels, yElevels = plot.ESpectrumPlot(Energies);
     for E in yElevels: # each energy level is sep line
         ax1.plot(xElevels, E, color = mycolor);
     # repeat for Vg = -0.5
-    Energies = [-9.70, -8.91, -8.87, -8.70, -8.47]; # dummies for now
+    Energies = [-9.70, -8.91, -8.87, -8.70, -8.47]; 
     xElevels, yElevels = plot.ESpectrumPlot(Energies);
     xElevels += 1;
     for E in yElevels: # each energy level is sep line
@@ -295,7 +299,12 @@ def DotCurrentPlot():
 
     for i in range(len(Vg)):
 
-        if i == 1: mycolor = 'tab:orange';
+        if Vg[i] == 0.0 or Vg[i] == -0.25:
+            mystyle = "dashed";
+            mys = 0.1
+        else:
+            mystyle = "solid"
+            mys = 0.0
 
         yE[i] = yE[i]/yE[i][0] - 1; # normalize energy to 0
         ti, tf = xJ[i][0], xJ[i][-1]
@@ -306,20 +315,22 @@ def DotCurrentPlot():
         ax2.plot(freq, Fnorm);
         ax2.set_xlabel("$\omega$ (2$\pi$/s)")
         ax2.set_ylabel("Fourier amp.")
+        ax2.axvline(x = 2*np.pi/(sum(nleads)+1), color = "grey", linestyle = "dashed" );
 
         # plot J vs t on bottom 
-        ax3.plot(xJ[i], yJ[i], label = "$V_g$ = "+str(Vg[i]));
-        ax3.set_title("td-FCI through dot, 4 lead sites on each side");
-        ax3.set_xlabel("time (dt = 0.1 s)");
-        ax3.set_ylabel("Current*$\pi/V_{bias}$");
+        ax3.plot(xJ[i], yJ[i]+mys, linestyle = mystyle, label = "$V_g$ = "+str(Vg[i]));
+        ax3.set_title("td-FCI through dot, "+str(nleads[0])+" lead sites on each side");
+        ax3.set_xlabel("time (dt = 0.005 s)");
+        ax3.set_ylabel("$J*\pi/V_{bias}$");
 
         # plot E vs t on bottom  
         ax4.plot(xE[i], yE[i] );
-        ax4.set_xlabel("time (dt = 0.1 s)");
+        ax4.set_xlabel("time (dt = 0.005 s)");
         ax4.set_ylabel("$E/E_i$ - 1");
 
 
     # config and show
+    ax2.grid();
     plt.tight_layout();
     ax3.legend();
     plt.show();
@@ -424,7 +435,8 @@ def DotDataVsVgate():
 #################################################
 #### exec code
 
-if __name__ == "__main__"):
+if(__name__ == "__main__"):
 
-    pass;
+    #DotCurrentPlot();
+    plot.PlotFiniteSize();
 
