@@ -161,7 +161,7 @@ if(verbose): print("\n3. DMRG (All spin up): nelecs = ",nelecs, " nroots = ",nro
 # store hamiltonian matrices in fcidump
 # syntax: point group, num MOs, total num elecs (int), 2S = na - nb, h1e, g2e
 # I use ASU formalism so MOs are spin orbs
-hdump = fcidump.FCIDUMP(pg = 'c1', n_sites = norbs, n_elec = sum(nelecs), twos = nelecs[1] - nelecs[0], h1e = h1e_asu, g2e = g2e_asu)
+hdump = fcidump.FCIDUMP(pg = 'd2h', n_sites = norbs, n_elec = sum(nelecs), twos = nelecs[1] - nelecs[0], h1e = h1e_asu, g2e = g2e_asu)
 if verbose: print("- Created fcidump");
 
 # get hamiltonian from fcidump

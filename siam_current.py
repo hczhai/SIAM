@@ -413,9 +413,12 @@ def DotDataVsVgate():
 #### exec code
 
 if __name__ == "__main__":
+
+    # prep plot
+    fig, (ax1, ax2) = plt.subplots(2);
     
     # how dominant freq depends on length of chain, for dot identical to lead site
-    for chainlength in [1,2,3,4]:
+    for chainlength in [1,2,3]:
     
         nleads = chainlength, chainlength;
         nelecs = (2*chainlength+1,0); # half filling
@@ -425,10 +428,12 @@ if __name__ == "__main__":
         Vg = 0.0
         
         # get data for diff chain lengths
+        #DotCurrentData(nleads, nelecs, tf, dt, mu, Vg, prefix = folder, verbose = 5);
+
+        # plot data for diff chain lengths
         folder = "chain/"
-        DotCurrentData(nleads, nelecs, tf, dt, mu, Vg, prefix = folder, verbose = 5);
+        x, J = UnpackDotData(folder, nleads, 1, nelecs, mu, Vg);
+        
         
         
     
-    # TODO: get better freq resolution on dot current vs Vgate
-    # # done on desktop

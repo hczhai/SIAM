@@ -40,6 +40,8 @@ g2e[1,1,0,0] = U;  # interchange particle labels
 g2e[2,2,3,3] = U;
 g2e[3,3,2,2] = U;
 
+'''
+
 # store hamiltonian in fcidump
 # syntax: point group, num MOs, total num elecs (int), 2S = na - nb, h1e, g2e
 # I use ASU formalism so MOs are spin orbs
@@ -50,4 +52,15 @@ if verbose: print("Created fcidump");
 h = hamiltonian.Hamiltonian(hdump, True);
 h_mpo = h.build_qc_mpo(); # hamiltonian as matrix product operator (DMRG lingo)
 if verbose: print("Built H as MPO");
+
+'''
+
+
+######################################################################
+#### ab initio
+
+# do pyscf RHF with molecular input for values of params eg t, U [see N2 (10o, 7e) (STO3G)  ]
+# can input 2nd quantized hams (see MPO construction)
+
+
 
