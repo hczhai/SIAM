@@ -1,5 +1,5 @@
 '''
-pyblock/sandbox.py
+pyblock_sandbox.py
 
 Mess around with pyblock3
 

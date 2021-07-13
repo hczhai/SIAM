@@ -230,27 +230,31 @@ def MolCurrentPlot():
 
 def UnpackDotData(folder, nleads, nimp, nelecs, mu, Vg):
 
-    assert (( len(mu) == 1 and len(Vg) > 1) ) #or (len(mu) > 1 and len(Vg) == 1) );
+    assert( isinstance(mu, list) and isinstance(Vg, list) );
 
     xJvals = [];
     yJvals = [];
     xEvals = [];
     yEvals = [];
 
-    for i in range(len(Vg)):
+    if( len(mu) == 1): # not getting diff mu vals
+        for i in range(len(Vg)):
 
-        # get data from txt file
-        V = Vg[i];
-        m = mu[0]
-        fname = folder+str(nleads[0])+"_"+str(nimp)+"_"+str(nleads[1]);
-        fname += "_e"+str(nelecs[0])+"_mu"+str(m)+"_Vg"+str(V)
-        xJ, yJ = plot.PlotTxt2D(fname+"_J.txt"); #current
-        xE, yE = plot.PlotTxt2D(fname+"_E.txt"); # energy
-        xJvals.append(xJ);
-        yJvals.append(yJ);
-        xEvals.append(xE);
-        yEvals.append(yE);
+            # get data from txt file
+            V = Vg[i];
+            m = mu[0]
+            fname = folder+str(nleads[0])+"_"+str(nimp)+"_"+str(nleads[1]);
+            fname += "_e"+str(nelecs[0])+"_mu"+str(m)+"_Vg"+str(V)
+            xJ, yJ = np.loadtxt(fname+"_J.txt");
+            xE, yE = np.loadtxt(fname+"_E.txt");
+            xJvals.append(xJ);
+            yJvals.append(yJ);
+            xEvals.append(xE);
+            yEvals.append(yE);
 
+
+    else:
+        raise Exception("list of mu vals not yet supported in UnpackDotData");
 
     return xJvals, yJvals, xEvals, yEvals; # end unpack dot data
 
@@ -408,31 +412,18 @@ def DotDataVsVgate():
         # run code
         DotCurrentData(nleads, nelecs, tf, dt, mu, Vg, verbose = 5);
 
+    return; # end dot data vs V gate
+
+
     
 #################################################
 #### exec code
 
 if __name__ == "__main__":
 
-    # prep plot
-    fig, (ax1, ax2) = plt.subplots(2);
-    
-    # how dominant freq depends on length of chain, for dot identical to lead site
-    for chainlength in [1,2,3]:
-    
-        nleads = chainlength, chainlength;
-        nelecs = (2*chainlength+1,0); # half filling
-        tf = 12.0
-        dt = 0.01
-        mu = 0.0
-        Vg = 0.0
-        
-        # get data for diff chain lengths
-        #DotCurrentData(nleads, nelecs, tf, dt, mu, Vg, prefix = folder, verbose = 5);
+    plot.PlotFiniteSize();
 
-        # plot data for diff chain lengths
-        folder = "chain/"
-        x, J = UnpackDotData(folder, nleads, 1, nelecs, mu, Vg);
+
         
         
         

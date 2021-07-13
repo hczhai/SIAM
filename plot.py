@@ -94,6 +94,10 @@ def GenericPlot(x,y, handles=[], styles = [], labels=["x","y",""]):
     return; # end generic plot
 
 
+###############################################################################
+#### very specific plot functions
+
+
 def ESpectrumPlot(Evals, title = ""):
 
     x = np.array([0,1]);
@@ -223,6 +227,62 @@ def PlotdtdE():
     plt.show();
         
     return # end plot dt dE
+
+
+def PlotFiniteSize():
+
+    # return vals
+    chainlengths = np.array([1,2,3]);
+    TimePeriods = np.zeros(len(chainlengths) );
+
+    # prep plot
+    fig, (ax1, ax2) = plt.subplots(2);
+    
+    # how dominant freq depends on length of chain, for dot identical to lead site
+    for chaini in range(len(chainlengths) ):
+
+        chainlength = chainlengths[chaini];
+        nleads = chainlength, chainlength;
+        nelecs = (2*chainlength+1,0); # half filling
+        tf = 12.0
+        dt = 0.01
+        mu = [0.0]
+        Vg = [0.0]
+
+        # plot J data for diff chain lengths
+        folder = "dat/DotCurrentData/chain/"
+        x, J, dummy, dummy = UnpackDotData(folder, nleads, 1, nelecs, mu, Vg);
+        x, J = x[0], J[0] ; # unpack lists
+        ax1.plot(x,J, label = str(nelecs[0])+" sites");
+
+        # get time period data
+        for xi in range(len(x)): # iter over time
+            if( J[xi] < 0 and J[xi+1] > 0): # indicates full period
+                TimePeriods[chaini] = x[xi];
+                break;
+
+    # format J vs t plot (ax1)
+    ax1.legend();
+    ax1.axhline(color = "grey", linestyle = "dashed")
+    ax1.set_xlabel("time (dt = 0.01 s)");
+    ax1.set_ylabel("$J*\pi/|V_{bias}|$");
+    ax1.set_title("Finite size effects");
+
+    # second plot: time period vs chain length
+    numsites = 2*chainlengths + 1;
+    ax2.plot(numsites, TimePeriods, label = "Data", color = "black");
+    linear = np.polyfit(numsites, TimePeriods, 1); # plot linear fit
+    linearvals = numsites*linear[0] + linear[1];
+    ax2.plot(numsites, linearvals, label = "Linear fit, m = "+str(linear[0])[:6], color = "grey", linestyle = "dashed");
+    
+    ax2.legend();
+    ax2.set_xlabel("Number of sites")
+    ax2.set_ylabel("Time Period (s)");
+
+    # show
+    plt.show();
+    return; # end plot finite size
+
     
     
 def CorrelPlot(datadict, correl_key, labels):
