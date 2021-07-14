@@ -70,11 +70,11 @@ def DotCurrentData(n_leads, nelecs, timestop, deltat, mu, V_gate, prefix = "", v
 
     # physical params, should always be floats ### edited from stds for chain length investig
     V_leads = 1.0; # hopping
-    V_imp_leads = 1.0; # hopping
+    V_imp_leads = 0.4; # hopping
     V_bias = 0; # wait till later to turn on current
     # chemical potential left as tunable
     # gate voltage on dot left as tunable
-    U = 0.0; # hubbard repulsion
+    U = 1.0; # hubbard repulsion
     params = V_leads, V_imp_leads, V_bias, mu, V_gate, U;
 
     # get h1e, h2e, and scf implementation of SIAM with dot as impurity
@@ -424,7 +424,6 @@ def DotDataVsVgate():
 #################################################
 #### exec code
 
-if __name__ == "__main__"):
+if(__name__ == "__main__"):
 
-    pass;
-
+    plot.PlotFiniteSize();
