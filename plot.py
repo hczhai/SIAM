@@ -241,7 +241,7 @@ def PlotFiniteSize():
     dt = 0.01
     mu = [0.0]
     Vg = [0.0]
-    chainlengths = np.array([1,2,3]);
+    chainlengths = np.array([1,2,3,4]);
     TimePeriods = np.zeros(len(chainlengths) );
 
     # prep plot
@@ -251,6 +251,7 @@ def PlotFiniteSize():
     for chaini in range(len(chainlengths) ):
 
         chainlength = chainlengths[chaini];
+        print(chainlength);
         nleads = chainlength, chainlength;
         nelecs = (2*chainlength+nimp,0); # half filling
 
@@ -268,6 +269,7 @@ def PlotFiniteSize():
 
     # format J vs t plot (ax1)
     ax01.legend();
+    ax01.set_xlim(0,12);
     ax01.axhline(color = "grey", linestyle = "dashed")
     ax01.set_xlabel("time (dt = "+str(dt)+" s)");
     ax01.set_ylabel("$J*\pi/|V_{bias}|$");
@@ -284,14 +286,33 @@ def PlotFiniteSize():
     ax02.set_xlabel("Number of sites")
     ax02.set_ylabel("Time Period (s)");
 
-    # show
-    plt.show();
-
     #### 2nd plot: fourier analyze 1 chain length at time
-    mychainlength = 7; # can change
+    mychainlength = 9; # can change
+    dt = 0.01 # have to change manually as well
     Energies = [[0,1,2], [-4.464, -3.732, -3.464, -2.732, -2.464, -2.00],
         [-8.055, -7.289, -6.640, -6.524,-6.207, -5.875],
         [-10.009, -9.452, -9.391, -9.009, -8.834, -8.773, -8.725, -8.391, -8.276, -8.216, -8.107]];
+
+    # show
+    plt.show();
+    return; # end plot finite size
+
+
+def FourierAnalyzePlot(folder, nleads, nimp, nelecs, mu, Vg, Energies, mytitle = "")
+    '''
+    From J data, plot discrete FT freqs, delta E freqs
+
+    Needs work
+
+    Args:
+    - folder, string, where to get data from
+    - nleads, tuple of ints, num sites on each side
+    - nimp, int, num impurity sites
+    - nelecs, tuple of total num electrons, 0 due to ASU formalism
+    - mu, float, chem potential of leads
+    - Vg, float, chem potential of dot
+    - Energies, list or array of energy spectrum of system
+    '''
     
     # control layout of plots
     ax1 = plt.subplot2grid((3, 3), (1, 0), rowspan = 2)         # energy spectrum
@@ -299,17 +320,21 @@ def PlotFiniteSize():
     ax3 = plt.subplot2grid((3, 3), (0, 0), colspan=3, rowspan=1)# J vs t
     ax4 = plt.subplot2grid((3, 3), (2, 1), colspan=2, sharex = ax2)           # expected freqs
 
-    # get 3 site data again
-    nleads = (int((mychainlength - nimp)/2), int((mychainlength - nimp)/2) );
-    nelecs = (mychainlength, 0);
-    fname = "dat/DotCurrentData/chain/";
-    xJ, yJ, xE, yE = siam_current.UnpackDotData(fname, nleads, nimp, nelecs, mu, Vg);
+    # get data fromtxt file
+    xJ, yJ, xE, yE = siam_current.UnpackDotData(folder, nleads, nimp, nelecs, mu, Vg);
+    dt = xJ[1]; # since xJ[0] = 0
+
+    # get time period of J
+    TimePeriod = 0;
+    for xi in range(len(xJ)): # iter over time
+        if( J[xi] < 0 and J[xi+1] > 0): # indicates full period
+            TimePeriod = xJ[xi];
+            break;
 
     # e spectrum must be done manually
-    Energies = Energies[int((mychainlength - 3)/2)] # get energies specific to chain length
     xElevels, yElevels = ESpectrumPlot(Energies);
     for E in yElevels: # each energy level is sep line
-        ax1.plot(xElevels, E, color = "navy");
+        ax1.plot(xElevels, E, color = "black");
         ax1.set_ylabel("Energy (a.u.)")
     ax1.grid(which = 'both')
     ax1.tick_params(axis = 'x', which = 'both', bottom = False, top = False, labelbottom = False);
@@ -318,33 +343,30 @@ def PlotFiniteSize():
     omega = np.zeros(len(Energies));
     for Ei in range(len(Energies)):
         omega[Ei] = Energies[Ei] - Energies[0];
-    ax4.hist(omega[1:], 100);
-    ax4.set_xlabel("$\omega$ (2$\pi$/s)")
+    ax4.hist(omega[1:], 100, color = "black");
+    ax4.set_xlabel("$\Delta E$ (2$\pi$/s)")
     ax4.set_xlim(0,3);
     ax4.grid();
 
     # plot actual frequencies
     Fnorm, freq = siam_current.Fourier(yJ[0], 1/dt, angular = True); # gives dominant frequencies
     ax2.plot(freq, Fnorm, label = "Fourier");
-    ax2.set_ylabel("Fourier amp.")
+    ax2.set_ylabel("Amplitude")
+    ax2.set_xlabel("$\omega$ ($2\pi/s$)");
     ax2.set_xlim(0,3);
     ax2.grid();
 
     # basic expectations for freqs
     ax2.axvline(x = 2*np.pi/(sum(nleads)+nimp), color = "grey", linestyle = "dashed", label = "$2\pi$/num. sites");
-    ax2.axvline(x=2*np.pi/TimePeriods[int((mychainlength - 3)/2)], color = "black", linestyle = "dashed", label = "$2*\pi$/T");
+    ax2.axvline(x=TimePeriod, color = "navy", linestyle = "dashed", label = "$2\pi$/T");
     ax2.legend();
 
     # plot J vs t on bottom 
     ax3.plot(xJ[0], yJ[0], label = "$V_g$ = "+str(Vg[0]));
-    ax3.set_title(str(sum(nleads)+nimp)+" site chain");
+    ax3.set_title(mytitle);
     ax3.set_xlabel("time (dt = "+str(dt)+" s)");
     ax3.set_ylabel("$J*\pi/V_{bias}$");
     ax3.axhline(color = "grey", linestyle = "dashed");
-
-    # show
-    plt.show();
-    return; # end plot finite size
     
     
 def CorrelPlot(datadict, correl_key, labels):
