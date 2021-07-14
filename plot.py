@@ -297,10 +297,93 @@ def PlotFiniteSize():
     plt.show();
     return; # end plot finite size
 
+def CurrentPlot(folder, nleads, nimp, nelecs, mu, Vg, mytitle = "", verbose = 0):
+    '''
+    Plot current and energy against time for dot impurity
+    Fourier analyze and plot modes
 
-def FourierAnalyzePlot(folder, nleads, nimp, nelecs, mu, Vg, Energies, mytitle = "")
+    Designed for multiple data sets at a time, e.g. sweeps of Vg or mu
+
+    DO NOT modify mu or Vg before calling Unpack to get data
+    '''
+
+    # confirm mu and Vg are iterable
+    assert( isinstance(mu, list) or isinstance(mu, np.ndarray) );
+    assert( isinstance(Vg, list) or isinstance(Vg, np.ndarray) );
+    if(verbose):
+        print("Vg, mu = ",Vg,mu);
+
+    # control layout of plots
+    ax3 = plt.subplot2grid((4, 1), (0, 0), rowspan=2)  # J vs t
+    ax4 = plt.subplot2grid((4, 1), (2, 0) )            # E vs t
+    ax5 = plt.subplot2grid((4, 1), (3, 0) )            # freqs
+
+
+    # get current data from txt
+    # Unpack returns lists of time, J, time, E, each list is diff Vg or mu
+    xJ, yJ, xE, yE = siam_current.UnpackDotData(folder, nleads, nimp, nelecs, mu, Vg);
+    dt = xJ[0][1]; # since xJ[0][0] = 0
+
+    # plot data across Vg sweep
+    if( len(mu) == 1): # either Vg sweep or no sweep, either way this works
+        for i in range(len(Vg)):
+
+            # plot J vs t on top
+            ax3.plot(xJ[i], yJ[i], label = "$V_g$ = "+str(Vg[i])+", $\mu$ = "+str(mu[0]));
+            ax3.set_title(mytitle);
+            ax3.set_xlabel("time (dt = "+str(dt)+" s)");
+            ax3.set_ylabel("$J*\pi/V_{bias}$");
+            ax3.legend();
+
+            # plot E vs t middle
+            yE[i] = yE[i]/yE[i][0] - 1; # normalize energy to 0
+            ax4.plot(xE[i], yE[i] );
+            ax4.set_xlabel("time (dt = "+str(dt)+" s)");
+            ax4.set_ylabel("$E/E_i$ - 1");
+
+            # plot frequencies below
+            Fnorm, freq = siam_current.Fourier(yJ[i], 1/dt, angular = True); # gives dominant frequencies
+            ax5.plot(freq, Fnorm);
+            ax5.set_xlabel("$\omega$ (2$\pi$/s)")
+            ax5.set_ylabel("Amplitude")
+            ax5.set_xlim(0,3);
+            ax5.grid();
+
+    elif( len(mu) > 1 and len(Vg) == 1): # mu sweep
+        for i in range(len(mu)):
+
+            # plot J vs t on top
+            ax3.plot(xJ[i], yJ[i], label = "$V_g$ = "+str(Vg[0])+", $\mu$ = "+str(mu[i]));
+            ax3.set_title(mytitle);
+            ax3.set_xlabel("time (dt = "+str(dt)+" s)");
+            ax3.set_ylabel("$J*\pi/V_{bias}$");
+            ax3.legend();
+
+            # plot E vs t middle
+            yE[i] = yE[i]/yE[i][0] - 1; # normalize energy to 0
+            ax4.plot(xE[i], yE[i] );
+            ax4.set_xlabel("time (dt = "+str(dt)+" s)");
+            ax4.set_ylabel("$E/E_i$ - 1");
+
+            # plot frequencies below
+            Fnorm, freq = siam_current.Fourier(yJ[i], 1/dt, angular = True); # gives dominant frequencies
+            ax5.plot(freq, Fnorm);
+            ax5.set_xlabel("$\omega$ (2$\pi$/s)")
+            ax5.set_ylabel("Amplitude")
+            ax5.set_xlim(0,3);
+            ax5.grid();
+
+    # config and show
+    plt.tight_layout();
+    plt.show();
+
+    return; # end dot current plot
+
+
+def FourierEnergyPlot(folder, nleads, nimp, nelecs, mu, Vg, Energies, mytitle = ""):
     '''
     From J data, plot discrete FT freqs, delta E freqs
+    Compare actual freqs to those expected by energy differences
 
     Needs work
 
@@ -313,6 +396,9 @@ def FourierAnalyzePlot(folder, nleads, nimp, nelecs, mu, Vg, Energies, mytitle =
     - Vg, float, chem potential of dot
     - Energies, list or array of energy spectrum of system
     '''
+
+    assert(len(mu) == 1); # should both be lists of 1, b/c these plots dont compare across vals
+    assert(len(Vg) == 1);
     
     # control layout of plots
     ax1 = plt.subplot2grid((3, 3), (1, 0), rowspan = 2)         # energy spectrum
@@ -322,12 +408,13 @@ def FourierAnalyzePlot(folder, nleads, nimp, nelecs, mu, Vg, Energies, mytitle =
 
     # get data fromtxt file
     xJ, yJ, xE, yE = siam_current.UnpackDotData(folder, nleads, nimp, nelecs, mu, Vg);
+    xJ, yJ, xE, yE = xJ[0], yJ[0], xE[0], yE[0]; # undo lists
     dt = xJ[1]; # since xJ[0] = 0
 
     # get time period of J
     TimePeriod = 0;
     for xi in range(len(xJ)): # iter over time
-        if( J[xi] < 0 and J[xi+1] > 0): # indicates full period
+        if( yJ[xi] < 0 and yJ[xi+1] > 0): # indicates full period has passed
             TimePeriod = xJ[xi];
             break;
 
@@ -349,7 +436,7 @@ def FourierAnalyzePlot(folder, nleads, nimp, nelecs, mu, Vg, Energies, mytitle =
     ax4.grid();
 
     # plot actual frequencies
-    Fnorm, freq = siam_current.Fourier(yJ[0], 1/dt, angular = True); # gives dominant frequencies
+    Fnorm, freq = siam_current.Fourier(yJ, 1/dt, angular = True); # gives dominant frequencies
     ax2.plot(freq, Fnorm, label = "Fourier");
     ax2.set_ylabel("Amplitude")
     ax2.set_xlabel("$\omega$ ($2\pi/s$)");
@@ -358,15 +445,21 @@ def FourierAnalyzePlot(folder, nleads, nimp, nelecs, mu, Vg, Energies, mytitle =
 
     # basic expectations for freqs
     ax2.axvline(x = 2*np.pi/(sum(nleads)+nimp), color = "grey", linestyle = "dashed", label = "$2\pi$/num. sites");
-    ax2.axvline(x=TimePeriod, color = "navy", linestyle = "dashed", label = "$2\pi$/T");
+    ax2.axvline(x=2*np.pi/TimePeriod, color = "navy", linestyle = "dashed", label = "$2\pi$/T");
     ax2.legend();
 
     # plot J vs t on bottom 
-    ax3.plot(xJ[0], yJ[0], label = "$V_g$ = "+str(Vg[0]));
+    ax3.plot(xJ, yJ, label = "$V_g$ = "+str(Vg[0])+", $\mu$ = "+str(mu[0])  );
     ax3.set_title(mytitle);
     ax3.set_xlabel("time (dt = "+str(dt)+" s)");
     ax3.set_ylabel("$J*\pi/V_{bias}$");
     ax3.axhline(color = "grey", linestyle = "dashed");
+    ax3.legend();
+
+    # config and show
+    plt.tight_layout();
+    plt.show();
+    return; # end fourier enrgy plot
     
     
 def CorrelPlot(datadict, correl_key, labels):

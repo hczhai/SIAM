@@ -70,11 +70,11 @@ def DotCurrentData(n_leads, nelecs, timestop, deltat, mu, V_gate, prefix = "", v
 
     # physical params, should always be floats ### edited from stds for chain length investig
     V_leads = 1.0; # hopping
-    V_imp_leads = 0.4; # hopping
+    V_imp_leads = 1.0; # hopping
     V_bias = 0; # wait till later to turn on current
     # chemical potential left as tunable
     # gate voltage on dot left as tunable
-    U = 1.0; # hubbard repulsion
+    U = 0.0; # hubbard repulsion
     params = V_leads, V_imp_leads, V_bias, mu, V_gate, U;
 
     # get h1e, h2e, and scf implementation of SIAM with dot as impurity
@@ -229,15 +229,29 @@ def MolCurrentPlot():
 
 
 def UnpackDotData(folder, nleads, nimp, nelecs, mu, Vg):
+    '''
+    From txt file, gets J vs t, E vs t data
+    Designed to get data across values of Vg or mu, so these both must be
+    iterable, although they can be length 1 only
 
+    Returns:
+    tuple of time, J, time, E (too entrenched to consolidate time)
+    each is list of np arrays:
+    - each list entry corresponds to diff Vg or mu val
+    - each array is time vals or observables at time vals
+    '''
+
+    # confirm mu and Vg are iterable
     assert( isinstance(mu, list) or isinstance(mu, np.ndarray) );
     assert( isinstance(Vg, list) or isinstance(Vg, np.ndarray) );
 
+    # return vals
     xJvals = [];
     yJvals = [];
     xEvals = [];
     yEvals = [];
 
+    # get data across Vg sweep, or no sweep
     if( len(mu) == 1): # not getting diff mu vals
         for i in range(len(Vg)):
 
@@ -254,9 +268,24 @@ def UnpackDotData(folder, nleads, nimp, nelecs, mu, Vg):
             xEvals.append(xE);
             yEvals.append(yE);
 
+    # get data across mu sweep
+    elif(len(Vg) == 1 and len(mu) > 1):
+        for i in range(len(mu)):
 
+            V = Vg[0];
+            m = mu[i];
+            fname = folder+str(nleads[0])+"_"+str(nimp)+"_"+str(nleads[1]);
+            fname += "_e"+str(nelecs[0])+"_mu"+str(m)+"_Vg"+str(V)
+            print("- Reading data from "+fname);
+            xJ, yJ = np.loadtxt(fname+"_J.txt");
+            xE, yE = np.loadtxt(fname+"_E.txt");
+            xJvals.append(xJ);
+            yJvals.append(yJ);
+            xEvals.append(xE);
+            yEvals.append(yE);
+        
     else:
-        raise Exception("list of mu vals not yet supported in UnpackDotData");
+        raise Exception("not yet supported in UnpackDotData");
 
     return xJvals, yJvals, xEvals, yEvals; # end unpack dot data
 
@@ -335,7 +364,7 @@ def DotCurrentPlot():
     ax3.legend();
     plt.show();
 
-    return; # end mol current plot
+    return; # end dot current plot
 
 
 def DebugPlot():
@@ -437,4 +466,5 @@ def DotDataVsVgate():
 
 if(__name__ == "__main__"):
 
-    plot.PlotFiniteSize();
+    pass;
+
