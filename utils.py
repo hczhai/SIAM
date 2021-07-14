@@ -67,6 +67,47 @@ def Spin_exp(vs, norbs, nelecs):
     return S_exp; # end spin exp
 
 
+##############################################################
+#### file io
+
+def TxtHeaderDict(fname):
+    '''
+    Data routines save to txt file with header of physical params of form # -
+    Read out these lines and save them to a dict
+    '''
+
+    # open file, get lines
+    f = open(fname, 'r');
+    lines = f.readlines();
+
+    # strip off header
+    header = []
+    for l in lines:
+        if(l[0] == '#'):
+            header.append(l[2:-1]); # slice off leading #, trailing \n
+
+    # put physical params into dict
+    params = {};
+    
+    # physical params always start with - character
+    for l in header:
+        if(l[0] == '-'): # is a param
+
+            # find equal sign to delineate string (key) from num (val)
+            eq_index = -1
+            for i in range(len(l)):
+                if(l[i] == '='):
+                    eq_index = i; # found equal sign
+            assert( eq_index != -1); # check success
+
+            # add everything before = to dict as key, everything after as val
+            try: # get param as float if possible
+                params[l[2:eq_index-1] ] = float(l[eq_index+2:]);
+            except:
+                params[l[2:eq_index-1] ] = l[eq_index+2:];
+
+    return params;
+    
 
 
 
@@ -147,7 +188,8 @@ def ParseGeoDict(d):
 
 def TestCode():
 
-    print(MonatomicChain('H',5, 1));
+    f = "dat/DotCurrentData/3_1_3_e7_mu-1.0_Vg-0.5_J.txt"
+    TxtHeaderDict(f);
     
     
 if __name__ == "__main__":

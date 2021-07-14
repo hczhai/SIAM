@@ -247,6 +247,51 @@ def stitch_h2e(h_imp,n_leads,verbose = 0):
     return h; # end stitch h2e
 
 
+def dot_hams(nleads, nsites, nelecs, physical_params, verbose = 0):
+    '''
+    Converts physical params into 1e and 2e parts of siam model hamiltonian, with
+    Impurity hamiltonian:
+    H_imp = H_dot = -V_g sum_i n_i + U n_{i uparrow} n_{i downarrow}
+    where i are impurity sites
+    
+    Args:
+    - nleads, tuple of ints of lead sites on left, right
+    - nsites, int, num impurity sites
+    - nelecs, tuple of number es, 0 due to All spin up formalism
+    - physical params, tuple of t, thyb, Vbias, mu, Vgate, U
+    Returns:
+    h1e, 2d np array, 1e part of siam ham
+    h2e, 2d np array, 2e part of siam ham
+    himp, dot part of siam ham only (tuple of 1e, 2e parts)
+    '''
+
+    # unpack inputs
+    V_leads, V_imp_leads, V_bias, mu, V_gate, U = physical_params;
+    
+    if(verbose): # print inputs
+        print("\nInputs:\n- Num. leads = ",nleads,"\n- Num. impurity sites = ",nsites,"\n- nelecs = ",nelecs,"\n- V_leads = ",V_leads,"\n- V_imp_leads = ",V_imp_leads,"\n- V_bias = ",V_bias,"\n- mu = ",mu,"\n- V_gate = ",V_gate, "\n- Hubbard U = ",U);
+
+    #### make full system ham from inputs
+
+    # make, combine all 1e hamiltonians
+    hl = h_leads(V_leads, nleads); # leads only
+    hb = h_chem(mu, nleads);   # can addjust lead chemical potential
+    hdl = h_imp_leads(V_imp_leads, nsites); # leads talk to dot
+    hd = h_dot_1e(V_gate, nsites); # dot
+    h1e = stitch_h1e(hd, hdl, hl, hb, nleads, verbose = verbose); # syntax is imp, imp-leads, leads, bias
+    if(verbose > 2):
+        print("\n- Full one electron hamiltonian = \n",h1e);
+        
+    # 2e hamiltonian only comes from impurity
+    if(verbose > 2):
+        print("\n- Nonzero h2e elements = ");
+    hd2e = h_dot_2e(U,nsites);
+    h2e = stitch_h2e(hd2e, nleads, verbose = verbose);
+    himp = hd, hd2e; # dot ham only
+
+    return h1e, h2e, himp; #end dot hams
+
+
 def dot_model(nleads, nsites, norbs, nelecs, physical_params,verbose = 0):
     '''
     Run whole SIAM machinery, with impurity a very simple dot model
