@@ -141,7 +141,7 @@ def plot_DOS(energies, sigma, size = 100, verbose = 0):
 def Main():
 
     # top level inputs
-    verbose = 2;
+    verbose = 5;
     np.set_printoptions(suppress=True); # no sci notatation printing
     np.set_printoptions(precision = 4)
     
@@ -151,14 +151,14 @@ def Main():
     nroots = 45; # full 8e, 10 orb basis
 
     # parameters in the hamiltonian
-    alpha = 0.1;
+    alpha = 0.01;
     D = 100.0;
     E = 10.0;
     U = 1000.0;
     E_shift = (nelecs[0] - 2)/2 *U - 18*D  # num paired e's/2 *U
     if(verbose):
         print("\nInputs:","\nalpha = ",alpha,"\nD = ",D,"\nE = ",E,"\nU = ",U);
-        #print("E shift = ",E_shift,"\nE/U = ",E/U,"\nalpha/D",alpha/D,"\nalpha/(4*E^2/U) = ", alpha*U/(4*E*E),"\nalpha^2/(4*E^2/U) = ", alpha*alpha*U/(4*E*E)  );
+        print("E shift = ",E_shift,"\nE/U = ",E/U,"\nalpha/D",alpha/D,"\nalpha/(4*E^2/U) = ", alpha*U/(4*E*E),"\nalpha^2/(4*E^2/U) = ", alpha*alpha*U/(4*E*E)  );
 
     #### get analytical energies
 
