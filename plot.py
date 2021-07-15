@@ -314,9 +314,9 @@ def CurrentPlot(folder, nleads, nimp, nelecs, mu, Vg, mytitle = "", verbose = 0)
         print("Vg, mu = ",Vg,mu);
 
     # control layout of plots
-    ax3 = plt.subplot2grid((4, 1), (0, 0), rowspan=2)  # J vs t
-    ax4 = plt.subplot2grid((4, 1), (2, 0) )            # E vs t
-    ax5 = plt.subplot2grid((4, 1), (3, 0) )            # freqs
+    ax3 = plt.subplot2grid((5, 1), (0, 0), rowspan=2)  # J vs t
+    ax4 = plt.subplot2grid((5, 1), (2, 0) )            # E vs t
+    ax5 = plt.subplot2grid((5, 1), (3, 0), rowspan=2)            # freqs
 
 
     # get current data from txt

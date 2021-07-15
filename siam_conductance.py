@@ -26,8 +26,10 @@ siam.py
 '''
 
 import plot
+import siam_current
 
 import numpy as np
+import matplotlib
 import matplotlib.pyplot as plt
 
 
@@ -205,48 +207,80 @@ def MolConductWrapper():
         
 
 #################################################
-#### manipulate current data
+#### get conductance data
 
-def fourier_current():
-  
-  return;
+def JwVsMu(time, J, mu_sweep, mytitle = ""):
+
+    # unpack
+    dt = time[0][1];
+
+    # hold data
+    Jw_mu = []
+    w_mu  = [];
+
+    for mu_i in range(len(mu_sweep)):
+
+        mu = mu_sweep[mu_i];
+        d1, d2 = siam_current.Fourier(J[mu_i], 1/dt, angular = True);
+        Jw_mu.append(d1);
+        w_mu.append( d2);
+
+    # plot
+    fig, ax = plt.subplots();
+
+    # colormap
+    cmap = matplotlib.cm.get_cmap(name = "YlOrRd");
+
+    # plot across mu sweep
+    for mu_i in range(len(mu_sweep)):
+        ax.plot(w_mu[mu_i],Jw_mu[mu_i],label = "$\mu$ = "+str(mu_sweep[mu_i]), color = cmap(0.3 + 0.7*mu_i/len(mu_sweep) ) );
+
+    ax.set_xlim(0,3);
+    ax.set_title(mytitle);
+    ax.set_ylabel("J*$\pi/|V_{bias}|$");
+    ax.set_xlabel("$\omega$");
+    ax.legend();
+    plt.show();
+
+    # dJ\dmu
+    fig, axes = plt.subplots(2);
+    spec_ws = [0.31, 1.8];
+    for j in range(len(spec_ws)):
+        spec_w = spec_ws[j];
+        # get index of this w
+        spec_w_i = 0;
+        for i in range(len(w_mu)):
+            if( w_mu[0][i] < spec_w and w_mu[0][i+1] > spec_w ):
+                spec_w_i = i;
+                break;
+
+        # plot at this spec w vs mu
+        Jspec = [];
+        for i in range(len(mu_sweep) ):
+            Jspec.append(Jw_mu[i][spec_w_i]); # grab one for each mu
+        axes[j].plot(mu_sweep, Jspec, label = "$J(\omega$ = "+str(spec_w) +")");
+        axes[j].plot(mu_sweep, np.gradient(Jspec,1/9 ), label = "$dJ/d\mu$");
+        axes[j].legend();
+        axes[j].set_xlabel("$\mu$");
+
+    axes[0].set_title(mytitle);
+    plt.show();       
+    return;
 
 
 
 #################################################
 #### wrappers and test code
 
-def Wrapper():
-  
-  # unpack data files
-  dataf = "DotConductWrapper";
-  timevals = np.loadtxt(dataf+"_t.txt");
-  Jvals = np.loadtxt(dataf+"_J.txt");
-  muvals = np.loadtxt(dataf+"_mu.txt");
-  
-  # truncate for now
-  muvals = muvals[0:2];
-  
-  # iter over mu vals to FT
-  for i, mu in enumerate(muvals):
+def PlotConductance(folder, nleads, nimp, nelecs, mu, Vg, mytitle = ""):
 
-    Jw_vals = np.fft.fft2(np.array([timevals, Jvals]));
+    # unpack data
+    time, J, dummy, E = siam_current.UnpackDotData(folder, nleads, nimp, nelecs, mu, Vg);
 
-  # test the fft2
-  numpts = 1000
-  x = np.linspace(0,10,numpts);
-  y = np.zeros(numpts);
-  square_freq = 1;
-  for i in range(numpts):
-    xval = x[i]
-    if((xval%square_freq) < square_freq/2):
-      y[i] = 100;
-  yFT = np.fft.fft2(np.array([x,y]));
-  plt.plot(x,y)
-  plt.plot(x,yFT[1])
-  plt.show();
-  
-  return; # end fourier current
+    # plot fourier transform of mu
+    JwVsMu(time, J, mu, mytitle = mytitle);
+
+    return; # end plot conductance
 
 
 
@@ -256,4 +290,4 @@ def Wrapper():
 
 if __name__ == "__main__":
   
-  Wrapper();
+  pass;
