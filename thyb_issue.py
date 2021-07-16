@@ -134,6 +134,8 @@ plt.show();
 #### td_vals =            [0.0, 1e-8, 1e-6, 1e-4, 1e-2,  0.1, 0.2, 0.3, 0.4]
 #### corresponding <S^2>= [1,   1,  1,0.99999984,0.9984,0.837,0.315,0.0,0.0]
 #### direct_spin1 energy agrees at and above td = 1e-6, so this might patch
+####
+#### weirdest of all, issue 4 goes away (though 1-3 remain) in the nleads = 3,2 case
 
 # physical inputs
 ll = nleads[0] # number of left leads
