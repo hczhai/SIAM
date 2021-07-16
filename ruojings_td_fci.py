@@ -246,7 +246,7 @@ def kernel_plot(eris, ci, tf, dt, i_dot, t_dot, RK, spinblind, verbose):
             Current = compute_current(i_dot, t_dot, (d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb);
 
         if(verbose > 3):
-            print("    time: ", i*dt);
+            print("    time: ", i*dt, " E = ",Energy);
           
         # fill arrays with observables
         t_vals[i] = i*dt;
@@ -391,7 +391,7 @@ def TimeProp(h1e, h2e, fcivec, mol,  scf_inst, time_stop, time_step, i_dot, t_do
 ###########################################################################################################
 #### test code and wrapper funcs
 
-def Test():
+def Test(nleads, tf = 1.0, dt = 0.01, verbose = 0):
     '''
     sample calculation of SIAM
     Impurity = one level dot
@@ -403,8 +403,8 @@ def Test():
     verbose = 5;
 
     # physical inputs
-    ll = 3 # number of left leads
-    lr = 2 # number of right leads
+    ll = nleads[0] # number of left leads
+    lr = nleads[1] # number of right leads
     t = 1.0 # lead hopping
     td = 0.4 # dot-lead hopping
     U = 1.0 # dot interaction
@@ -484,8 +484,6 @@ def Test():
         h1e[i,i] = V/2
     for i in range(idot+1,norb):
         h1e[i,i] = -V/2
-    tf = 10.0
-    dt = 0.01
     eris = ERIs(h1e, g2e, mf.mo_coeff) # diff h1e than in uhf, thus time dependence
     ci = CIObject(fcivec, norb, nelec)
     kernel_mode = "plot"; # tell kernel whether to return density matrices or arrs for plotting
@@ -496,7 +494,7 @@ def Test():
     E = E/E[0];
     
     # plot current vs time
-    plot.GenericPlot(t,[J, E],labels=["time (dt = "+str(dt)+")","Current*$\pi / |V_{bias}|$","td-FCI through dot impurity"], handles = ["current", "gd state E/$E_{initial}$"]);
+    plot.GenericPlot(t,J,labels=["time (dt = "+str(dt)+")","Current*$\pi / |V_{bias}|$","td-FCI through dot impurity"]);
 
     return; # end test
     

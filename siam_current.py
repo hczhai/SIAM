@@ -70,11 +70,11 @@ def DotCurrentData(n_leads, nelecs, timestop, deltat, mu, V_gate, prefix = "", v
 
     # physical params, should always be floats ### edited from stds for chain length investig
     V_leads = 1.0; # hopping
-    V_imp_leads = 1.0; # hopping
+    V_imp_leads = 0.4; # hopping
     V_bias = 0; # wait till later to turn on current
     # chemical potential left as tunable
     # gate voltage on dot left as tunable
-    U = 0.0; # hubbard repulsion
+    U = 1.0; # hubbard repulsion
     params = V_leads, V_imp_leads, V_bias, mu, V_gate, U;
 
     # get h1e, h2e, and scf implementation of SIAM with dot as impurity
@@ -96,8 +96,9 @@ def DotCurrentData(n_leads, nelecs, timestop, deltat, mu, V_gate, prefix = "", v
     currentvals = currentvals*np.pi/abs(V_bias);
 
     # plot current vs time
-    if False:
+    if True:
         plot.GenericPlot(timevals,currentvals,labels=["time","Current*$\pi / |V_{bias}|$","td-FCI on SIAM (All spin up formalism)"]);
+        return;
     
     # write results to external file
     folderstring = "dat/DotCurrentData/";
@@ -458,6 +459,15 @@ def DotDataVsVgate():
         DotCurrentData(nleads, nelecs, tf, dt, mu, Vg, verbose = 5);
 
     return; # end dot data vs V gate
+
+
+def Test(nleads, dt = 0.01, tf = 1.0, verbose = 0):
+
+    # inputs for dot current data
+    nelecs = (sum(nleads)+1, 0); # half filling
+
+    # run with default physical params by not passing any
+    DotCurrentData(nleads, nelecs, tf, dt, 0.0, -0.5, verbose = verbose) ;
 
 
     
