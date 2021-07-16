@@ -67,6 +67,10 @@ def compute_energy(d1, d2, eris, time=None):
 
     I overload this function by passing it eris w/ arb op x stored
     then ruojings code gets <x> for any eris operator x
+
+    Args:
+    d1, d2, 1 and 2 particle density matrices
+    eris, object which contains hamiltonians
     '''
 
     h1e_a, h1e_b = eris.h1e
@@ -96,35 +100,78 @@ def compute_energy(d1, d2, eris, time=None):
     e +=        einsum('pQrS,rSpQ',g2e_ab,d2ab)
     return e
     
-def compute_occ(site_i, d1, d2, mocoeffs, norbs):
+def compute_occ(site_i, d1, d2, mocoeffs, norbs, ASU = False):
     '''
-    Compute the occ of the molecular orbital at index i 0<occ,2
+    Compute the occupancy of the sites in list site_i
     by encoding n_i as an h1e
+
+    ASU tells whether we are dealing with molecular orbitals (max occ 2) or spin orbitals (max occ 1)
     
-    Generally to compute stuff follow this formula:
+    Generally to compute observable here and below follow this formula:
     - put operator in h1e, h2e format
     - use these to construct an eris
     - pass eris and density matrices to compute energy
     '''
-    
-    # now put dot occ operator in h1 form
+
+    assert( isinstance(site_i, list) );
     occ = np.zeros((norbs,norbs));
-    occ[site_i,site_i] = 1;
+    
+    # put dot occ operator in h1e form, spin free
+    if not ASU:       
+        for doti in range(site_i[0], site_i[-1]+1, 1):
+            occ[doti,doti] = 1; 
+    else: # ASU formalism - molecular orb is 2 spin orbs
+        # iter over all given sites
+        for doti in range(site_i[0], site_i[-1]+1, 2): # doti is up, doti+1 is down # +1 because dot_i is incluse but range is exclusive
+            occ[doti,doti] = 1; # spin up orb
+            occ[doti+1, doti+1] = 1; # spin down orb
     
     # have to store this operator as an eris object
     occ_eris = ERIs(occ, np.zeros((norbs,norbs,norbs,norbs)), mocoeffs)
     occ_val = compute_energy(d1,d2, occ_eris);
     occ_val = np.real(occ_val);
     return occ_val;
+
+
+def compute_Sz(site_i, d1, d2, mocoeffs, norbs, ASU = False):
+    '''
+    Compute Sz for the impurity. See compute_occ doc above
+    '''
+
+    assert( isinstance(site_i, list) );
+    Sz = np.zeros((norbs,norbs));
+
+    # put Sz operator in h1e form
+    if not ASU: # Sz meaningless in spin free context
+        pass;
+    else:
+        # iter over all given sites
+        for doti in range(site_i[0], site_i[-1]+1, 2): # doti is up, doti+1 is down # +1 because dot_i is incluse but range is exclusive
+            Sz[doti,doti] = 1/2; # spin up
+            Sz[doti+1, doti+1] = -1/2; # spin down
+
+    # have to store this operator as an eris object
+    Sz_eris = ERIs(Sz, np.zeros((norbs,norbs,norbs,norbs)), mocoeffs)
+    Sz_val = compute_energy(d1,d2, Sz_eris);
+    Sz_val = np.real(Sz_val);
+    return Sz_val;
+
     
-def compute_current(dot_i,t,d1,d2,mocoeffs,norbs):
+def compute_current(dot_i,t,d1,d2,mocoeffs,norbs, ASU = False):
+    '''
+    Compute current through the impurity. See compute_occ docstring above
+    '''
+
+    if ASU:
+        return compute_current_spinblind(dot_i,t,d1,d2,mocoeffs,norbs);
 
     # operator
     J = np.zeros((norbs,norbs));
-    J[dot_i - 1,dot_i] = -t/2;
-    J[dot_i,dot_i - 1] =  t/2;
-    J[dot_i + 1,dot_i] =  t/2;
-    J[dot_i,dot_i + 1] = -t/2;
+    for doti in range(dot_i[0], dot_i[-1]+1, 1):
+        J[doti - 1,doti] = -t/2;
+        J[doti,doti - 1] =  t/2;
+        J[doti + 1,doti] =  t/2;
+        J[doti,doti + 1] = -t/2;
     
     # have to store this operator as an eris object
     J_eris = ERIs(J, np.zeros((norbs,norbs,norbs,norbs)), mocoeffs)
@@ -136,8 +183,6 @@ def compute_current_spinblind(dot_i,t,d1,d2,mocoeffs,norbs):
     '''
     TODO: generalize this to any size dot
     '''
-
-    print(dot_i)
 
     # current operator (1e only)
     J = np.zeros((norbs,norbs));
@@ -240,19 +285,18 @@ def kernel_plot(eris, ci, tf, dt, i_dot, t_dot, RK, spinblind, verbose):
         
         # compute observables
         Energy = np.real(compute_energy((d1a,d1b),(d2aa,d2ab,d2bb),eris));
-        #Occupancy = compute_occ(2,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb);
-        if spinblind: # differt operator for current in spin blind formalism
-            Current = compute_current_spinblind(i_dot, t_dot, (d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb);
-        else:
-            Current = compute_current(i_dot, t_dot, (d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb);
+        Current = compute_current(i_dot, t_dot, (d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
+        Occupancy = compute_occ(i_dot,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
+        Sz = compute_Sz(i_dot,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
+  
 
         if(verbose > 3):
-            print("    time: ", i*dt, " E = ",Energy);
+            print("    time: ", i*dt, i_dot, " E = ",Energy);
           
         # fill arrays with observables
         t_vals[i] = i*dt;
         energy_vals[i] = Energy
-        #occ_vals[i] = Occupancy;
+        occ_vals[i] = Occupancy;
         current_vals[i] = Current;
         
     return t_vals, energy_vals, current_vals ;
@@ -488,7 +532,7 @@ def Test(nleads, tf = 1.0, dt = 0.01, verbose = 0):
     eris = ERIs(h1e, g2e, mf.mo_coeff) # diff h1e than in uhf, thus time dependence
     ci = CIObject(fcivec, norb, nelec)
     kernel_mode = "plot"; # tell kernel whether to return density matrices or arrs for plotting
-    t, E, J = kernel(kernel_mode, eris, ci, tf, dt, i_dot = idot, t_dot = td, verbose = verbose);
+    t, E, J = kernel(kernel_mode, eris, ci, tf, dt, i_dot = [idot], t_dot = td, verbose = verbose);
 
     # normalize vals
     J = J*np.pi/abs(V);
