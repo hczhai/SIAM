@@ -130,6 +130,7 @@ plt.show();
 ####    4) current readout no longer agrees with my code (not seen here)
 #### NB turning t_hyb off in first example reproduces issues 1,2,3 exactly, which
 #### makes me think t_hyb is the culprit, not V_bias
+#### weirdest of all, issue 4 goes away (though 1-3 remain) in the nleads = 3,2 case
 
 # physical inputs
 ll = nleads[0] # number of left leads
