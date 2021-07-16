@@ -130,12 +130,16 @@ plt.show();
 ####    4) current readout no longer agrees with my code (not seen here)
 #### NB turning t_hyb off in first example reproduces issues 1,2,3 exactly, which
 #### makes me think t_hyb is the culprit, not V_bias
+####
+#### td_vals =            [0.0, 1e-8, 1e-6, 1e-4, 1e-2,  0.1, 0.2, 0.3, 0.4]
+#### corresponding <S^2>= [1,   1,  1,0.99999984,0.9984,0.837,0.315,0.0,0.0]
+#### direct_spin1 energy agrees at and above td = 1e-6, so this might patch
 
 # physical inputs
 ll = nleads[0] # number of left leads
 lr = nleads[1] # number of right leads
 t = 1.0 # lead hopping
-td = 0.0 # dot-lead hopping
+td = 1e-6 # dot-lead hopping
 U = 1.0 # dot interaction
 Vg = -0.5 # gate voltage
 V = -0.005 # bias
