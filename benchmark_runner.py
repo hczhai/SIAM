@@ -20,7 +20,7 @@ nleads = (2,1);
 
 #time info
 dt = 0.01;
-tf = 4.0;
+tf = 1.0;
 
 # run tests
 ruojings_td_fci.Test(nleads, dt = dt, tf = tf, verbose = verbose);

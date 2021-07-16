@@ -90,7 +90,8 @@ def DotCurrentData(n_leads, nelecs, timestop, deltat, mu, V_gate, prefix = "", v
         print(h1e)
 
     # from fci gd state, do time propagation
-    timevals, energyvals, currentvals = td.TimeProp(h1e, h2e, v_fci, mol, dotscf, timestop, deltat, imp_i, V_imp_leads, kernel_mode = "plot", verbose = verbose);
+    timevals, observables = td.TimeProp(h1e, h2e, v_fci, mol, dotscf, timestop, deltat, imp_i, V_imp_leads, kernel_mode = "plot", verbose = verbose);
+    energyvals, currentvals, occvals, Szvals = observables
 
     # renormalize current
     currentvals = currentvals*np.pi/abs(V_bias);

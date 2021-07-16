@@ -225,6 +225,8 @@ def kernel(mode, eris, ci, tf, dt, RK=4, i_dot = None, t_dot = None, spinblind =
     - dot_i is site (MO) index of the dot, not needed if not doing plot, hence defaults to None
     - t_dot is hopping strength between dot, leads, likewise defaults to None
     - verbose prints helpful debugging stuff
+
+    Returns whatever kernel_std or kernel_plot returns
     '''
 
     
@@ -249,6 +251,10 @@ def kernel_plot(eris, ci, tf, dt, i_dot, t_dot, RK, spinblind, verbose):
     Kernel for getting observables at each time step, for plotting
     Outputs 1d arrays of time, energy, dot occupancy, current
     Access thru calling kernel (see above) with mode=plot
+
+    Returns
+    timevals, 1d arr of time steps
+    observables, tuple of arrs of observable values at each time: E(t), J(t), Occ(t), Sz(t)
     '''
 
     N = int(tf/dt+1e-6)
@@ -263,6 +269,7 @@ def kernel_plot(eris, ci, tf, dt, i_dot, t_dot, RK, spinblind, verbose):
     energy_vals = np.zeros(N+1);
     occ_vals = np.zeros(N+1);
     current_vals = np.zeros(N+1);
+    Sz_vals = np.zeros(N+1);
     
     # time step loop
     for i in range(N+1):
@@ -298,8 +305,10 @@ def kernel_plot(eris, ci, tf, dt, i_dot, t_dot, RK, spinblind, verbose):
         energy_vals[i] = Energy
         occ_vals[i] = Occupancy;
         current_vals[i] = Current;
-        
-    return t_vals, energy_vals, current_vals ;
+        Sz_vals[i] = Sz;
+
+    observables = energy_vals, current_vals, occ_vals, Sz_vals
+    return t_vals, observables
     
 def kernel_std(eris, ci, tf, dt, RK):
     '''
@@ -405,10 +414,19 @@ class CIObject():
 ##########################################################################################################
 #### time propagation 
 
-def TimeProp(h1e, h2e, fcivec, mol,  scf_inst, time_stop, time_step, i_dot, t_dot, kernel_mode = "std", verbose = 0):
+def TimeProp(h1e, h2e, fcivec, mol,  scf_inst, time_stop, time_step, i_dot, t_dot, kernel_mode = "plot", verbose = 0):
     '''
     Time propagate an FCI gd state
     The physics of the FCI gd state is encoded in an scf instance
+
+    Kernel is driver of time prop
+    Kernel gets hamiltonian, and ci wf, which is coeffs of slater dets of HF-determined molecular orbs
+    Then updates ci wf at each time step, this in turn updates density matrices
+    Contract density matrices at each time step to compute obervables (e.g. compute_energy, compute_current functions)
+    Set kernel_mode to std to call kernel_std which returns density matrices
+    Set kernel_mode to plot to call kernel_plot which returns arrays of time, observable vals (default)
+    Defaults to kernel mode plot, in which case returns
+    timevals, observables (tuple of E(t), J(t), Occ(t), Sz(t) )
     '''
 
     # assertion statements to check inputs
@@ -532,7 +550,8 @@ def Test(nleads, tf = 1.0, dt = 0.01, verbose = 0):
     eris = ERIs(h1e, g2e, mf.mo_coeff) # diff h1e than in uhf, thus time dependence
     ci = CIObject(fcivec, norb, nelec)
     kernel_mode = "plot"; # tell kernel whether to return density matrices or arrs for plotting
-    t, E, J = kernel(kernel_mode, eris, ci, tf, dt, i_dot = [idot], t_dot = td, verbose = verbose);
+    t, observables = kernel(kernel_mode, eris, ci, tf, dt, i_dot = [idot], t_dot = td, verbose = verbose);
+    E, J, occ, Sz = observables;
 
     # normalize vals
     J = J*np.pi/abs(V);
