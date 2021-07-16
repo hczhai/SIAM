@@ -7,6 +7,7 @@ import plot
 from pyscf import lib, fci, scf, gto, ao2mo
 from pyscf.fci import direct_uhf, direct_nosym, cistring
 import numpy as np
+import matplotlib.pyplot as plt
 einsum = lib.einsum
 
 ################################################################
@@ -494,8 +495,15 @@ def Test(nleads, tf = 1.0, dt = 0.01, verbose = 0):
     E = E/E[0];
     
     # plot current vs time
-    plot.GenericPlot(t,J,labels=["time (dt = "+str(dt)+")","Current*$\pi / |V_{bias}|$","td-FCI through dot impurity"]);
-
+    fig, axes = plt.subplots(2, sharex = True);
+    axes[0].plot(t, J);
+    axes[0].set_xlabel("time (dt = "+str(dt)+")");
+    axes[0].set_ylabel("J*$\pi / |V_{bias}|$");
+    axes[0].set_title("Dot impurity, "+str(nleads[0])+" left sites, "+str(nleads[1])+" right sites");
+    axes[1].plot(t, E);
+    axes[1].set_xlabel("time (dt = "+str(dt)+")");
+    axes[1].set_ylabel("$E/E_{i} - 1$");
+    plt.show();
     return; # end test
     
 

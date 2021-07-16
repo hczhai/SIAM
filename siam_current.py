@@ -94,10 +94,19 @@ def DotCurrentData(n_leads, nelecs, timestop, deltat, mu, V_gate, prefix = "", v
 
     # renormalize current
     currentvals = currentvals*np.pi/abs(V_bias);
+    energyvals = energyvals/energyvals[0] - 1;
 
     # plot current vs time
     if True:
-        plot.GenericPlot(timevals,currentvals,labels=["time","Current*$\pi / |V_{bias}|$","td-FCI on SIAM (All spin up formalism)"]);
+        fig, axes = plt.subplots(2, sharex = True);
+        axes[0].plot(timevals, currentvals);
+        axes[0].set_xlabel("time (dt = "+str(deltat)+")");
+        axes[0].set_ylabel("J*$\pi / |V_{bias}|$");
+        axes[0].set_title("Dot impurity, "+str(n_leads[0])+" left sites, "+str(n_leads[1])+" right sites");
+        axes[1].plot(timevals, energyvals);
+        axes[1].set_xlabel("time (dt = "+str(deltat)+")");
+        axes[1].set_ylabel("$E/E_{i} - 1$");
+        plt.show();
         return;
     
     # write results to external file
