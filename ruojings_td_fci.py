@@ -162,6 +162,8 @@ def compute_current(dot_i,t,d1,d2,mocoeffs,norbs, ASU = False):
     Compute current through the impurity. See compute_occ docstring above
     '''
 
+    assert( isinstance(dot_i, list) );
+
     if ASU:
         return compute_current_spinblind(dot_i,t,d1,d2,mocoeffs,norbs);
 
@@ -469,19 +471,20 @@ def Test(nleads, tf = 1.0, dt = 0.01, verbose = 0):
     ll = nleads[0] # number of left leads
     lr = nleads[1] # number of right leads
     t = 1.0 # lead hopping
-    td = 0.4 # dot-lead hopping
+    td = 0.0 # dot-lead hopping not turned on yet!
     U = 1.0 # dot interaction
     Vg = -0.5 # gate voltage
     V = -0.005 # bias
     norb = ll+lr+1 # total number of sites
     idot = ll # dot index
+    nelec =  (int(norb/2), int(norb/2));
     if(verbose):
-        print("\nInputs:\n- Left, right leads = ",(ll,lr),"\n- nelecs = ", (int(norb/2), int(norb/2)),"\n- Gate voltage = ",Vg,"\n- Bias voltage = ",V,"\n- Lead hopping = ",t,"\n- Dot lead hopping = ",td,"\n- U = ",U);
+        print("\nInputs:\n- Left, right leads = ",(ll,lr),"\n- nelecs = ", nelec,"\n- Gate voltage = ",Vg,"\n- Bias voltage = ",V,"\n- Lead hopping = ",t,"\n- Dot lead hopping = ",td,"\n- U = ",U);
 
     #### make hamiltonian matrices, spin free formalism
     # remember impurity is just one level dot
     
-    # make ground state Hamiltonian with zero bias
+    # make ground state Hamiltonian, equilibrium (ie thyb not turned on)
     if(verbose):
         print("1. Construct hamiltonian")
     h1e = np.zeros((norb,)*2)
@@ -492,16 +495,14 @@ def Test(nleads, tf = 1.0, dt = 0.01, verbose = 0):
         if i > 0:
             dot = (i==idot or i-1==idot)
             h1e[i,i-1] = -td if dot else -t
-    h1e[idot,idot] = Vg # input gate voltage
-    # g2e needs modification for all up spin
-    g2e = np.zeros((norb,)*4)
+    h1e[idot,idot] = Vg # input gate voltage on dot
+    g2e = np.zeros((norb,norb, norb, norb)); # 2 body terms = hubbard
     g2e[idot,idot,idot,idot] = U
     
     if(verbose > 2):
         print("- Full one electron hamiltonian:\n", h1e)
         
     # code straight from ruojing, don't understand yet
-    nelec = int(norb/2), int(norb/2) # half filling
     Pa = np.zeros(norb)
     Pa[::2] = 1.0
     Pa = np.diag(Pa)
@@ -509,14 +510,17 @@ def Test(nleads, tf = 1.0, dt = 0.01, verbose = 0):
     Pb[1::2] = 1.0
     Pb = np.diag(Pb)
     # UHF
-    mol = gto.M()
+    mol = gto.M(spin = 0)
     mol.incore_anyway = True
     mol.nelectron = sum(nelec)
+    mol.spin = nelec[0] - nelec[1]
     mf = scf.UHF(mol)
     mf.get_hcore = lambda *args:h1e # put h1e into scf solver
     mf.get_ovlp = lambda *args:np.eye(norb) # init overlap as identity
     mf._eri = g2e # put h2e into scf solver
+    print("--> mol spin, mf spin", mol.spin, mf.nelec)
     mf.kernel(dm0=(Pa,Pb))
+    print("--> mol spin, mf spin", mol.spin, mf.nelec)
     # ground state FCI
     mo_a = mf.mo_coeff[0]
     mo_b = mf.mo_coeff[1]
@@ -541,12 +545,22 @@ def Test(nleads, tf = 1.0, dt = 0.01, verbose = 0):
     #############
         
     #### do time propagation
+
+    # intro nonequilibrium terms (thyb)
+    '''
+    td = 0.4
     if(verbose):
         print("3. Time propagation")
-    for i in range(idot): # introduce bias on leads to get td current
+    h1e[idot, idot+1] += -td; # row
+    h1e[idot, idot-1] += -td;
+    h1e[idot+1, idot] += -td; # column
+    h1e[idot-1, idot] += -td;
+    '''
+    for i in range(idot): # bias for leftward current (since V < 0)
         h1e[i,i] = V/2
     for i in range(idot+1,norb):
         h1e[i,i] = -V/2
+
     eris = ERIs(h1e, g2e, mf.mo_coeff) # diff h1e than in uhf, thus time dependence
     ci = CIObject(fcivec, norb, nelec)
     kernel_mode = "plot"; # tell kernel whether to return density matrices or arrs for plotting
@@ -555,7 +569,7 @@ def Test(nleads, tf = 1.0, dt = 0.01, verbose = 0):
 
     # normalize vals
     J = J*np.pi/abs(V);
-    E = E/E[0];
+    E = E/E[0] - 1;
     
     # plot current vs time
     fig, axes = plt.subplots(2, sharex = True);
