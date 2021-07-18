@@ -33,11 +33,12 @@ import time
 import numpy as np
 import scipy
 import matplotlib.pyplot as plt
+from pyscf import fci
 
 #################################################
 #### get current data
 
-def DotCurrentData(n_leads, nelecs, timestop, deltat, mu, V_gate, prefix = "", verbose = 0):
+def DotCurrentData(n_leads, nelecs, timestop, deltat, phys_params=None, prep = False, prefix = "", verbose = 0):
     '''
     More flexible version of siam.py DotDCurrentWrapper with inputs allowing tuning of nelecs, mu, Vgate
 
@@ -59,8 +60,15 @@ def DotCurrentData(n_leads, nelecs, timestop, deltat, mu, V_gate, prefix = "", v
     verbose, level of stdout printing
 
     Returns:
-    none, but outputs t, E, J data to /dat/DotCurrentData/ folder
+    none, but outputs t, observable data to /dat/DotCurrentData/ folder
     '''
+
+    # check inputs
+    assert( isinstance(n_leads, tuple) );
+    assert( isinstance(nelecs, tuple) );
+    assert( isinstance(timestop, float) );
+    assert( isinstance(deltat, float) );
+    assert( isinstance(phys_params, tuple) or phys_params == None);
 
     # set up the hamiltonian
     n_imp_sites = 1 # dot
@@ -68,22 +76,39 @@ def DotCurrentData(n_leads, nelecs, timestop, deltat, mu, V_gate, prefix = "", v
     norbs = 2*(n_leads[0]+n_leads[1]+n_imp_sites); # num spin orbs
     # nelecs left as tunable
 
-    # physical params, should always be floats ### edited from stds for chain length investig
-    V_leads = 1.0; # hopping
-    V_imp_leads = 1e-6; # hopping
-    V_bias = -0.005; # wait till later to turn on current
-    # chemical potential left as tunable
-    # gate voltage on dot left as tunable
-    U = 1.0; # hubbard repulsion
-    params = V_leads, V_imp_leads, V_bias, mu, V_gate, U;
+    # physical params, should always be floats
+    if( phys_params == None): # defaults
+        V_leads = 1.0; # hopping
+        V_imp_leads = 0.4; # hopping t dot, allows current flow
+        V_bias = -0.005; # induces current flow
+        mu = 0;
+        V_gate = -0.5;
+        U = 1.0; # hubbard repulsion
+        B = 0; # magnetic field strength
+        theta = 0;
+    else: # customized
+        V_leads, V_imp_leads, V_bias, mu, V_gate, U, B, theta = phys_params;
 
-    # get h1e, h2e, and scf implementation of SIAM with dot as impurity
-    h1e, g2e, hdot = siam.dot_hams(n_leads, n_imp_sites, nelecs, params, verbose = verbose);
-    mol, dotscf = siam.dot_model(h1e, g2e, norbs, nelecs, params, verbose = verbose);
+
+    # get h1e and h2e for siam, h_imp = h_dot
+    ham_params = V_leads, 0.0, V_bias, mu, V_gate, U; # dot hopping turned off
+    h1e, g2e, hdot = siam.dot_hams(n_leads, n_imp_sites, nelecs, ham_params, verbose = verbose);
+
+    if prep: # prep dot state w/ magntic field in direction nhat (theta, phi=0)
+        hprep = np.zeros((norbs, norbs));
+        hprep[imp_i[0]+0,imp_i[0]+1] = B*np.sin(theta)/2; # implement the mag field
+        hprep[imp_i[0]+1,imp_i[0]+0] = B*np.sin(theta)/2;
+        hprep[imp_i[0]+0,imp_i[0]+0] = B*np.cos(theta)/2;
+        hprep[imp_i[0]+1,imp_i[0]+1] = -B*np.cos(theta)/2;
+        if (verbose > 2): print("h_prep = \n", hprep);
+        h1e += hprep;
+
+    # get scf implementation of SIAM with dot as impurity, by passing hamiltonian arrays
+    mol, dotscf = siam.dot_model(h1e, g2e, norbs, nelecs, ham_params, verbose = verbose);
     
-    # from scf instance, do FCI
+    # from scf instance, do FCI, get exact gd state of equilibrium system
     E_fci, v_fci = siam.scf_FCI(mol, dotscf, verbose = verbose);
-
+    
     # prepare in nonequilibrium state by turning on t_hyb (hopping onto dot)
     if(verbose > 2 ): print("Nonequilibrium terms");
     V_imp_leads = 0.4
@@ -479,7 +504,7 @@ def Test(nleads, dt = 0.01, tf = 1.0, verbose = 0):
     nelecs = (sum(nleads)+1, 0); # half filling
 
     # run with default physical params by not passing any
-    DotCurrentData(nleads, nelecs, tf, dt, 0.0, -0.5, verbose = verbose) ;
+    DotCurrentData(nleads, nelecs, tf, dt, verbose = verbose) ;
 
 
     

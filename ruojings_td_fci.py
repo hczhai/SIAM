@@ -471,7 +471,7 @@ def Test(nleads, tf = 1.0, dt = 0.01, verbose = 0):
     ll = nleads[0] # number of left leads
     lr = nleads[1] # number of right leads
     t = 1.0 # lead hopping
-    td = 1e-6 # dot-lead hopping not turned on yet!
+    td = 0.0 # dot-lead hopping not turned on yet!
     U = 1.0 # dot interaction
     Vg = -0.5 # gate voltage
     V = -0.005 # bias
