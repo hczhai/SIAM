@@ -70,27 +70,29 @@ def DotCurrentData(n_leads, nelecs, timestop, deltat, mu, V_gate, prefix = "", v
 
     # physical params, should always be floats ### edited from stds for chain length investig
     V_leads = 1.0; # hopping
-    V_imp_leads = 0.4; # hopping
-    V_bias = 0; # wait till later to turn on current
+    V_imp_leads = 1e-6; # hopping
+    V_bias = -0.005; # wait till later to turn on current
     # chemical potential left as tunable
     # gate voltage on dot left as tunable
     U = 1.0; # hubbard repulsion
     params = V_leads, V_imp_leads, V_bias, mu, V_gate, U;
 
     # get h1e, h2e, and scf implementation of SIAM with dot as impurity
-    h1e, h2e, mol, dotscf = siam.dot_model(n_leads, n_imp_sites, norbs, nelecs, params, verbose = verbose);
+    h1e, g2e, hdot = siam.dot_hams(n_leads, n_imp_sites, nelecs, params, verbose = verbose);
+    mol, dotscf = siam.dot_model(h1e, g2e, norbs, nelecs, params, verbose = verbose);
     
     # from scf instance, do FCI
     E_fci, v_fci = siam.scf_FCI(mol, dotscf, verbose = verbose);
 
-    # prepare in dynamic state by turning on bias
-    V_bias = -0.005;
-    h1e = siam.start_bias(V_bias, imp_i,h1e);
-    if(verbose > 2):
-        print(h1e)
+    # prepare in nonequilibrium state by turning on t_hyb (hopping onto dot)
+    if(verbose > 2 ): print("Nonequilibrium terms");
+    V_imp_leads = 0.4
+    new_params = 0.0, V_imp_leads, 0.0, 0.0, 0.0, 0.0;
+    new_h1e, dummy, dummy = siam.dot_hams(n_leads, n_imp_sites, nelecs, new_params, verbose = verbose);
+    h1e += new_h1e; # updated to include thyb
 
     # from fci gd state, do time propagation
-    timevals, observables = td.TimeProp(h1e, h2e, v_fci, mol, dotscf, timestop, deltat, imp_i, V_imp_leads, kernel_mode = "plot", verbose = verbose);
+    timevals, observables = td.TimeProp(h1e, g2e, v_fci, mol, dotscf, timestop, deltat, imp_i, V_imp_leads, kernel_mode = "plot", verbose = verbose);
     energyvals, currentvals, occvals, Szvals = observables
 
     # renormalize current

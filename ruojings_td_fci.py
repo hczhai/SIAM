@@ -471,7 +471,7 @@ def Test(nleads, tf = 1.0, dt = 0.01, verbose = 0):
     ll = nleads[0] # number of left leads
     lr = nleads[1] # number of right leads
     t = 1.0 # lead hopping
-    td = 0.0 # dot-lead hopping not turned on yet!
+    td = 1e-6 # dot-lead hopping not turned on yet!
     U = 1.0 # dot interaction
     Vg = -0.5 # gate voltage
     V = -0.005 # bias
@@ -484,7 +484,7 @@ def Test(nleads, tf = 1.0, dt = 0.01, verbose = 0):
     #### make hamiltonian matrices, spin free formalism
     # remember impurity is just one level dot
     
-    # make ground state Hamiltonian, equilibrium (ie thyb not turned on)
+    # make ground state Hamiltonian, equilibrium (ie t_hyb not turned on yet)
     if(verbose):
         print("1. Construct hamiltonian")
     h1e = np.zeros((norb,)*2)
@@ -498,6 +498,10 @@ def Test(nleads, tf = 1.0, dt = 0.01, verbose = 0):
     h1e[idot,idot] = Vg # input gate voltage on dot
     g2e = np.zeros((norb,norb, norb, norb)); # 2 body terms = hubbard
     g2e[idot,idot,idot,idot] = U
+    for i in range(idot): # bias for leftward current (since V < 0)
+        h1e[i,i] = V/2
+    for i in range(idot+1,norb):
+        h1e[i,i] = -V/2
     
     if(verbose > 2):
         print("- Full one electron hamiltonian:\n", h1e)
@@ -518,9 +522,7 @@ def Test(nleads, tf = 1.0, dt = 0.01, verbose = 0):
     mf.get_hcore = lambda *args:h1e # put h1e into scf solver
     mf.get_ovlp = lambda *args:np.eye(norb) # init overlap as identity
     mf._eri = g2e # put h2e into scf solver
-    print("--> mol spin, mf spin", mol.spin, mf.nelec)
     mf.kernel(dm0=(Pa,Pb))
-    print("--> mol spin, mf spin", mol.spin, mf.nelec)
     # ground state FCI
     mo_a = mf.mo_coeff[0]
     mo_b = mf.mo_coeff[1]
@@ -546,8 +548,7 @@ def Test(nleads, tf = 1.0, dt = 0.01, verbose = 0):
         
     #### do time propagation
 
-    # intro nonequilibrium terms (thyb)
-    '''
+    # intro nonequilibrium terms (t_hyb = td nonzero)
     td = 0.4
     if(verbose):
         print("3. Time propagation")
@@ -555,11 +556,6 @@ def Test(nleads, tf = 1.0, dt = 0.01, verbose = 0):
     h1e[idot, idot-1] += -td;
     h1e[idot+1, idot] += -td; # column
     h1e[idot-1, idot] += -td;
-    '''
-    for i in range(idot): # bias for leftward current (since V < 0)
-        h1e[i,i] = V/2
-    for i in range(idot+1,norb):
-        h1e[i,i] = -V/2
 
     eris = ERIs(h1e, g2e, mf.mo_coeff) # diff h1e than in uhf, thus time dependence
     ci = CIObject(fcivec, norb, nelec)

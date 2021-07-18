@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 #### replicate results from ruojing's code with siam_current module (ASU formalism)
 
 verbose = 5;
-nleads = (2,1);
+nleads = (3,2);
 
 #time info
 dt = 0.01;
