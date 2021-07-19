@@ -143,7 +143,7 @@ plt.show();
 ll = nleads[0] # number of left leads
 lr = nleads[1] # number of right leads
 t = 1.0 # lead hopping
-td = 1e-6 # dot-lead hopping
+td = 0.0 # dot-lead hopping
 U = 1.0 # dot interaction
 Vg = -0.5 # gate voltage
 V = -0.005 # bias
