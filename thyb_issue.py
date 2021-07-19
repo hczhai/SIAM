@@ -137,7 +137,7 @@ plt.show();
 ####
 #### weirdly, issue 4 goes away (though 1-3 remain) in the nleads = 3,2 case
 ####
-#### setting td = 1e-6 instead of 0 gets rid of problem 4 generally
+#### setting td = 1e-6 instead of 0 gets rid of problem 4 for 2,1 case but brings it back for 3,2 case
 
 # physical inputs
 ll = nleads[0] # number of left leads
