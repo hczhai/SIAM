@@ -27,6 +27,7 @@ dt = 0.01;
 tf = 12.0;
 
 # run test with spin free code
+params = 1.0, 0.4, -0.005, -0.5, 1.0;
 t, observables = ruojings_td_fci.TestRun(nleads, nelecs, tf, dt, verbose = verbose);
 E, J, occ, Sz = observables; # unpack all data
 

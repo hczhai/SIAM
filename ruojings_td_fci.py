@@ -471,12 +471,14 @@ def TestRun(nleads, nelecs, tf, dt, phys_params = None, verbose = 0):
     if( phys_params == None): # defaults
         t = 1.0 # lead hopping
         td = 0.0 # dot-lead hopping not turned on yet!
+        td_noneq = 0.4 # for when it is turned on
         V = -0.005 # bias
         Vg = -0.5 # gate voltage
         U = 1.0 # dot interaction
 
     else: # custom
-        t, td, V, Vg, U = phys_params
+        td = 0.0 # dot-lead hopping not turned on yet!
+        t, td_noneq, V, Vg, U = phys_params
 
     if(verbose):
         print("\nInputs:\n- Left, right leads = ",(ll,lr),"\n- nelecs = ", nelec,"\n- Gate voltage = ",Vg,"\n- Bias voltage = ",V,"\n- Lead hopping = ",t,"\n- Dot lead hopping = ",td,"\n- U = ",U);
@@ -549,18 +551,17 @@ def TestRun(nleads, nelecs, tf, dt, phys_params = None, verbose = 0):
     #### do time propagation
 
     # intro nonequilibrium terms (t_hyb = td nonzero)
-    td = 0.4
-    if(verbose):
-        print("3. Time propagation")
-    h1e[idot, idot+1] += -td; # row
-    h1e[idot, idot-1] += -td;
-    h1e[idot+1, idot] += -td; # column
-    h1e[idot-1, idot] += -td;
+    if(verbose): print("3. Time propagation")
+    h1e[idot, idot+1] += -td_noneq; # row
+    h1e[idot, idot-1] += -td_noneq; 
+    h1e[idot+1, idot] += -td_noneq;  # column
+    h1e[idot-1, idot] += -td_noneq; 
+    if(verbose > 2 ): print("Nonequilibrium terms:\n", h1e);
 
     eris = ERIs(h1e, g2e, mf.mo_coeff) # diff h1e than in uhf, thus time dependence
     ci = CIObject(fcivec, norb, nelec)
     kernel_mode = "plot"; # tell kernel whether to return density matrices or arrs for plotting
-    t, observables = kernel(kernel_mode, eris, ci, tf, dt, i_dot = [idot], t_dot = td, verbose = verbose);
+    t, observables = kernel(kernel_mode, eris, ci, tf, dt, i_dot = [idot], t_dot = td_noneq, verbose = verbose);
 
     # reutrn results
     return t, observables
