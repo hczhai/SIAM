@@ -156,7 +156,6 @@ def compute_Sz(site_i, d1, d2, mocoeffs, norbs, ASU = False):
     # have to store this operator as an eris object
     Sz_eris = ERIs(Sz, np.zeros((norbs,norbs,norbs,norbs)), mocoeffs)
     Sz_val = compute_energy(d1,d2, Sz_eris);
-    Sz_val = np.real(Sz_val);
     return Sz_val;
 
     
@@ -271,7 +270,7 @@ def kernel_plot(eris, ci, tf, dt, i_dot, t_dot, RK, spinblind, verbose):
     t_vals = np.zeros(N+1);
     energy_vals = np.zeros(N+1);
     current_vals = np.zeros(N+1);
-    Sz_vals = np.zeros(N+1);
+    Sz_vals = np.zeros( (3,N+1) ); # see below
     occ_vals = np.zeros( (3,N+1) ); # occ list has [left lead occ, dot occ, right lead occ]
     
     # time step loop
@@ -297,7 +296,11 @@ def kernel_plot(eris, ci, tf, dt, i_dot, t_dot, RK, spinblind, verbose):
         t_vals[i] = i*dt;
         energy_vals[i]  = np.real(compute_energy((d1a,d1b),(d2aa,d2ab,d2bb),eris));
         current_vals[i] = compute_current(i_dot, t_dot, (d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
-        Sz_vals[i] = compute_Sz(i_dot,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
+
+        # total z spin of left lead, dot, right lead
+        Sz_vals[0][i] = compute_Sz(i_left,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
+        Sz_vals[1][i] = compute_Sz(i_dot,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);       
+        Sz_vals[2][i] = compute_Sz(i_right,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
         
         # occupancy of left lead, dot, right lead
         occ_vals[0][i] = compute_occ(i_left,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);

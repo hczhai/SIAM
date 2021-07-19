@@ -24,24 +24,26 @@ nelecs_ASU = (sum(nelecs),0); # all spin up formalism
 
 #time info
 dt = 0.01;
-tf = 12.0;
+tf = 5.0;
 
 # run test with spin free code
 params = 1.0, 0.4, -0.005, -0.5, 1.0;
-t, observables = ruojings_td_fci.TestRun(nleads, nelecs, tf, dt, verbose = verbose);
+params = 1.0, 1.0, -0.005, 0.0, 0.0;
+t, observables = ruojings_td_fci.TestRun(nleads, nelecs, tf, dt, phys_params = params, verbose = verbose);
 E, J, occ, Sz = observables; # unpack all data
 
 # plot results
-plot.PlotObservables(nleads, t, E, J, occ);
+plot.PlotObservables(nleads, t, observables);
 
 del t, observables, E, J, occ, Sz
 
 # run test with ASU code
-#t, observables = siam_current.DotCurrentData(nleads, nelecs_ASU, tf, dt, ret_results = True, verbose = verbose);
+params_ASU = 1.0, 1.0, -0.005, 0.0, 0.0, 0.0, 0.0, 0.0;
+t, observables = siam_current.DotCurrentData(nleads, nelecs_ASU, tf, dt, phys_params=params_ASU, ret_results = True, verbose = verbose);
 E, J, occ, Sz = observables; # unpack all data
 
 # plot results
-plot.PlotObservables(nleads, t, E, J, occ);
+plot.PlotObservables(nleads, t, observables);
 
 ##################################################################################
 #### test finite size effects ?

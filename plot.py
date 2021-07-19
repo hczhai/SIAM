@@ -100,24 +100,33 @@ def GenericPlot(x,y, handles=[], styles = [], labels=["x","y",""]):
 #### very specific plot functions
 
 
-def PlotObservables(nleads, t, E, J, occ):
+def PlotObservables(nleads, t, observables):
 
-    # normalize vals
+    # unpack, normalize
+    E, J, occ, Sz = observables
     E = E/E[0] - 1;
 
     # plot observables vs time
-    fig, axes = plt.subplots(3, sharex = True);
+    fig, axes = plt.subplots(4, sharex = True);
     axes[0].plot(t, J); # current
     axes[0].set_ylabel("Current");
-    axes[0].set_title("Dot impurity, "+str(nleads[0])+" left sites, "+str(nleads[1])+" right sites");
+    axes[0].set_title("Featureless dot, "+str(nleads[0])+" left sites, "+str(nleads[1])+" right sites");
     axes[1].plot(t, occ[0], label = "Left lead"); # occupancy
     axes[1].plot(t, occ[1], label = "dot");
     axes[1].plot(t, occ[2], label = "Right lead");
     axes[1].set_ylabel("Occupancy")
-    axes[1].legend()
-    axes[2].plot(t, E); # energy
-    axes[2].set_xlabel("time (dt = "+str(t[1])+")");
-    axes[2].set_ylabel("$E/E_{i} - 1$");
+    axes[1].legend();
+    axes[2].plot(t,0.01+np.real(Sz[0])); # spin
+    axes[2].plot(t,np.real(Sz[1]));
+    axes[2].plot(t,np.real(Sz[2]));
+    axes[2].set_ylabel("$<S_z>$");
+    axes[3].plot(t, E); # energy
+    axes[3].set_xlabel("time (dt = "+str(t[1])+")");
+    axes[3].set_ylabel("$E/E_{i} - 1$");
+    for axi in range(len(axes) ): # customize axes
+        axes[axi].minorticks_on();
+        axes[axi].grid(which='major', color='#DDDDDD', linewidth=0.8);
+        axes[axi].grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5);
     plt.show();
     
 def PlotdtdE():
@@ -222,6 +231,8 @@ def PlotFiniteSize():
 
     # second plot: time period vs chain length
     numsites = 2*chainlengths + nimp;
+    numsites = np.insert(numsites, 0,0); # 0, 0 should be a point too
+    TimePeriods = np.insert(TimePeriods, 0,0)
     ax02.plot(numsites, TimePeriods, label = "Data", color = "black");
     linear = np.polyfit(numsites, TimePeriods, 1); # plot linear fit
     linearvals = numsites*linear[0] + linear[1];
@@ -535,6 +546,9 @@ def BasisPlot(basisdict, labels, comparediff=False):
 
 if __name__ == "__main__":
 
+    PlotFiniteSize();
+
+    '''
     Espec = [-121.99, -121.99, -121.99, -121.99, -81.99, -81.99,-81.99,-81.99,-1.622, 0.00007, 0.00007, 0.0237 ]
     labels = np.full(len(Espec), "");
     labels[8] = "S";
@@ -542,3 +556,4 @@ if __name__ == "__main__":
     labels[10] = "T-"
     labels[11] = "T0"
     ESpectrumPlot(Espec);
+    '''

@@ -111,7 +111,6 @@ def DotCurrentData(n_leads, nelecs, timestop, deltat, phys_params=None, prep = F
     
     # prepare in nonequilibrium state by turning on t_hyb (hopping onto dot)
     if(verbose > 2 ): print("Nonequilibrium terms");
-    V_imp_leads = 0.4
     new_params = 0.0, V_imp_leads, 0.0, 0.0, 0.0, 0.0;
     new_h1e, dummy, dummy = siam.dot_hams(n_leads, n_imp_sites, nelecs, new_params, verbose = verbose);
     h1e += new_h1e; # updated to include thyb
