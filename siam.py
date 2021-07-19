@@ -151,7 +151,7 @@ def h_dot_2e(U,N):
 #######################################################
 #### functions for manipulating basic hamiltonians
 
-def start_bias(V, dot_is, h1e):
+def start_bias(V, dot_is, h1e, verbose = 0):
     '''
     Manipulate a pre stitched h1e by turning on bias on leads
 
@@ -160,7 +160,7 @@ def start_bias(V, dot_is, h1e):
     - dot_is is list of spin orb indices which are part of dot
     '''
 
-    assert(type(dot_is) == type([]) );
+    assert(isinstance(dot_is, list) );
 
     # iter over leads
     for i in range(np.shape(h1e)[0]):
@@ -171,7 +171,7 @@ def start_bias(V, dot_is, h1e):
         elif i > dot_is[-1]:
             h1e[i,i] = -V/2;
 
-    print("start bias",dot_is, "\n", h1e)
+    if(verbose > 2): print("start bias",dot_is, "\n", h1e)
     return h1e;
     
 def stitch_h1e(h_imp, h_imp_leads, h_leads, h_bias, n_leads, verbose = 0):
@@ -261,7 +261,7 @@ def dot_hams(nleads, nsites, nelecs, physical_params, verbose = 0):
     - physical params, tuple of t, thyb, Vbias, mu, Vgate, U
     Returns:
     h1e, 2d np array, 1e part of siam ham
-    h2e, 2d np array, 2e part of siam ham
+    h2e, 2d np array, 2e part of siam ham ( same as g2e)
     himp, dot part of siam ham only (tuple of 1e, 2e parts)
     '''
 
@@ -279,6 +279,7 @@ def dot_hams(nleads, nsites, nelecs, physical_params, verbose = 0):
     hdl = h_imp_leads(V_imp_leads, nsites); # leads talk to dot
     hd = h_dot_1e(V_gate, nsites); # dot
     h1e = stitch_h1e(hd, hdl, hl, hb, nleads, verbose = verbose); # syntax is imp, imp-leads, leads, bias
+    h1e = start_bias(V_bias, [nleads[0]*2, nleads[0]*2 + 1], h1e, verbose = verbose); # turns on bias
     if(verbose > 2):
         print("\n- Full one electron hamiltonian = \n",h1e);
         
@@ -292,38 +293,21 @@ def dot_hams(nleads, nsites, nelecs, physical_params, verbose = 0):
     return h1e, h2e, himp; #end dot hams
 
 
-def dot_model(nleads, nsites, norbs, nelecs, physical_params,verbose = 0):
+def dot_model(h1e, g2e, norbs, nelecs, physical_params,verbose = 0):
     '''
-    Run whole SIAM machinery, with impurity a very simple dot model
-    Impurity hamiltonian:
-    H_imp = H_dot = -V_g sum_i n_i + U n_{i uparrow} n_{i downarrow}
-    where i are impurity sites
+    Run whole SIAM machinery for given  model hamiltonian
+    
+    Args:
+    - h1e, 2d np array, 1e part of siam ham
+    - g2e, 2d np array, 2e part of siam ham
+    - norbs, int, total num spin orbs
+    - nelecs, tuple of number es, 0 due to All spin up formalism
+    - physical params, tuple of t, thyb, Vbias, mu, Vgate, U
+    
+    Returns: tuple of
+    mol, gto.mol object which holds some physical params
+    scf inst, holds physics: h1e, h2e, mo coeffs etc
     '''
-    
-    # unpack inputs
-    V_leads, V_imp_leads, V_bias, mu, V_gate, U = physical_params;
-    
-    if(verbose): # print inputs
-        print("\nInputs:\n- Num. leads = ",nleads,"\n- Num. impurity sites = ",nsites,"\n- nelecs = ",nelecs,"\n- V_leads = ",V_leads,"\n- V_imp_leads = ",V_imp_leads,"\n- V_bias = ",V_bias,"\n- mu = ",mu,"\n- V_gate = ",V_gate, "\n- Hubbard U = ",U);
-
-    #### make full system ham from inputs
-
-    # make, combine all 1e hamiltonians
-    hl = h_leads(V_leads, nleads); # leads only
-    hb = h_chem(mu, nleads);   # can addjust lead chemical potential
-    hdl = h_imp_leads(V_imp_leads, nsites); # leads talk to dot
-    hd = h_dot_1e(V_gate, nsites); # dot
-    h1e = stitch_h1e(hd, hdl, hl, hb, nleads, verbose = verbose); # syntax is imp, imp-leads, leads, bias
-    if(verbose > 2):
-        print("\n- Full one electron hamiltonian = \n",h1e);
-        
-    # 2e hamiltonian only comes from impurity
-    if(verbose > 2):
-        print("\n- Nonzero h2e elements = ");
-    hd2e = h_dot_2e(U,nsites);
-    h2e = stitch_h2e(hd2e, nleads, verbose = verbose);
-    
-    #### encode physics of dot model in an SCF obj
     
     # initial guess density matrices
     Pa = np.zeros(norbs)
@@ -340,11 +324,11 @@ def dot_model(nleads, nsites, norbs, nelecs, physical_params,verbose = 0):
     scf_inst = scf.UHF(mol)
     scf_inst.get_hcore = lambda *args:h1e # put h1e into scf solver
     scf_inst.get_ovlp = lambda *args:np.eye(norbs) # init overlap as identity matrix
-    scf_inst._eri = h2e # put h2e into scf solver
+    scf_inst._eri = g2e # put h2e into scf solver
     scf_inst.kernel(dm0=(Pa, Pa)); # prints HF gd state but this number is meaningless
                                    # what matter is h1e, h2e are now encoded in this scf instance
         
-    return h1e, h2e, mol, scf_inst;
+    return mol, scf_inst;
     
     
 def mol_model(nleads, nsites, norbs, nelecs, physical_params,verbose = 0):

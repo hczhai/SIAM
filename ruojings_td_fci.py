@@ -7,6 +7,7 @@ import plot
 from pyscf import lib, fci, scf, gto, ao2mo
 from pyscf.fci import direct_uhf, direct_nosym, cistring
 import numpy as np
+import matplotlib.pyplot as plt
 einsum = lib.einsum
 
 ################################################################
@@ -66,6 +67,10 @@ def compute_energy(d1, d2, eris, time=None):
 
     I overload this function by passing it eris w/ arb op x stored
     then ruojings code gets <x> for any eris operator x
+
+    Args:
+    d1, d2, 1 and 2 particle density matrices
+    eris, object which contains hamiltonians
     '''
 
     h1e_a, h1e_b = eris.h1e
@@ -95,35 +100,80 @@ def compute_energy(d1, d2, eris, time=None):
     e +=        einsum('pQrS,rSpQ',g2e_ab,d2ab)
     return e
     
-def compute_occ(site_i, d1, d2, mocoeffs, norbs):
+def compute_occ(site_i, d1, d2, mocoeffs, norbs, ASU = False):
     '''
-    Compute the occ of the molecular orbital at index i 0<occ,2
+    Compute the occupancy of the sites in list site_i
     by encoding n_i as an h1e
+
+    ASU tells whether we are dealing with molecular orbitals (max occ 2) or spin orbitals (max occ 1)
     
-    Generally to compute stuff follow this formula:
+    Generally to compute observable here and below follow this formula:
     - put operator in h1e, h2e format
     - use these to construct an eris
     - pass eris and density matrices to compute energy
     '''
-    
-    # now put dot occ operator in h1 form
+
+    assert( isinstance(site_i, list) );
     occ = np.zeros((norbs,norbs));
-    occ[site_i,site_i] = 1;
+    
+    # put dot occ operator in h1e form, spin free
+    if not ASU:       
+        for doti in range(site_i[0], site_i[-1]+1, 1):
+            occ[doti,doti] = 1; 
+    else: # ASU formalism - molecular orb is 2 spin orbs
+        # iter over all given sites
+        for doti in range(site_i[0], site_i[-1]+1, 2): # doti is up, doti+1 is down # +1 because dot_i is incluse but range is exclusive
+            occ[doti,doti] = 1; # spin up orb
+            occ[doti+1, doti+1] = 1; # spin down orb
     
     # have to store this operator as an eris object
     occ_eris = ERIs(occ, np.zeros((norbs,norbs,norbs,norbs)), mocoeffs)
     occ_val = compute_energy(d1,d2, occ_eris);
     occ_val = np.real(occ_val);
     return occ_val;
+
+
+def compute_Sz(site_i, d1, d2, mocoeffs, norbs, ASU = False):
+    '''
+    Compute Sz for the impurity. See compute_occ doc above
+    '''
+
+    assert( isinstance(site_i, list) );
+    Sz = np.zeros((norbs,norbs));
+
+    # put Sz operator in h1e form
+    if not ASU: # Sz meaningless in spin free context
+        pass;
+    else:
+        # iter over all given sites
+        for doti in range(site_i[0], site_i[-1]+1, 2): # doti is up, doti+1 is down # +1 because dot_i is incluse but range is exclusive
+            Sz[doti,doti] = 1/2; # spin up
+            Sz[doti+1, doti+1] = -1/2; # spin down
+
+    # have to store this operator as an eris object
+    Sz_eris = ERIs(Sz, np.zeros((norbs,norbs,norbs,norbs)), mocoeffs)
+    Sz_val = compute_energy(d1,d2, Sz_eris);
+    Sz_val = np.real(Sz_val);
+    return Sz_val;
+
     
-def compute_current(dot_i,t,d1,d2,mocoeffs,norbs):
+def compute_current(dot_i,t,d1,d2,mocoeffs,norbs, ASU = False):
+    '''
+    Compute current through the impurity. See compute_occ docstring above
+    '''
+
+    assert( isinstance(dot_i, list) );
+
+    if ASU:
+        return compute_current_spinblind(dot_i,t,d1,d2,mocoeffs,norbs);
 
     # operator
     J = np.zeros((norbs,norbs));
-    J[dot_i - 1,dot_i] = -t/2;
-    J[dot_i,dot_i - 1] =  t/2;
-    J[dot_i + 1,dot_i] =  t/2;
-    J[dot_i,dot_i + 1] = -t/2;
+    for doti in range(dot_i[0], dot_i[-1]+1, 1):
+        J[doti - 1,doti] = -t/2;
+        J[doti,doti - 1] =  t/2;
+        J[doti + 1,doti] =  t/2;
+        J[doti,doti + 1] = -t/2;
     
     # have to store this operator as an eris object
     J_eris = ERIs(J, np.zeros((norbs,norbs,norbs,norbs)), mocoeffs)
@@ -135,8 +185,6 @@ def compute_current_spinblind(dot_i,t,d1,d2,mocoeffs,norbs):
     '''
     TODO: generalize this to any size dot
     '''
-
-    print(dot_i)
 
     # current operator (1e only)
     J = np.zeros((norbs,norbs));
@@ -179,6 +227,8 @@ def kernel(mode, eris, ci, tf, dt, RK=4, i_dot = None, t_dot = None, spinblind =
     - dot_i is site (MO) index of the dot, not needed if not doing plot, hence defaults to None
     - t_dot is hopping strength between dot, leads, likewise defaults to None
     - verbose prints helpful debugging stuff
+
+    Returns whatever kernel_std or kernel_plot returns
     '''
 
     
@@ -203,6 +253,10 @@ def kernel_plot(eris, ci, tf, dt, i_dot, t_dot, RK, spinblind, verbose):
     Kernel for getting observables at each time step, for plotting
     Outputs 1d arrays of time, energy, dot occupancy, current
     Access thru calling kernel (see above) with mode=plot
+
+    Returns
+    timevals, 1d arr of time steps
+    observables, tuple of arrs of observable values at each time: E(t), J(t), Occ(t), Sz(t)
     '''
 
     N = int(tf/dt+1e-6)
@@ -217,6 +271,7 @@ def kernel_plot(eris, ci, tf, dt, i_dot, t_dot, RK, spinblind, verbose):
     energy_vals = np.zeros(N+1);
     occ_vals = np.zeros(N+1);
     current_vals = np.zeros(N+1);
+    Sz_vals = np.zeros(N+1);
     
     # time step loop
     for i in range(N+1):
@@ -239,22 +294,22 @@ def kernel_plot(eris, ci, tf, dt, i_dot, t_dot, RK, spinblind, verbose):
         
         # compute observables
         Energy = np.real(compute_energy((d1a,d1b),(d2aa,d2ab,d2bb),eris));
-        #Occupancy = compute_occ(i_dot,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb);
-        if spinblind: # differt operator for current in spin blind formalism
-            Current = compute_current_spinblind(i_dot, t_dot, (d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb);
-        else:
-            Current = compute_current(i_dot, t_dot, (d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb);
+        Current = compute_current(i_dot, t_dot, (d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
+        Occupancy = compute_occ(i_dot,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
+        Sz = compute_Sz(i_dot,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
 
         if(verbose > 3):
-            print("    time: ", i*dt, " E = ",Energy);
+            print("    time: ", i*dt, i_dot, " E = ",Energy);
           
         # fill arrays with observables
         t_vals[i] = i*dt;
         energy_vals[i] = Energy
-        #occ_vals[i] = Occupancy;
+        occ_vals[i] = Occupancy;
         current_vals[i] = Current;
-        
-    return t_vals, energy_vals, current_vals ;
+        Sz_vals[i] = Sz;
+
+    observables = energy_vals, current_vals, occ_vals, Sz_vals
+    return t_vals, observables
     
 def kernel_std(eris, ci, tf, dt, RK):
     '''
@@ -360,10 +415,19 @@ class CIObject():
 ##########################################################################################################
 #### time propagation 
 
-def TimeProp(h1e, h2e, fcivec, mol,  scf_inst, time_stop, time_step, i_dot, t_dot, kernel_mode = "std", verbose = 0):
+def TimeProp(h1e, h2e, fcivec, mol,  scf_inst, time_stop, time_step, i_dot, t_dot, kernel_mode = "plot", verbose = 0):
     '''
     Time propagate an FCI gd state
     The physics of the FCI gd state is encoded in an scf instance
+
+    Kernel is driver of time prop
+    Kernel gets hamiltonian, and ci wf, which is coeffs of slater dets of HF-determined molecular orbs
+    Then updates ci wf at each time step, this in turn updates density matrices
+    Contract density matrices at each time step to compute obervables (e.g. compute_energy, compute_current functions)
+    Set kernel_mode to std to call kernel_std which returns density matrices
+    Set kernel_mode to plot to call kernel_plot which returns arrays of time, observable vals (default)
+    Defaults to kernel mode plot, in which case returns
+    timevals, observables (tuple of E(t), J(t), Occ(t), Sz(t) )
     '''
 
     # assertion statements to check inputs
@@ -406,19 +470,20 @@ def Test(nleads, tf = 1.0, dt = 0.01, verbose = 0):
     ll = nleads[0] # number of left leads
     lr = nleads[1] # number of right leads
     t = 1.0 # lead hopping
-    td = 0.4 # dot-lead hopping
+    td = 0.0 # dot-lead hopping not turned on yet!
     U = 1.0 # dot interaction
     Vg = -0.5 # gate voltage
     V = -0.005 # bias
     norb = ll+lr+1 # total number of sites
     idot = ll # dot index
+    nelec =  (int(norb/2), int(norb/2));
     if(verbose):
-        print("\nInputs:\n- Left, right leads = ",(ll,lr),"\n- nelecs = ", (int(norb/2), int(norb/2)),"\n- Gate voltage = ",Vg,"\n- Bias voltage = ",V,"\n- Lead hopping = ",t,"\n- Dot lead hopping = ",td,"\n- U = ",U);
+        print("\nInputs:\n- Left, right leads = ",(ll,lr),"\n- nelecs = ", nelec,"\n- Gate voltage = ",Vg,"\n- Bias voltage = ",V,"\n- Lead hopping = ",t,"\n- Dot lead hopping = ",td,"\n- U = ",U);
 
     #### make hamiltonian matrices, spin free formalism
     # remember impurity is just one level dot
     
-    # make ground state Hamiltonian with zero bias
+    # make ground state Hamiltonian, equilibrium (ie t_hyb not turned on yet)
     if(verbose):
         print("1. Construct hamiltonian")
     h1e = np.zeros((norb,)*2)
@@ -429,16 +494,18 @@ def Test(nleads, tf = 1.0, dt = 0.01, verbose = 0):
         if i > 0:
             dot = (i==idot or i-1==idot)
             h1e[i,i-1] = -td if dot else -t
-    h1e[idot,idot] = Vg # input gate voltage
-    # g2e needs modification for all up spin
-    g2e = np.zeros((norb,)*4)
+    h1e[idot,idot] = Vg # input gate voltage on dot
+    g2e = np.zeros((norb,norb, norb, norb)); # 2 body terms = hubbard
     g2e[idot,idot,idot,idot] = U
+    for i in range(idot): # bias for leftward current (since V < 0)
+        h1e[i,i] = V/2
+    for i in range(idot+1,norb):
+        h1e[i,i] = -V/2
     
     if(verbose > 2):
         print("- Full one electron hamiltonian:\n", h1e)
         
     # code straight from ruojing, don't understand yet
-    nelec = int(norb/2), int(norb/2) # half filling
     Pa = np.zeros(norb)
     Pa[::2] = 1.0
     Pa = np.diag(Pa)
@@ -446,9 +513,10 @@ def Test(nleads, tf = 1.0, dt = 0.01, verbose = 0):
     Pb[1::2] = 1.0
     Pb = np.diag(Pb)
     # UHF
-    mol = gto.M()
+    mol = gto.M(spin = 0)
     mol.incore_anyway = True
     mol.nelectron = sum(nelec)
+    mol.spin = nelec[0] - nelec[1]
     mf = scf.UHF(mol)
     mf.get_hcore = lambda *args:h1e # put h1e into scf solver
     mf.get_ovlp = lambda *args:np.eye(norb) # init overlap as identity
@@ -478,24 +546,36 @@ def Test(nleads, tf = 1.0, dt = 0.01, verbose = 0):
     #############
         
     #### do time propagation
+
+    # intro nonequilibrium terms (t_hyb = td nonzero)
+    td = 0.4
     if(verbose):
         print("3. Time propagation")
-    for i in range(idot): # introduce bias on leads to get td current
-        h1e[i,i] = V/2
-    for i in range(idot+1,norb):
-        h1e[i,i] = -V/2
+    h1e[idot, idot+1] += -td; # row
+    h1e[idot, idot-1] += -td;
+    h1e[idot+1, idot] += -td; # column
+    h1e[idot-1, idot] += -td;
+
     eris = ERIs(h1e, g2e, mf.mo_coeff) # diff h1e than in uhf, thus time dependence
     ci = CIObject(fcivec, norb, nelec)
     kernel_mode = "plot"; # tell kernel whether to return density matrices or arrs for plotting
-    t, E, J = kernel(kernel_mode, eris, ci, tf, dt, i_dot = idot, t_dot = td, verbose = verbose);
+    t, observables = kernel(kernel_mode, eris, ci, tf, dt, i_dot = [idot], t_dot = td, verbose = verbose);
+    E, J, occ, Sz = observables;
 
     # normalize vals
     J = J*np.pi/abs(V);
-    E = E/E[0];
+    E = E/E[0] - 1;
     
     # plot current vs time
-    plot.GenericPlot(t,J,labels=["time (dt = "+str(dt)+")","Current*$\pi / |V_{bias}|$","td-FCI through dot impurity"]);
-
+    fig, axes = plt.subplots(2, sharex = True);
+    axes[0].plot(t, J);
+    axes[0].set_xlabel("time (dt = "+str(dt)+")");
+    axes[0].set_ylabel("J*$\pi / |V_{bias}|$");
+    axes[0].set_title("Dot impurity, "+str(nleads[0])+" left sites, "+str(nleads[1])+" right sites");
+    axes[1].plot(t, E);
+    axes[1].set_xlabel("time (dt = "+str(dt)+")");
+    axes[1].set_ylabel("$E/E_{i} - 1$");
+    plt.show();
     return; # end test
     
 
