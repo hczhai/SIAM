@@ -8,6 +8,7 @@ from pyscf import lib, fci, scf, gto, ao2mo
 from pyscf.fci import direct_uhf, direct_nosym, cistring
 import numpy as np
 import matplotlib.pyplot as plt
+import functools
 einsum = lib.einsum
 
 ################################################################
@@ -453,28 +454,30 @@ def TimeProp(h1e, h2e, fcivec, mol,  scf_inst, time_stop, time_step, i_dot, t_do
 ###########################################################################################################
 #### test code and wrapper funcs
 
-def TestRun(nleads, nelecs, tf, dt, verbose = 0):
+def TestRun(nleads, nelecs, tf, dt, phys_params = None, verbose = 0):
     '''
     sample calculation of SIAM
     Impurity = one level dot
     '''
-    
-    import functools
-        
-    # top level inputs
-    verbose = 5;
 
-    # physical inputs
+    # inputs
     ll = nleads[0] # number of left leads
     lr = nleads[1] # number of right leads
-    t = 1.0 # lead hopping
-    td = 0.0 # dot-lead hopping not turned on yet!
-    U = 1.0 # dot interaction
-    Vg = -0.5 # gate voltage
-    V = -0.005 # bias
+    nelec =  nelecs
     norb = ll+lr+1 # total number of sites
     idot = ll # dot index
-    nelec =  nelecs
+
+    # physical params, should always be floats
+    if( phys_params == None): # defaults
+        t = 1.0 # lead hopping
+        td = 0.0 # dot-lead hopping not turned on yet!
+        V = -0.005 # bias
+        Vg = -0.5 # gate voltage
+        U = 1.0 # dot interaction
+
+    else: # custom
+        t, td, V, Vg, U = phys_params
+
     if(verbose):
         print("\nInputs:\n- Left, right leads = ",(ll,lr),"\n- nelecs = ", nelec,"\n- Gate voltage = ",Vg,"\n- Bias voltage = ",V,"\n- Lead hopping = ",t,"\n- Dot lead hopping = ",td,"\n- U = ",U);
 
