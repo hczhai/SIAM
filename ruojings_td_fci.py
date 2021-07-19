@@ -113,7 +113,8 @@ def compute_occ(site_i, d1, d2, mocoeffs, norbs, ASU = False):
     - pass eris and density matrices to compute energy
     '''
 
-    assert( isinstance(site_i, list) );
+    assert( isinstance(site_i, list) or isinstance(site_i, np.ndarray));
+    
     occ = np.zeros((norbs,norbs));
     
     # put dot occ operator in h1e form, spin free
@@ -138,7 +139,8 @@ def compute_Sz(site_i, d1, d2, mocoeffs, norbs, ASU = False):
     Compute Sz for the impurity. See compute_occ doc above
     '''
 
-    assert( isinstance(site_i, list) );
+    assert( isinstance(site_i, list) or isinstance(site_i, np.ndarray));
+    
     Sz = np.zeros((norbs,norbs));
 
     # put Sz operator in h1e form
@@ -162,10 +164,10 @@ def compute_current(dot_i,t,d1,d2,mocoeffs,norbs, ASU = False):
     Compute current through the impurity. See compute_occ docstring above
     '''
 
-    assert( isinstance(dot_i, list) );
+    assert( isinstance(dot_i, list) or isinstance(dot_i, np.ndarray));
 
     if ASU:
-        return compute_current_spinblind(dot_i,t,d1,d2,mocoeffs,norbs);
+        return compute_current_ASU(dot_i,t,d1,d2,mocoeffs,norbs);
 
     # operator
     J = np.zeros((norbs,norbs));
@@ -181,9 +183,9 @@ def compute_current(dot_i,t,d1,d2,mocoeffs,norbs, ASU = False):
     J_val = np.imag(J_val);
     return J_val;
     
-def compute_current_spinblind(dot_i,t,d1,d2,mocoeffs,norbs):
+def compute_current_ASU(dot_i,t,d1,d2,mocoeffs,norbs):
     '''
-    TODO: generalize this to any size dot
+    ASU formalism version of above
     '''
 
     # current operator (1e only)
@@ -260,29 +262,27 @@ def kernel_plot(eris, ci, tf, dt, i_dot, t_dot, RK, spinblind, verbose):
     '''
 
     N = int(tf/dt+1e-6)
-    d1as = []
-    d1bs = []
-    d2aas = []
-    d2abs = []
-    d2bbs = []
+    i_all = np.arange(0,ci.norb, 1, dtype = int);
+    i_left = i_all[:i_dot[0] ];
+    i_right = i_all[i_dot[-1]+1:];
     
     # return vals
     t_vals = np.zeros(N+1);
     energy_vals = np.zeros(N+1);
-    occ_vals = np.zeros(N+1);
     current_vals = np.zeros(N+1);
     Sz_vals = np.zeros(N+1);
+    occ_vals = np.zeros( (3,N+1) ); # occ list has [left lead occ, dot occ, right lead occ]
     
     # time step loop
     for i in range(N+1):
     
         # density matrices
         (d1a, d1b), (d2aa, d2ab, d2bb) = ci.compute_rdm12()
-        d1as.append(d1a)
-        d1bs.append(d1b)
-        d2aas.append(d2aa)
-        d2abs.append(d2ab)
-        d2bbs.append(d2bb)
+        #d1as.append(d1a)
+        #d1bs.append(d1b)
+        #d2aas.append(d2aa)
+        #d2abs.append(d2ab)
+        #d2bbs.append(d2bb)
         
         # time step
         dr, dr_imag = compute_update(ci, eris, dt, RK) # update state (r, an fcivec) at each time step
@@ -293,20 +293,18 @@ def kernel_plot(eris, ci, tf, dt, i_dot, t_dot, RK, spinblind, verbose):
         ci.i = r_imag/norm
         
         # compute observables
-        Energy = np.real(compute_energy((d1a,d1b),(d2aa,d2ab,d2bb),eris));
-        Current = compute_current(i_dot, t_dot, (d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
-        Occupancy = compute_occ(i_dot,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
-        Sz = compute_Sz(i_dot,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
-
-        if(verbose > 3):
-            print("    time: ", i*dt, i_dot, " E = ",Energy);
-          
-        # fill arrays with observables
         t_vals[i] = i*dt;
-        energy_vals[i] = Energy
-        occ_vals[i] = Occupancy;
-        current_vals[i] = Current;
-        Sz_vals[i] = Sz;
+        energy_vals[i]  = np.real(compute_energy((d1a,d1b),(d2aa,d2ab,d2bb),eris));
+        current_vals[i] = compute_current(i_dot, t_dot, (d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
+        Sz_vals[i] = compute_Sz(i_dot,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
+        
+        # occupancy of left lead, dot, right lead
+        occ_vals[0][i] = compute_occ(i_left,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
+        occ_vals[1][i] = compute_occ(i_dot,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
+        occ_vals[2][i] = compute_occ(i_right,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
+
+        if(verbose > 4):
+            print("    time: ", i*dt);
 
     observables = energy_vals, current_vals, occ_vals, Sz_vals
     return t_vals, observables
@@ -455,7 +453,7 @@ def TimeProp(h1e, h2e, fcivec, mol,  scf_inst, time_stop, time_step, i_dot, t_do
 ###########################################################################################################
 #### test code and wrapper funcs
 
-def Test(nleads, tf = 1.0, dt = 0.01, verbose = 0):
+def Test(nleads, nelecs, tf = 1.0, dt = 0.01, verbose = 0):
     '''
     sample calculation of SIAM
     Impurity = one level dot
@@ -476,7 +474,7 @@ def Test(nleads, tf = 1.0, dt = 0.01, verbose = 0):
     V = -0.005 # bias
     norb = ll+lr+1 # total number of sites
     idot = ll # dot index
-    nelec =  (int(norb/2), int(norb/2));
+    nelec =  nelecs
     if(verbose):
         print("\nInputs:\n- Left, right leads = ",(ll,lr),"\n- nelecs = ", nelec,"\n- Gate voltage = ",Vg,"\n- Bias voltage = ",V,"\n- Lead hopping = ",t,"\n- Dot lead hopping = ",td,"\n- U = ",U);
 
@@ -567,18 +565,22 @@ def Test(nleads, tf = 1.0, dt = 0.01, verbose = 0):
     E = E/E[0] - 1;
     
     # plot current vs time
-    fig, axes = plt.subplots(2, sharex = True);
+    fig, axes = plt.subplots(3, sharex = True);
     axes[0].plot(t, J);
-    axes[0].set_xlabel("time (dt = "+str(dt)+")");
     axes[0].set_ylabel("J*$\pi / |V_{bias}|$");
     axes[0].set_title("Dot impurity, "+str(nleads[0])+" left sites, "+str(nleads[1])+" right sites");
-    axes[1].plot(t, E);
-    axes[1].set_xlabel("time (dt = "+str(dt)+")");
-    axes[1].set_ylabel("$E/E_{i} - 1$");
+    axes[1].plot(t, occ[0], label = "Left lead");
+    axes[1].plot(t, occ[1], label = "dot");
+    axes[1].plot(t, occ[2], label = "Right lead");
+    axes[1].set_ylabel("Occupancy")
+    axes[1].legend()
+    axes[2].plot(t, E);
+    axes[2].set_xlabel("time (dt = "+str(dt)+")");
+    axes[2].set_ylabel("$E/E_{i} - 1$");
     plt.show();
     return; # end test
     
 
 if __name__ == "__main__":
 
-    Test();
+    pass;

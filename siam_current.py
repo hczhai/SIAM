@@ -498,10 +498,7 @@ def DotDataVsVgate():
     return; # end dot data vs V gate
 
 
-def Test(nleads, dt = 0.01, tf = 1.0, verbose = 0):
-
-    # inputs for dot current data
-    nelecs = (sum(nleads)+1, 0); # half filling
+def Test(nleads, nelecs, dt = 0.01, tf = 1.0, verbose = 0):
 
     # run with default physical params by not passing any
     DotCurrentData(nleads, nelecs, tf, dt, verbose = verbose) ;
