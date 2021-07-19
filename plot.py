@@ -100,80 +100,25 @@ def GenericPlot(x,y, handles=[], styles = [], labels=["x","y",""]):
 #### very specific plot functions
 
 
-def ESpectrumPlot(Evals, title = ""):
+def PlotObservables(nleads, t, E, J, occ):
 
-    x = np.array([0,1]);
-    y = np.zeros((len(Evals), 2));
-    for i in range(len(Evals)):
-        E = Evals[i];
-        y[i,0] = E;
-        y[i,1] = E;
+    # normalize vals
+    E = E/E[0] - 1;
 
-    #GenericPlot(x,y,labels = ["","Energy", title+" Energy Spectrum"]);
-    return x,y;
-
-
-def BasisPlot(basisdict, labels, comparediff=False):
-    '''
-    Given a dict, with
-        -keys being string for the basis used in the calc
-        -vals being an array of indep var vs energy
-    Make line plots comparing E vs indep var for each basis on same figure
-    
-    Args:
-        basis dict, dict
-        labels, list of strings for xlabel, ylabel, title
-    '''
-    
-    # for debugging
-    fname = BasisPlot;
-    
-    # check inputs
-    if( type(basisdict) != type(dict()) ): # check that basisdict is a dict
-        raise PlotTypeError(fname+" 1st arg must be dictionary.\n");
-    if( type(labels) != type([]) ): # check that labels is a list
-        raise PlotTypeError(fname+" 2nd arg must be a list.\n");
-    while( len(labels) < 3): # add dummy labels until we get to three
-        labels.append('');
-    
-    
-    # make figure
-    # 2 axes required if doing an energy difference comparison
-    if(comparediff):
-        fig, axs = plt.subplots(2, 1, sharex=True);
-        ax, ax1 = axs
-    else:
-        fig, ax = plt.subplots();
-    
-    # plot data for each entry in basis dict
-    for b in basisdict: # keys are strings
-    
-        ax.plot(*basisdict[b], label = b);
-        
-    # plot E diff if asked
-    if(comparediff):
-    
-        #choose baseline data
-        baseline = list(basisdict)[0]; # essentially grabs a random key
-        basedata = basisdict[baseline][1]; # get E vals that we subtract
-    
-        # now go thru and get E diff in each case
-        for b in basisdict:
-        
-            data = basisdict[b][1];
-            x, y = basisdict[b][0], data - basedata;
-            ax1.plot(x, y, label = b);
-            
-        # format ax1
-        ax1.set(xlabel = labels[0], ylabel = labels[1] + " Difference");
-        
-    # format and show
-    ax.set(xlabel = labels[0], ylabel = labels[1], title=labels[2]);
-    ax.legend();
+    # plot observables vs time
+    fig, axes = plt.subplots(3, sharex = True);
+    axes[0].plot(t, J); # current
+    axes[0].set_ylabel("Current");
+    axes[0].set_title("Dot impurity, "+str(nleads[0])+" left sites, "+str(nleads[1])+" right sites");
+    axes[1].plot(t, occ[0], label = "Left lead"); # occupancy
+    axes[1].plot(t, occ[1], label = "dot");
+    axes[1].plot(t, occ[2], label = "Right lead");
+    axes[1].set_ylabel("Occupancy")
+    axes[1].legend()
+    axes[2].plot(t, E); # energy
+    axes[2].set_xlabel("time (dt = "+str(t[1])+")");
+    axes[2].set_ylabel("$E/E_{i} - 1$");
     plt.show();
-
-    return; #### end basis plot
-    
     
 def PlotdtdE():
 
@@ -507,6 +452,82 @@ def CorrelPlot(datadict, correl_key, labels):
     
     #show
     plt.show();
+
+
+def ESpectrumPlot(Evals, title = ""):
+
+    x = np.array([0,1]);
+    y = np.zeros((len(Evals), 2));
+    for i in range(len(Evals)):
+        E = Evals[i];
+        y[i,0] = E;
+        y[i,1] = E;
+
+    #GenericPlot(x,y,labels = ["","Energy", title+" Energy Spectrum"]);
+    return x,y;
+
+
+def BasisPlot(basisdict, labels, comparediff=False):
+    '''
+    Given a dict, with
+        -keys being string for the basis used in the calc
+        -vals being an array of indep var vs energy
+    Make line plots comparing E vs indep var for each basis on same figure
+    
+    Args:
+        basis dict, dict
+        labels, list of strings for xlabel, ylabel, title
+    '''
+    
+    # for debugging
+    fname = BasisPlot;
+    
+    # check inputs
+    if( type(basisdict) != type(dict()) ): # check that basisdict is a dict
+        raise PlotTypeError(fname+" 1st arg must be dictionary.\n");
+    if( type(labels) != type([]) ): # check that labels is a list
+        raise PlotTypeError(fname+" 2nd arg must be a list.\n");
+    while( len(labels) < 3): # add dummy labels until we get to three
+        labels.append('');
+    
+    
+    # make figure
+    # 2 axes required if doing an energy difference comparison
+    if(comparediff):
+        fig, axs = plt.subplots(2, 1, sharex=True);
+        ax, ax1 = axs
+    else:
+        fig, ax = plt.subplots();
+    
+    # plot data for each entry in basis dict
+    for b in basisdict: # keys are strings
+    
+        ax.plot(*basisdict[b], label = b);
+        
+    # plot E diff if asked
+    if(comparediff):
+    
+        #choose baseline data
+        baseline = list(basisdict)[0]; # essentially grabs a random key
+        basedata = basisdict[baseline][1]; # get E vals that we subtract
+    
+        # now go thru and get E diff in each case
+        for b in basisdict:
+        
+            data = basisdict[b][1];
+            x, y = basisdict[b][0], data - basedata;
+            ax1.plot(x, y, label = b);
+            
+        # format ax1
+        ax1.set(xlabel = labels[0], ylabel = labels[1] + " Difference");
+        
+    # format and show
+    ax.set(xlabel = labels[0], ylabel = labels[1], title=labels[2]);
+    ax.legend();
+    plt.show();
+
+    return; #### end basis plot
+    
 
 
 ###################################################################################

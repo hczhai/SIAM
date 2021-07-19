@@ -180,7 +180,7 @@ def compute_current(dot_i,t,d1,d2,mocoeffs,norbs, ASU = False):
     # have to store this operator as an eris object
     J_eris = ERIs(J, np.zeros((norbs,norbs,norbs,norbs)), mocoeffs)
     J_val = compute_energy(d1,d2, J_eris);
-    J_val = np.imag(J_val);
+    J_val = -np.imag(J_val);
     return J_val;
     
 def compute_current_ASU(dot_i,t,d1,d2,mocoeffs,norbs):
@@ -205,7 +205,7 @@ def compute_current_ASU(dot_i,t,d1,d2,mocoeffs,norbs):
     # have to store this operator as an eris object
     J_eris = ERIs(J, np.zeros((norbs,norbs,norbs,norbs)), mocoeffs)
     J_val = compute_energy(d1,d2, J_eris); # this func of ruojings gets <x> for whatever operator x is stored in eris arg
-    J_val = np.imag(J_val);
+    J_val = -np.imag(J_val);
     return J_val;
 
 ################################################################
@@ -453,7 +453,7 @@ def TimeProp(h1e, h2e, fcivec, mol,  scf_inst, time_stop, time_step, i_dot, t_do
 ###########################################################################################################
 #### test code and wrapper funcs
 
-def Test(nleads, nelecs, tf = 1.0, dt = 0.01, verbose = 0):
+def TestRun(nleads, nelecs, tf, dt, verbose = 0):
     '''
     sample calculation of SIAM
     Impurity = one level dot
@@ -558,27 +558,9 @@ def Test(nleads, nelecs, tf = 1.0, dt = 0.01, verbose = 0):
     ci = CIObject(fcivec, norb, nelec)
     kernel_mode = "plot"; # tell kernel whether to return density matrices or arrs for plotting
     t, observables = kernel(kernel_mode, eris, ci, tf, dt, i_dot = [idot], t_dot = td, verbose = verbose);
-    E, J, occ, Sz = observables;
 
-    # normalize vals
-    J = J*np.pi/abs(V);
-    E = E/E[0] - 1;
-    
-    # plot current vs time
-    fig, axes = plt.subplots(3, sharex = True);
-    axes[0].plot(t, J);
-    axes[0].set_ylabel("J*$\pi / |V_{bias}|$");
-    axes[0].set_title("Dot impurity, "+str(nleads[0])+" left sites, "+str(nleads[1])+" right sites");
-    axes[1].plot(t, occ[0], label = "Left lead");
-    axes[1].plot(t, occ[1], label = "dot");
-    axes[1].plot(t, occ[2], label = "Right lead");
-    axes[1].set_ylabel("Occupancy")
-    axes[1].legend()
-    axes[2].plot(t, E);
-    axes[2].set_xlabel("time (dt = "+str(dt)+")");
-    axes[2].set_ylabel("$E/E_{i} - 1$");
-    plt.show();
-    return; # end test
+    # reutrn results
+    return t, observables
     
 
 if __name__ == "__main__":

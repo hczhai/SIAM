@@ -38,7 +38,7 @@ from pyscf import fci
 #################################################
 #### get current data
 
-def DotCurrentData(n_leads, nelecs, timestop, deltat, phys_params=None, prep = False, prefix = "", verbose = 0):
+def DotCurrentData(n_leads, nelecs, timestop, deltat, phys_params=None, prep = False, prefix = "", ret_results = False, verbose = 0):
     '''
     More flexible version of siam.py DotDCurrentWrapper with inputs allowing tuning of nelecs, mu, Vgate
 
@@ -118,24 +118,10 @@ def DotCurrentData(n_leads, nelecs, timestop, deltat, phys_params=None, prep = F
 
     # from fci gd state, do time propagation
     timevals, observables = td.TimeProp(h1e, g2e, v_fci, mol, dotscf, timestop, deltat, imp_i, V_imp_leads, kernel_mode = "plot", verbose = verbose);
-    energyvals, currentvals, occvals, Szvals = observables
+    energyvals, currentvals, occvals, Szvals = observables # unpack
 
-    # renormalize current
-    currentvals = currentvals*np.pi/abs(V_bias);
-    energyvals = energyvals/energyvals[0] - 1;
-
-    # plot current vs time
-    if True:
-        fig, axes = plt.subplots(2, sharex = True);
-        axes[0].plot(timevals, currentvals);
-        axes[0].set_xlabel("time (dt = "+str(deltat)+")");
-        axes[0].set_ylabel("J*$\pi / |V_{bias}|$");
-        axes[0].set_title("Dot impurity, "+str(n_leads[0])+" left sites, "+str(n_leads[1])+" right sites");
-        axes[1].plot(timevals, energyvals);
-        axes[1].set_xlabel("time (dt = "+str(deltat)+")");
-        axes[1].set_ylabel("$E/E_{i} - 1$");
-        plt.show();
-        return;
+    if ret_results: # asked to return observable arrays instead of saving
+        return timevals, observables
     
     # write results to external file
     folderstring = "dat/DotCurrentData/";
@@ -496,13 +482,6 @@ def DotDataVsVgate():
         DotCurrentData(nleads, nelecs, tf, dt, mu, Vg, verbose = 5);
 
     return; # end dot data vs V gate
-
-
-def Test(nleads, nelecs, dt = 0.01, tf = 1.0, verbose = 0):
-
-    # run with default physical params by not passing any
-    DotCurrentData(nleads, nelecs, tf, dt, verbose = verbose) ;
-
 
     
 #################################################
