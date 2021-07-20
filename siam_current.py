@@ -28,12 +28,15 @@ siam.py
 import plot
 import siam
 import ruojings_td_fci as td
+import td_dmrg
 
 import time
 import numpy as np
 import scipy
 import matplotlib.pyplot as plt
 from pyscf import fci
+from pyblock3 import fcidump, hamiltonian
+from pyblock3.algebra.mpe import MPE
 
 #################################################
 #### get current data
@@ -132,7 +135,89 @@ def DotCurrentData(n_leads, nelecs, timestop, deltat, phys_params=None, prep = F
     np.savetxt(fstring+"_E.txt", np.array([timevals, energyvals]), header = hstring);
     print("Saved t, E, J data to "+fstring);
     
-    return; # end dot current wrapper
+    return; # end dot current data
+
+
+def DotCurrentData_dmrg(n_leads, nelecs, timestop, deltat, phys_params=None, prep = False, prefix = "", ret_results = False, verbose = 0):
+    '''
+    Exactly as above, but uses dmrg instead of td-fci
+    '''
+
+    # check inputs
+    assert( isinstance(n_leads, tuple) );
+    assert( isinstance(nelecs, tuple) );
+    assert( isinstance(timestop, float) );
+    assert( isinstance(deltat, float) );
+    assert( isinstance(phys_params, tuple) or phys_params == None);
+
+    # dmrg controls
+    bond_dims_i = 200;
+    bond_dims = [bond_dims_i,bond_dims_i+100,bond_dims_i+200,bond_dims_i+300];
+    noises = [1e-3,1e-4,1e-5,0] # need to give noise on order of smallest energy
+
+    # set up the hamiltonian
+    n_imp_sites = 1 # dot
+    imp_i = [n_leads[0]*2, n_leads[0]*2 + 2*n_imp_sites - 1 ]; # imp sites, inclusive
+    norbs = 2*(n_leads[0]+n_leads[1]+n_imp_sites); # num spin orbs
+    # nelecs left as tunable
+
+    # physical params, should always be floats
+    if( phys_params == None): # defaults
+        V_leads = 1.0; # hopping
+        V_imp_leads = 0.4; # hopping t dot, allows current flow
+        V_bias = -0.005; # induces current flow
+        mu = 0;
+        V_gate = -0.5;
+        U = 1.0; # hubbard repulsion
+        B = 0; # magnetic field strength
+        theta = 0;
+    else: # customized
+        V_leads, V_imp_leads, V_bias, mu, V_gate, U, B, theta = phys_params;
+
+
+    # get h1e and h2e for siam, h_imp = h_dot
+    ham_params = V_leads, 1e-5, V_bias, mu, V_gate, U; # dot hopping turned off, but nonzero to fix numerical errors
+    h1e, g2e, hdot = siam.dot_hams(n_leads, n_imp_sites, nelecs, ham_params, verbose = verbose);
+
+    # store physics in fci dump object
+    hdump = fcidump.FCIDUMP(h1e=h1e,g2e=g2e,pg='c1',n_sites=norbs,n_elec=sum(nelecs), twos=nelecs[0]-nelecs[1]);      
+
+    # instead of np array, dmrg wants ham as a matrix product operator (MPO)
+    h_obj = hamiltonian.Hamiltonian(hdump,True);
+    h_mpo = h_obj.build_qc_mpo();
+    if verbose: print("- Built H as MPO");
+
+    # initial ansatz for wf, in matrix product state (MPS) form
+    psi_mps = h_obj.build_mps(bond_dims_i);
+    E_mps_init = td_dmrg.compute_obs(h_mpo, psi_mps);
+    print("- Initial gd energy = ", E_mps_init);
+
+    # ground-state DMRG
+    # runs thru an MPE (matrix product expectation) class built from mpo, mps
+    MPE_obj = MPE(psi_mps, h_mpo, psi_mps);
+
+    # solve system by doing dmrg sweeps
+    # MPE.dmrg method takes list of bond dimensions, noises, threads defaults to 1e-7
+    # can also control verbosity (iprint) sweeps (n_sweeps), conv tol (tol)
+    # noises[0] = 1e-3 and tol = 1e-8 needed here
+    dmrg_obj = MPE_obj.dmrg(bdims=bond_dims, noises = noises, tol = 1e-8, iprint=1); # will print sweep output
+    E_dmrg = dmrg_obj.energies;
+    print("- Final gd energy = ", E_dmrg[-1]);
+    return;
+
+    # nonequil hamiltonian (as MPO)
+    ham_params_neq = V_leads, V_imp_leads, V_bias, mu, V_gate, U; # dot hopping on now
+    h1e_neq, g2e_neq, hdot_neq = siam.dot_hams(n_leads, n_imp_sites, nelecs, ham_params_neq, verbose = verbose);
+    hdump_neq = fcidump.FCIDUMP(h1e=h1e_neq,g2e=g2e_neq,pg='c1',n_sites=norbs,n_elec=sum(nelecs), twos=nelecs[0]-nelecs[1]);
+    h_obj_neq = hamiltonian.Hamiltonian(hdump_neq,True);
+    h_mpo_neq = h_obj_neq.build_qc_mpo(); # got mpo
+
+    # time propagate the noneq state
+    timevals, observables = td_dmrg.kernel(h_mpo_neq, h_obj_neq, psi_mps, timestop, deltat, imp_i, bond_dims[:1], verbose = verbose);
+    energyvals, currentvals = observables
+    currentvals = currentvals*V_imp_leads; # strength of current is from V_imp_leads
+
+    return; # end dot current data dmrg 
 
 
 #################################################
@@ -488,5 +573,12 @@ def DotDataVsVgate():
 
 if(__name__ == "__main__"):
 
-    pass;
+    # system inputs
+    nleads = (1,1);
+    nelecs = (sum(nleads)+1,0); # half filling
+    tf = 0.2
+    dt = 0.01
+
+    # dmrg run
+    DotCurrentData_dmrg(nleads,nelecs,tf,dt,verbose = 5);
 

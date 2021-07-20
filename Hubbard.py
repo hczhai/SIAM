@@ -32,7 +32,7 @@ import numbers
 import numpy as np
 import scipy as sp
 from pyscf import fci
-from pyblock3 import fcidump, hamiltonian
+from pyblock3 import fcidump, hamiltonian, algebra
 
 # top level inputs
 verbose = 2;
@@ -153,7 +153,6 @@ from pyblock3.symbolic.expr import OpElement, OpNames
 from pyblock3.algebra.symmetry import SZ
 
 # top level inputs
-bond_dim = 500;   # explain
 bond_dim_i = 200;
 
 if(verbose): print("\n3. DMRG (All spin up): nelecs = ",nelecs, " nroots = ",nroots);
@@ -161,7 +160,7 @@ if(verbose): print("\n3. DMRG (All spin up): nelecs = ",nelecs, " nroots = ",nro
 # store hamiltonian matrices in fcidump
 # syntax: point group, num MOs, total num elecs (int), 2S = na - nb, h1e, g2e
 # I use ASU formalism so MOs are spin orbs
-hdump = fcidump.FCIDUMP(pg = 'd2h', n_sites = norbs, n_elec = sum(nelecs), twos = nelecs[1] - nelecs[0], h1e = h1e_asu, g2e = g2e_asu)
+hdump = fcidump.FCIDUMP(pg = 'd2h', n_sites = norbs, n_elec = sum(nelecs), twos = nelecs[0] - nelecs[1], h1e = h1e_asu, g2e = g2e_asu)
 if verbose: print("- Created fcidump");
 
 # get hamiltonian from fcidump
@@ -186,7 +185,7 @@ MPE_obj = MPE(psi_mps, h_mpo, psi_mps);
 
 # solve system by doing dmrg sweeps
 # MPE.dmrg method takes list of bond dimensions, noises, threads defaults to 1e-7
-bonddims = [200,300,400]; # increase
+bonddims = [bond_dim_i,bond_dim_i+100,bond_dim_i+200]; # increase
 noises = [1e-4,1e-5,0]; # slowly turn off. limits num sweeps if shorter than bdims, but not vice versa
 # can also control verbosity (iprint) sweeps (n_sweeps), conv tol (tol)
 dmrg_obj = MPE_obj.dmrg(bdims=bonddims, noises=noises, iprint = 1);

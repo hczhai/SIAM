@@ -39,7 +39,7 @@ del t, observables, E, J, occ, Sz
 
 # run test with ASU code
 params_ASU = 1.0, 1.0, -0.005, 0.0, 0.0, 0.0, 0.0, 0.0;
-t, observables = siam_current.DotCurrentData(nleads, nelecs_ASU, tf, dt, phys_params=params_ASU, ret_results = True, verbose = verbose);
+#t, observables = siam_current.DotCurrentData(nleads, nelecs_ASU, tf, dt, phys_params=params_ASU, ret_results = True, verbose = verbose);
 E, J, occ, Sz = observables; # unpack all data
 
 # plot results

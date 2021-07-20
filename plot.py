@@ -233,6 +233,7 @@ def PlotFiniteSize():
     numsites = 2*chainlengths + nimp;
     numsites = np.insert(numsites, 0,0); # 0, 0 should be a point too
     TimePeriods = np.insert(TimePeriods, 0,0)
+    print(TimePeriods);
     ax02.plot(numsites, TimePeriods, label = "Data", color = "black");
     linear = np.polyfit(numsites, TimePeriods, 1); # plot linear fit
     linearvals = numsites*linear[0] + linear[1];

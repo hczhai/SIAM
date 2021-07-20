@@ -159,19 +159,19 @@ def compute_Sz(site_i, d1, d2, mocoeffs, norbs, ASU = False):
     return Sz_val;
 
     
-def compute_current(dot_i,t,d1,d2,mocoeffs,norbs, ASU = False):
+def compute_current(site_i,t,d1,d2,mocoeffs,norbs, ASU = False):
     '''
     Compute current through the impurity. See compute_occ docstring above
     '''
 
-    assert( isinstance(dot_i, list) or isinstance(dot_i, np.ndarray));
+    assert( isinstance(site_i, list) or isinstance(site__i, np.ndarray));
 
     if ASU:
         return compute_current_ASU(dot_i,t,d1,d2,mocoeffs,norbs);
 
     # operator
     J = np.zeros((norbs,norbs));
-    for doti in range(dot_i[0], dot_i[-1]+1, 1):
+    for doti in range(site_i[0], site_i[-1]+1, 1):
         J[doti - 1,doti] = -t/2;
         J[doti,doti - 1] =  t/2;
         J[doti + 1,doti] =  t/2;
@@ -183,7 +183,7 @@ def compute_current(dot_i,t,d1,d2,mocoeffs,norbs, ASU = False):
     J_val = -np.imag(J_val);
     return J_val;
     
-def compute_current_ASU(dot_i,t,d1,d2,mocoeffs,norbs):
+def compute_current_ASU(site_i,t,d1,d2,mocoeffs,norbs):
     '''
     ASU formalism version of above
     '''
@@ -192,7 +192,7 @@ def compute_current_ASU(dot_i,t,d1,d2,mocoeffs,norbs):
     J = np.zeros((norbs,norbs));
 
     # iter over dot sites to fill current op
-    for doti in range(dot_i[0], dot_i[-1]+1, 2): # doti is up, doti+1 is down # +1 because dot_i is incluse but range is exclusive
+    for doti in range(site_i[0], site_i[-1]+1, 2): # doti is up, doti+1 is down # +1 because dot_i is incluse but range is exclusive
         J[doti - 2,doti] = -t/2;  # dot up spin to left up spin # left moving is -
         J[doti+1-2,doti+1] = -t/2; # down to down
         J[doti,doti - 2] =  t/2; # left up spin to dot up spin # hc of 2 above # right moving is +
@@ -307,8 +307,7 @@ def kernel_plot(eris, ci, tf, dt, i_dot, t_dot, RK, spinblind, verbose):
         occ_vals[1][i] = compute_occ(i_dot,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
         occ_vals[2][i] = compute_occ(i_right,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
 
-        if(verbose > 4):
-            print("    time: ", i*dt);
+        if(verbose > 4): print("    time: ", i*dt);
 
     observables = energy_vals, current_vals, occ_vals, Sz_vals
     return t_vals, observables
