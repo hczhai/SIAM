@@ -154,7 +154,7 @@ from pyblock3.algebra.symmetry import SZ
 
 # top level inputs
 bond_dim = 500;   # explain
-bond_dim_i = 250;
+bond_dim_i = 200;
 
 if(verbose): print("\n3. DMRG (All spin up): nelecs = ",nelecs, " nroots = ",nroots);
 
@@ -173,13 +173,26 @@ if verbose: print("- Built H as MPO");
 
 # initial ansatz and energy
 psi_mps = h.build_mps(bond_dim_i); # multiplies as np array
-if True: # test code
+if verbose: 
     print('MPO = ', h_mpo.show_bond_dims())
-    #print('MPO = ', mpo.show_bond_dims())
     print('MPS = ', psi_mps.show_bond_dims())
 psi_sq = np.dot(psi_mps.conj(), psi_mps);
 E_psi = np.dot(psi_mps.conj(), h_mpo @ psi_mps)/psi_sq; # initial exp value of energy
-print("- Energy = ", E_psi);
+print("- Initial gd energy = ", E_psi);
+
+# ground-state DMRG
+# runs thru an MPE (matrix product expectation) class built from mpo, mps
+MPE_obj = MPE(psi_mps, h_mpo, psi_mps);
+
+# solve system by doing dmrg sweeps
+# MPE.dmrg method takes list of bond dimensions, noises, threads defaults to 1e-7
+bonddims = [200,300,400]; # increase
+noises = [1e-4,1e-5,0]; # slowly turn off. limits num sweeps if shorter than bdims, but not vice versa
+# can also control verbosity (iprint) sweeps (n_sweeps), conv tol (tol)
+dmrg_obj = MPE_obj.dmrg(bdims=bonddims, noises=noises, iprint = 1);
+E_dmrg = dmrg_obj.energies;
+print("- Final gd energy = ", E_dmrg[-1]);
+print("- Final energies = ", E_dmrg);
 
         
 
