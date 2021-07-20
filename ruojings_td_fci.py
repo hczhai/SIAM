@@ -167,7 +167,7 @@ def compute_current(site_i,t,d1,d2,mocoeffs,norbs, ASU = False):
     assert( isinstance(site_i, list) or isinstance(site__i, np.ndarray));
 
     if ASU:
-        return compute_current_ASU(dot_i,t,d1,d2,mocoeffs,norbs);
+        return compute_current_ASU(site_i,t,d1,d2,mocoeffs,norbs);
 
     # operator
     J = np.zeros((norbs,norbs));
@@ -298,9 +298,9 @@ def kernel_plot(eris, ci, tf, dt, i_dot, t_dot, RK, spinblind, verbose):
         current_vals[i] = compute_current(i_dot, t_dot, (d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
 
         # total z spin of left lead, dot, right lead
-        Sz_vals[0][i] = compute_Sz(i_left,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
-        Sz_vals[1][i] = compute_Sz(i_dot,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);       
-        Sz_vals[2][i] = compute_Sz(i_right,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
+        Sz_vals[0][i] = np.real(compute_Sz(i_left,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind));
+        Sz_vals[1][i] = np.real(compute_Sz(i_dot,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind));       
+        Sz_vals[2][i] = np.real(compute_Sz(i_right,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind));
         
         # occupancy of left lead, dot, right lead
         occ_vals[0][i] = compute_occ(i_left,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
