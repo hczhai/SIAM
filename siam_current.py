@@ -41,7 +41,7 @@ from pyblock3.algebra.mpe import MPE
 #################################################
 #### get current data
 
-def DotCurrentData(n_leads, nelecs, timestop, deltat, phys_params=None, prep = False, prefix = "", ret_results = False, verbose = 0):
+def DotCurrentData(n_leads, nelecs, timestop, deltat, phys_params=None, prefix = "", ret_results = False, verbose = 0):
     '''
     More flexible version of siam.py DotDCurrentWrapper with inputs allowing tuning of nelecs, mu, Vgate
 
@@ -97,15 +97,9 @@ def DotCurrentData(n_leads, nelecs, timestop, deltat, phys_params=None, prep = F
     ham_params = V_leads, 0.0, V_bias, mu, V_gate, U; # dot hopping turned off
     h1e, g2e, hdot = siam.dot_hams(n_leads, n_imp_sites, nelecs, ham_params, verbose = verbose);
 
-    if prep: # prep dot state w/ magntic field in direction nhat (theta, phi=0)
-        hprep = np.zeros((norbs, norbs));
-        hprep[imp_i[0]+0,imp_i[0]+1] = B*np.sin(theta)/2; # implement the mag field
-        hprep[imp_i[0]+1,imp_i[0]+0] = B*np.sin(theta)/2;
-        hprep[imp_i[0]+0,imp_i[0]+0] = B*np.cos(theta)/2;
-        hprep[imp_i[0]+1,imp_i[0]+1] = -B*np.cos(theta)/2;
-        if (verbose > 2): print("h_prep = \n", hprep);
-        h1e += hprep;
-
+    # prep dot state w/ magntic field in direction nhat (theta, phi=0)
+    h1e += siam.h_B(norbs, imp_i, B, theta, verbose = verbose);
+        
     # get scf implementation of SIAM with dot as impurity, by passing hamiltonian arrays
     mol, dotscf = siam.dot_model(h1e, g2e, norbs, nelecs, ham_params, verbose = verbose);
     
@@ -117,6 +111,7 @@ def DotCurrentData(n_leads, nelecs, timestop, deltat, phys_params=None, prep = F
     new_params = 0.0, V_imp_leads, 0.0, 0.0, 0.0, 0.0;
     new_h1e, dummy, dummy = siam.dot_hams(n_leads, n_imp_sites, nelecs, new_params, verbose = verbose);
     h1e += new_h1e; # updated to include thyb
+    h1e += siam.h_B(norbs, imp_i, -B, theta, verbose = verbose); # remove mag field
 
     # from fci gd state, do time propagation
     timevals, observables = td.TimeProp(h1e, g2e, v_fci, mol, dotscf, timestop, deltat, imp_i, V_imp_leads, kernel_mode = "plot", verbose = verbose);

@@ -220,6 +220,26 @@ def stitch_h1e(h_imp, h_imp_leads, h_leads, h_bias, n_leads, verbose = 0):
     if(verbose > 2):
         print("- h_leads + h_bias:\n",h_leads,"\n- h_imp_leads:\n",h_imp_leads,"\n- h_imp:\n",h_imp);
     return h; # end stitch h1e
+
+
+def h_B(norbs, site_i, B, theta, verbose=0):
+    '''
+    Turn on a magnetic field of strength B in the theta hat direction, on site i
+    This has the effect of preparing the spin state of the site
+        e.g. large, negative B, theta=0 yields an up lectron
+    '''
+
+    assert(isinstance(site_i, list) );
+
+    hB = np.zeros((norbs,norbs));
+    for i in range(site_i[0],site_i[-1],2): # i is spin up, i+1 is spin down
+        hB[i,i+1] = B*np.sin(theta)/2; # implement the mag field, x part
+        hB[i+1,i] = B*np.sin(theta)/2;
+        hB[i,i] = B*np.cos(theta)/2;    # z part
+        hB[i+1,i+1] = -B*np.cos(theta)/2;
+        
+    if (verbose > 2): print("h_B = \n", hB);
+    return hB;
     
     
 def stitch_h2e(h_imp,n_leads,verbose = 0):
