@@ -18,17 +18,16 @@ import matplotlib.pyplot as plt
 
 
 verbose = 4;
-nleads = (3,2);
-nelecs = (3,3); # half filling
+nleads = (1,1);
+nelecs = (2,1); # half filling
 nelecs_ASU = (sum(nelecs),0); # all spin up formalism
 
 #time info
 dt = 0.01;
-tf = 4.0;
+tf = 5.0;
 
 # run test with spin free code
-params = 1.0, 0.4, -0.005, -0.5, 1.0; 
-#params = 1.0, 1.0, -0.005, 0.0, 0.0; # featurless dot
+params = 1.0, 1.0, -0.005, 0.0, 0.0; # featureless dot
 t, observables = ruojings_td_fci.TestRun(nleads, nelecs, tf, dt, phys_params = params, verbose = verbose);
 E, J, occ, Sz = observables; # unpack all data
 

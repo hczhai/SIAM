@@ -542,12 +542,10 @@ def TestRun(nleads, nelecs, tf, dt, phys_params = None, verbose = 0):
     h1e_mo = (h1e_a, h1e_b)
     g2e_mo = (g2e_aa, g2e_ab, g2e_bb)
     eci, fcivec = cisolver.kernel(h1e_mo, g2e_mo, norb, nelec)
-    mycisolver = fci.direct_spin1.FCI();
-    myE, myv = mycisolver.kernel(h1e, g2e, norb, nelec);
     if(verbose):
         print("2. FCI solution");
         print("- gd state energy, zero bias = ", eci);
-        print("- direct spin 1 gd state, zero bias = ",myE," (norbs, nelecs = ",norb,nelec,")")
+        #print("- direct spin 1 gd state, zero bias = ",myE," (norbs, nelecs = ",norb,nelec,")")
     #############
         
     #### do time propagation
@@ -559,6 +557,12 @@ def TestRun(nleads, nelecs, tf, dt, phys_params = None, verbose = 0):
     h1e[idot+1, idot] += -td_noneq;  # column
     h1e[idot-1, idot] += -td_noneq; 
     if(verbose > 2 ): print("Nonequilibrium terms:\n", h1e);
+
+    if True:
+        mycisolver = fci.direct_spin1.FCI();
+        myE, myv = mycisolver.kernel(h1e, g2e, norb, nelec, nroots = 10);
+        print("- Noneq energies = ",myE);
+        return
 
     eris = ERIs(h1e, g2e, mf.mo_coeff) # diff h1e than in uhf, thus time dependence
     ci = CIObject(fcivec, norb, nelec)
