@@ -41,8 +41,9 @@ import numpy as np
 import functools
 from pyscf import fci, gto, scf, ao2mo
 
-#################################################
-#### functions for creating hamiltonians
+#######################################################
+#### 1st part of siam hamiltonian array creation:
+#### create sep hams for leads, dot, combine into 1
 
 def h_leads(V, N):
     '''
@@ -148,53 +149,7 @@ def h_dot_2e(U,N):
         
     return h; # end h dot 2e
 
-#######################################################
-#### functions for manipulating basic hamiltonians
 
-def start_bias(V, dot_is, h1e, verbose = 0):
-    '''
-    Manipulate a pre stitched h1e by turning on bias on leads
-
-    Args:
-    - V is bias voltage
-    - dot_is is list of spin orb indices which are part of dot
-    '''
-
-    assert(isinstance(dot_is, list) );
-
-    # iter over leads
-    for i in range(np.shape(h1e)[0]):
-
-        # ignore dot orbs
-        if i < dot_is[0]:
-            h1e[i,i] = V/2;
-        elif i > dot_is[-1]:
-            h1e[i,i] = -V/2;
-
-    if(verbose > 2): print("start bias",dot_is, "\n", h1e)
-    return h1e;
-
-
-def h_B(norbs, site_i, B, theta, verbose=0):
-    '''
-    Turn on a magnetic field of strength B in the theta hat direction, on site i
-    This has the effect of preparing the spin state of the site
-        e.g. large, negative B, theta=0 yields an up lectron
-    '''
-
-    assert(isinstance(site_i, list) );
-
-    hB = np.zeros((norbs,norbs));
-    for i in range(site_i[0],site_i[-1],2): # i is spin up, i+1 is spin down
-        hB[i,i+1] = B*np.sin(theta)/2; # implement the mag field, x part
-        hB[i+1,i] = B*np.sin(theta)/2;
-        hB[i,i] = B*np.cos(theta)/2;    # z part
-        hB[i+1,i+1] = -B*np.cos(theta)/2;
-        
-    if (verbose > 2): print("h_B = \n", hB);
-    return hB;
-
-    
 def stitch_h1e(h_imp, h_imp_leads, h_leads, h_bias, n_leads, verbose = 0):
     '''
     stitch together the various parts of the 1e hamiltonian
@@ -238,7 +193,7 @@ def stitch_h1e(h_imp, h_imp_leads, h_leads, h_bias, n_leads, verbose = 0):
             if(i>1 and j>1 and i<n_imp_sos+2 and j< n_imp_sos+2): #skip first two, last two rows, columns
                 h[2*n_leads[0] - 2 + i, 2*n_leads[0] - 2 + j] += h_imp[i-2,j-2];
             
-    if(verbose > 2):
+    if(verbose > 3):
         print("- h_leads + h_bias:\n",h_leads,"\n- h_imp_leads:\n",h_imp_leads,"\n- h_imp:\n",h_imp);
     return h; # end stitch h1e
     
@@ -261,11 +216,70 @@ def stitch_h2e(h_imp,n_leads,verbose = 0):
             for i3 in range(n_imp_sos):
                 for i4 in range(n_imp_sos):
                     h[i_imp+i1,i_imp+i2,i_imp+i3,i_imp+i4] = h_imp[i1,i2,i3,i4];
-                    if(verbose > 2): # check 4D tensor by printing nonzero elems
+                    if(verbose > 1): # check 4D tensor by printing nonzero elems
                         if(h_imp[i1,i2,i3,i4] != 0):
                             print("  h_imp[",i1,i2,i3,i4,"] = ",h_imp[i1,i2,i3,i4]," --> h2e[",i_imp+i1,i_imp+i2,i_imp+i3,i_imp+i4,"]");
                         
     return h; # end stitch h2e
+
+#######################################################
+#### 2nd part of siam hamiltonian array creation:
+#### add biases, mag fields etc on top
+
+def h_bias(V, dot_is, norbs, verbose = 0):
+    '''
+    Manipulate a full siam h1e  (ie stitched already) by
+    turning on bias on leads
+
+    Args:
+    - V is bias voltage
+    - dot_is is list of spin orb indices which are part of dot
+    - norbs, int, num spin orbs in whole system
+
+    Returns 2d np array repping bias voltage term of h1e
+    '''
+
+    assert(isinstance(dot_is, list) );
+
+    hb = np.zeros((norbs, norbs));
+    for i in range(norbs): # iter over diag of h1e
+
+        # pick out lead orbs
+        if i < dot_is[0]:
+            hb[i,i] = V/2;
+        elif i > dot_is[-1]:
+            hb[i,i] = -V/2;
+
+    if(verbose > 3): print("h_bias:\n", hb)
+    return hb;
+
+
+def h_B(B, theta, site_i, norbs, verbose=0):
+    '''
+    Turn on a magnetic field of strength B in the theta hat direction, on site i
+    This has the effect of preparing the spin state of the site
+    e.g. large, negative B, theta=0 yields an up electron
+
+    Args:
+    - B, float, mag field strength
+    - theta, float, mag field direction
+    - norbs, int, num spin orbs in whole system
+    - site_i, list, spin indices (even up, odd down) of site that feels mag field
+
+    Returns 2d np array repping magnetic field on given sites
+    '''
+
+    assert(isinstance(site_i, list) );
+
+    hB = np.zeros((norbs,norbs));
+    for i in range(site_i[0],site_i[-1],2): # i is spin up, i+1 is spin down
+        hB[i,i+1] = B*np.sin(theta)/2; # implement the mag field, x part
+        hB[i+1,i] = B*np.sin(theta)/2;
+        hB[i,i] = B*np.cos(theta)/2;    # z part
+        hB[i+1,i+1] = -B*np.cos(theta)/2;
+        
+    if (verbose > 3): print("h_B:\n", hB);
+    return hB;
 
 
 def dot_hams(nleads, nsites, nelecs, physical_params, verbose = 0):
@@ -292,18 +306,18 @@ def dot_hams(nleads, nsites, nelecs, physical_params, verbose = 0):
     V_leads, V_imp_leads, V_bias, mu, V_gate, U, B, theta = physical_params;
     
     if(verbose): # print inputs
-        print("\nInputs:\n- Num. leads = ",nleads,"\n- Num. impurity sites = ",nsites,"\n- nelecs = ",nelecs,"\n- V_leads = ",V_leads,"\n- V_imp_leads = ",V_imp_leads,"\n- V_bias = ",V_bias,"\n- mu = ",mu,"\n- V_gate = ",V_gate, "\n- Hubbard U = ",U);
+        print("\nInputs:\n- Num. leads = ",nleads,"\n- Num. impurity sites = ",nsites,"\n- nelecs = ",nelecs,"\n- V_leads = ",V_leads,"\n- V_imp_leads = ",V_imp_leads,"\n- V_bias = ",V_bias,"\n- mu = ",mu,"\n- V_gate = ",V_gate, "\n- Hubbard U = ",U,"\n- B = ",B,"\n- theta = ",theta);
 
     #### make full system ham from inputs
 
     # make, combine all 1e hamiltonians
     hl = h_leads(V_leads, nleads); # leads only
-    hb = h_chem(mu, nleads);   # can addjust lead chemical potential
+    hc = h_chem(mu, nleads);   # can addjust lead chemical potential
     hdl = h_imp_leads(V_imp_leads, nsites); # leads talk to dot
     hd = h_dot_1e(V_gate, nsites); # dot
-    h1e = stitch_h1e(hd, hdl, hl, hb, nleads, verbose = verbose); # syntax is imp, imp-leads, leads, bias
-    h1e = start_bias(V_bias, [nleads[0]*2, nleads[0]*2 + 1], h1e, verbose = verbose); # turns on bias
-    h1e += h_B(norbs, dot_i, B, theta, verbose = verbose); # prep dot state w/ magntic field in direction nhat (theta, phi=0)
+    h1e = stitch_h1e(hd, hdl, hl, hc, nleads, verbose = verbose); # syntax is imp, imp-leads, leads, bias
+    h1e += h_bias(V_bias, dot_i, norbs , verbose = verbose); # turns on bias
+    h1e += h_B(B, theta, dot_i, norbs, verbose = verbose); # prep dot state w/ magntic field in direction nhat (theta, phi=0)
     if(verbose > 1):
         print("\n- Full one electron hamiltonian = \n",h1e);
         

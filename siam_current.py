@@ -108,7 +108,7 @@ def DotCurrentData(n_leads, nelecs, timestop, deltat, phys_params=None, prefix =
     neq_params = 0.0, V_imp_leads, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
     neq_h1e, dummy, dummy = siam.dot_hams(n_leads, n_imp_sites, nelecs, neq_params, verbose = verbose);
     h1e += neq_h1e; # updated to include thyb
-    h1e += siam.h_B(norbs, imp_i, -B, theta, verbose = verbose); # remove mag field
+    h1e += siam.h_B(-B, theta, imp_i, norbs, verbose = verbose); # remove mag field
 
     # from fci gd state, do time propagation
     timevals, observables = td.TimeProp(h1e, g2e, v_fci, mol, dotscf, timestop, deltat, imp_i, V_imp_leads, kernel_mode = "plot", verbose = verbose);
