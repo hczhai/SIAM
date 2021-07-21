@@ -440,8 +440,8 @@ def TimeProp(h1e, h2e, fcivec, mol,  scf_inst, time_stop, time_step, i_dot, t_do
     # unpack
     norbs = np.shape(h1e)[0];
     nelecs = (mol.nelectron,0);
-    if(verbose):
-        print("\nTime Propagation, norbs = ", norbs, ", nelecs = ", nelecs);
+    if(verbose > 1):
+        print("\n- Time Propagation, norbs = ", norbs, ", nelecs = ", nelecs);
 
     # time propagation kernel requires
     # - ERIS object to encode hamiltonians
@@ -489,8 +489,7 @@ def TestRun(nleads, nelecs, tf, dt, phys_params = None, verbose = 0):
     # remember impurity is just one level dot
     
     # make ground state Hamiltonian, equilibrium (ie t_hyb not turned on yet)
-    if(verbose):
-        print("1. Construct hamiltonian")
+    if(verbose): print("1. Construct hamiltonian")
     h1e = np.zeros((norb,)*2)
     for i in range(norb):
         if i < norb-1:

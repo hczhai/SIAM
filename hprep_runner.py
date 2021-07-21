@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt
 
 
 verbose = 3;
-nleads = (2,1);
+nleads = (3,2);
 nelecs = (nleads[0],nleads[0]); # half filling
 nelecs_ASU = (sum(nelecs),0); # all spin up formalism
 
@@ -28,7 +28,7 @@ tf = 1.0;
 
 # benchmark with spin free code
 # std inputs
-if verbose: print("Spin free\n","-"*80);
+if verbose: print("-"*80,"\nSpin free\n");
 t, observables = ruojings_td_fci.TestRun(nleads, nelecs, tf, dt, phys_params = None, verbose = verbose);
 plot.PlotObservables(nleads, t, observables, occ_only = False); # plot results
 
