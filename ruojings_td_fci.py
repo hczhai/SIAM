@@ -556,7 +556,7 @@ def TestRun(nleads, nelecs, tf, dt, phys_params = None, verbose = 0):
     h1e[idot, idot-1] += -td_noneq; 
     h1e[idot+1, idot] += -td_noneq;  # column
     h1e[idot-1, idot] += -td_noneq; 
-    if(verbose > 2 ): print("Nonequilibrium terms:\n", h1e);
+    if(verbose > 2 ): print("- Nonequilibrium terms:\n", h1e);
 
     if True: # get noneq energies
         mycisolver = fci.direct_spin1.FCI();

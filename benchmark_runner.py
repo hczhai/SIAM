@@ -13,6 +13,32 @@ import plot
 import numpy as np
 import matplotlib.pyplot as plt
 
+if False:
+
+    psi_i = np.array([0,0,0,1,0,0,0,0,0]); # initial wf, eq eigenstate
+    psi_c = []; # initial wf in coefs of noneq eigenstates
+    t = 1.0; # dot lead hopping
+    V = 0.0 # gate voltage
+    b = -0.005; # bias
+    U = 0.0 # hubbard
+    h = np.array([[V,0,0,0,0,t,0,-t,0],
+                  [0,V,0,0,t,-t,-t,t,0],
+                  [0,0,V,0,-t,0,t,0,0],
+                  [0,0,0,V+b,-t,-t,0,0,0],
+                  [0,t,-t,-t,b/2,0,0,0,0],
+                  [t,-t,0,-t,0,U+2*V+b/2,0,0,0],
+                  [0,-t,t,0,0,0,U+2*V-b/2,0,-t],
+                  [-t,t,0,0,0,0,0,-b/2,-t],
+                  [0,0,0,0,0,0,-t,-t,V-b]]);
+    print(h);
+    evals, evecs = np.linalg.eigh(h);
+    print("0. Exact diagonalization")
+    for ei in range(len(evals)):
+        psi_c.append(np.dot(psi_i, evecs[ei]) );
+        print("- energy = ",evals[ei]," coeff = ", psi_c[ei]);
+    print(np.dot(psi_c,psi_c));
+    
+
 ##################################################################################
 #### replicate results from ruojing's code with siam_current module (ASU formalism)
 
