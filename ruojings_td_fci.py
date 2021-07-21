@@ -558,11 +558,10 @@ def TestRun(nleads, nelecs, tf, dt, phys_params = None, verbose = 0):
     h1e[idot-1, idot] += -td_noneq; 
     if(verbose > 2 ): print("Nonequilibrium terms:\n", h1e);
 
-    if True:
+    if True: # get noneq energies
         mycisolver = fci.direct_spin1.FCI();
         myE, myv = mycisolver.kernel(h1e, g2e, norb, nelec, nroots = 10);
         print("- Noneq energies = ",myE);
-        return
 
     eris = ERIs(h1e, g2e, mf.mo_coeff) # diff h1e than in uhf, thus time dependence
     ci = CIObject(fcivec, norb, nelec)
