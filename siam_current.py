@@ -94,23 +94,20 @@ def DotCurrentData(n_leads, nelecs, timestop, deltat, phys_params=None, prefix =
 
 
     # get h1e and h2e for siam, h_imp = h_dot
-    ham_params = V_leads, 0.0, V_bias, mu, V_gate, U; # dot hopping turned off
-    h1e, g2e, hdot = siam.dot_hams(n_leads, n_imp_sites, nelecs, ham_params, verbose = verbose);
-
-    # prep dot state w/ magntic field in direction nhat (theta, phi=0)
-    h1e += siam.h_B(norbs, imp_i, B, theta, verbose = verbose);
+    eq_params = V_leads, 0.0, V_bias, mu, V_gate, U, B, theta; # dot hopping turned off
+    h1e, g2e, hdot = siam.dot_hams(n_leads, n_imp_sites, nelecs, eq_params, verbose = verbose);
         
     # get scf implementation of SIAM with dot as impurity, by passing hamiltonian arrays
-    mol, dotscf = siam.dot_model(h1e, g2e, norbs, nelecs, ham_params, verbose = verbose);
+    mol, dotscf = siam.dot_model(h1e, g2e, norbs, nelecs, eq_params, verbose = verbose);
     
     # from scf instance, do FCI, get exact gd state of equilibrium system
     E_fci, v_fci = siam.scf_FCI(mol, dotscf, verbose = verbose);
     
     # prepare in nonequilibrium state by turning on t_hyb (hopping onto dot)
     if(verbose > 2 ): print("Nonequilibrium terms");
-    new_params = 0.0, V_imp_leads, 0.0, 0.0, 0.0, 0.0;
-    new_h1e, dummy, dummy = siam.dot_hams(n_leads, n_imp_sites, nelecs, new_params, verbose = verbose);
-    h1e += new_h1e; # updated to include thyb
+    neq_params = 0.0, V_imp_leads, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
+    neq_h1e, dummy, dummy = siam.dot_hams(n_leads, n_imp_sites, nelecs, neq_params, verbose = verbose);
+    h1e += neq_h1e; # updated to include thyb
     h1e += siam.h_B(norbs, imp_i, -B, theta, verbose = verbose); # remove mag field
 
     # from fci gd state, do time propagation

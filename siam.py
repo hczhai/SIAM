@@ -173,6 +173,27 @@ def start_bias(V, dot_is, h1e, verbose = 0):
 
     if(verbose > 2): print("start bias",dot_is, "\n", h1e)
     return h1e;
+
+
+def h_B(norbs, site_i, B, theta, verbose=0):
+    '''
+    Turn on a magnetic field of strength B in the theta hat direction, on site i
+    This has the effect of preparing the spin state of the site
+        e.g. large, negative B, theta=0 yields an up lectron
+    '''
+
+    assert(isinstance(site_i, list) );
+
+    hB = np.zeros((norbs,norbs));
+    for i in range(site_i[0],site_i[-1],2): # i is spin up, i+1 is spin down
+        hB[i,i+1] = B*np.sin(theta)/2; # implement the mag field, x part
+        hB[i+1,i] = B*np.sin(theta)/2;
+        hB[i,i] = B*np.cos(theta)/2;    # z part
+        hB[i+1,i+1] = -B*np.cos(theta)/2;
+        
+    if (verbose > 2): print("h_B = \n", hB);
+    return hB;
+
     
 def stitch_h1e(h_imp, h_imp_leads, h_leads, h_bias, n_leads, verbose = 0):
     '''
@@ -220,26 +241,6 @@ def stitch_h1e(h_imp, h_imp_leads, h_leads, h_bias, n_leads, verbose = 0):
     if(verbose > 2):
         print("- h_leads + h_bias:\n",h_leads,"\n- h_imp_leads:\n",h_imp_leads,"\n- h_imp:\n",h_imp);
     return h; # end stitch h1e
-
-
-def h_B(norbs, site_i, B, theta, verbose=0):
-    '''
-    Turn on a magnetic field of strength B in the theta hat direction, on site i
-    This has the effect of preparing the spin state of the site
-        e.g. large, negative B, theta=0 yields an up lectron
-    '''
-
-    assert(isinstance(site_i, list) );
-
-    hB = np.zeros((norbs,norbs));
-    for i in range(site_i[0],site_i[-1],2): # i is spin up, i+1 is spin down
-        hB[i,i+1] = B*np.sin(theta)/2; # implement the mag field, x part
-        hB[i+1,i] = B*np.sin(theta)/2;
-        hB[i,i] = B*np.cos(theta)/2;    # z part
-        hB[i+1,i+1] = -B*np.cos(theta)/2;
-        
-    if (verbose > 2): print("h_B = \n", hB);
-    return hB;
     
     
 def stitch_h2e(h_imp,n_leads,verbose = 0):
@@ -286,7 +287,9 @@ def dot_hams(nleads, nsites, nelecs, physical_params, verbose = 0):
     '''
 
     # unpack inputs
-    V_leads, V_imp_leads, V_bias, mu, V_gate, U = physical_params;
+    norbs = 2*(sum(nleads)+nsites);
+    dot_i = [2*nleads[0], 2*nleads[0]+1];
+    V_leads, V_imp_leads, V_bias, mu, V_gate, U, B, theta = physical_params;
     
     if(verbose): # print inputs
         print("\nInputs:\n- Num. leads = ",nleads,"\n- Num. impurity sites = ",nsites,"\n- nelecs = ",nelecs,"\n- V_leads = ",V_leads,"\n- V_imp_leads = ",V_imp_leads,"\n- V_bias = ",V_bias,"\n- mu = ",mu,"\n- V_gate = ",V_gate, "\n- Hubbard U = ",U);
@@ -300,11 +303,12 @@ def dot_hams(nleads, nsites, nelecs, physical_params, verbose = 0):
     hd = h_dot_1e(V_gate, nsites); # dot
     h1e = stitch_h1e(hd, hdl, hl, hb, nleads, verbose = verbose); # syntax is imp, imp-leads, leads, bias
     h1e = start_bias(V_bias, [nleads[0]*2, nleads[0]*2 + 1], h1e, verbose = verbose); # turns on bias
-    if(verbose > 2):
+    h1e += h_B(norbs, dot_i, B, theta, verbose = verbose); # prep dot state w/ magntic field in direction nhat (theta, phi=0)
+    if(verbose > 1):
         print("\n- Full one electron hamiltonian = \n",h1e);
         
     # 2e hamiltonian only comes from impurity
-    if(verbose > 2):
+    if(verbose > 1):
         print("\n- Nonzero h2e elements = ");
     hd2e = h_dot_2e(U,nsites);
     h2e = stitch_h2e(hd2e, nleads, verbose = verbose);

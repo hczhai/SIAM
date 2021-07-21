@@ -31,8 +31,10 @@ tf = 1.0;
 t, observables = ruojings_td_fci.TestRun(nleads, nelecs, tf, dt, phys_params = None, verbose = verbose);
 plot.PlotObservables(nleads, t, observables, occ_only = False); # plot results
 
-# run ASU code for td FCI
-params = 1.0, 0.4, -0.005, 0.0, -0.5, 1.0, 4.0, 0.0; # dot with B in z direction
+# run ASU code for td FCI, std inputs + mag field
+B = 4.0;
+theta = np.pi/2
+params = 1.0, 0.4, -0.005, 0.0, -0.5, 1.0, B, theta; # dot with B in z direction
 t, observables = siam_current.DotCurrentData(nleads, nelecs_ASU, tf, dt, phys_params=params, ret_results = True, verbose = verbose);
 E, J, occ, Sz = observables; # unpack all data
 
