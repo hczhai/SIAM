@@ -282,6 +282,34 @@ def h_B(B, theta, site_i, norbs, verbose=0):
     return hB;
 
 
+def alt_spin(B, norbs):
+    '''
+    Generally, alternate up and down spins on siam sites
+    Specifically, prep a half filled siam system to be in a spinless state
+
+    Can remove by putting in -B instead of B
+    '''
+
+    # return var
+    h_alt_spin = np.zeros((norbs,norbs))
+
+    nsites = int(norbs/2);
+    for sitei in range(0, nsites, 2): # consider sites in pairs
+
+        # break up pair and convert to spin orb indices
+        site1 = [2*sitei, 2*sitei+1]
+        site2 = [2*(sitei+1), 2*(sitei+1)+1]
+
+        # first site gets B that prefers up spins
+        h_alt_spin += h_B(-B,0.0,site1,norbs)
+
+        # second site prefers down spins
+        h_alt_spin += h_B(B,0.0,site2,norbs);
+
+    return h_alt_spin;
+        
+
+
 def dot_hams(nleads, nsites, nelecs, physical_params, verbose = 0):
     '''
     Converts physical params into 1e and 2e parts of siam model hamiltonian, with
@@ -318,8 +346,11 @@ def dot_hams(nleads, nsites, nelecs, physical_params, verbose = 0):
     h1e = stitch_h1e(hd, hdl, hl, hc, nleads, verbose = verbose); # syntax is imp, imp-leads, leads, bias
     h1e += h_bias(V_bias, dot_i, norbs , verbose = verbose); # turns on bias
     h1e += h_B(B, theta, dot_i, norbs, verbose = verbose); # prep dot state w/ magntic field in direction nhat (theta, phi=0)
-    if(verbose > 1):
-        print("\n- Full one electron hamiltonian = \n",h1e);
+    if(verbose > 1): print("\n- Full one electron hamiltonian = \n",h1e);
+
+    # alt spin up and down in initial state
+    h1e += alt_spin(V_leads,norbs);
+    if(verbose ): print("alt spin ham:\n",h1e);
         
     # 2e hamiltonian only comes from impurity
     if(verbose > 1):

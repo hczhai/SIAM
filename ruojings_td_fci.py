@@ -145,18 +145,25 @@ def compute_Sz(site_i, d1, d2, mocoeffs, norbs, ASU = False):
     Sz = np.zeros((norbs,norbs));
 
     # put Sz operator in h1e form
-    if not ASU: # Sz meaningless in spin free context
-        pass;
+    if not ASU:
+        Sz[site_i[0]] = 1; # picks out site
+        d1a, d1b = d1; # unpack 1 elec density matrix
+        Sz_eris = ERIs(Sz, np.zeros((norbs,norbs,norbs,norbs)), mocoeffs);
+        Szup = compute_energy((d1a,np.zeros_like(d1b)),d2,Sz_eris);
+        Szdw = compute_energy((np.zeros_like(d1a),d1b),d2,Sz_eris);
+        Sz_val = (1/2)*(Szup - Szdw);
+        return Sz_val;
+        
     else:
         # iter over all given sites
         for doti in range(site_i[0], site_i[-1]+1, 2): # doti is up, doti+1 is down # +1 because dot_i is incluse but range is exclusive
             Sz[doti,doti] = 1/2; # spin up
             Sz[doti+1, doti+1] = -1/2; # spin down
 
-    # have to store this operator as an eris object
-    Sz_eris = ERIs(Sz, np.zeros((norbs,norbs,norbs,norbs)), mocoeffs)
-    Sz_val = compute_energy(d1,d2, Sz_eris);
-    return Sz_val;
+        # have to store this operator as an eris object
+        Sz_eris = ERIs(Sz, np.zeros((norbs,norbs,norbs,norbs)), mocoeffs)
+        Sz_val = compute_energy(d1,d2, Sz_eris);
+        return Sz_val;
 
     
 def compute_current(site_i,t,d1,d2,mocoeffs,norbs, ASU = False):

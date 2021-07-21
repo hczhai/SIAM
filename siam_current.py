@@ -104,13 +104,16 @@ def DotCurrentData(n_leads, nelecs, timestop, deltat, phys_params=None, prefix =
     
     # from scf instance, do FCI, get exact gd state of equilibrium system
     E_fci, v_fci = siam.scf_FCI(mol, dotscf, verbose = verbose);
+
+    # remove spin prep terms
+    h1e += siam.h_B(-B, theta, imp_i, norbs, verbose = verbose);
+    h1e += siam.alt_spin(-V_leads,norbs);
     
     # prepare in nonequilibrium state by turning on t_hyb (hopping onto dot)
     if(verbose > 2 ): print("- Add nonequilibrium terms");
     neq_params = 0.0, V_imp_leads, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
     neq_h1e, dummy, dummy = siam.dot_hams(n_leads, n_imp_sites, nelecs, neq_params, verbose = verbose);
     h1e += neq_h1e; # updated to include thyb
-    h1e += siam.h_B(-B, theta, imp_i, norbs, verbose = verbose); # remove mag field
 
     # from fci gd state, do time propagation
     if(verbose): print("3. Time propagation")
