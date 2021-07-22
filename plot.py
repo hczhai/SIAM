@@ -100,16 +100,19 @@ def GenericPlot(x,y, handles=[], styles = [], labels=["x","y",""]):
 #### very specific plot functions
 
 
-def PlotObservables(nleads, t, observables, occ_only = True):
+def PlotObservables(nleads, dataf, occ_only = True):
+    '''
+    plot observables from td fci run
+    '''
 
     # top level inputs
     if occ_only: numplots = 3;
     else: numplots=4;
 
     # unpack, normalize
-    E, J, occ, Sz = observables
+    observables = np.load(dataf);
+    t, E, Jup, Jdown, occL, occD, occR, SzL, SzD, SzR = tuple(observables); # scatter
     E = E/E[0] - 1; #normalize
-    Jup, Jdown = J[0], J[1]; # current is spin sep'd
     J = Jup + Jdown;
 
     # plot current and occupancy vs time
@@ -117,26 +120,26 @@ def PlotObservables(nleads, t, observables, occ_only = True):
     axes[0].plot(t, J); # current
     axes[0].set_ylabel("Current");
     axes[0].set_title("Dot impurity, "+str(nleads[0])+" left sites, "+str(nleads[1])+" right sites");
-    axes[1].plot(t, occ[0], label = "Left lead"); # occupancy
-    axes[1].plot(t, occ[1], label = "dot");
-    axes[1].plot(t, occ[2], label = "Right lead");
+    axes[1].plot(t, occL, label = "Left lead"); # occupancy
+    axes[1].plot(t, occD, label = "dot");
+    axes[1].plot(t, occR, label = "Right lead");
     axes[1].set_ylabel("Occupancy")
     axes[1].legend();
 
     # other plots as desired
     if occ_only: # plot change in occupancy
-        axes[2].plot(t, occ[0] - occ[0][0], label = "Left lead");
-        axes[2].plot(t, occ[1] - occ[1][0], label = "dot");
-        axes[2].plot(t, occ[2] - occ[2][0], label = "Right lead");
+        axes[2].plot(t, occL - occL[0], label = "Left lead");
+        axes[2].plot(t, occD - occD[0], label = "dot");
+        axes[2].plot(t, occR - occR[0], label = "Right lead");
         axes[2].set_ylabel("$\Delta$ Occupancy")
     
     else: # spin and energy
-        axes[2].plot(t,Sz[0]); # spin
-        axes[2].plot(t,Sz[1]);
-        axes[2].plot(t,Sz[2]);
+        axes[2].plot(t,SzL); # spin
+        axes[2].plot(t,SzD);
+        axes[2].plot(t,SzR);
         axes[2].set_ylabel("$<S_z>$");
         axes[3].plot(t, E); # energy
-        axes[3].set_xlabel("time (dt = "+str(t[1])+")");
+        axes[3].set_xlabel("time (dt = "+str(np.real(t[1]))+")");
         axes[3].set_ylabel("$E/E_{i} - 1$");
 
     # configure all axes, show

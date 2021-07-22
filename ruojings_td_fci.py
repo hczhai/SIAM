@@ -10,6 +10,7 @@ from pyscf.fci import direct_uhf, direct_nosym, cistring
 import numpy as np
 import matplotlib.pyplot as plt
 import functools
+import os
 einsum = lib.einsum
 
 ################################################################
@@ -250,8 +251,8 @@ def kernel_plot(eris, ci, tf, dt, i_dot, t_hyb, RK, spinblind, verbose):
     t_vals = np.zeros(N+1);
     energy_vals = np.zeros(N+1);
     current_vals = np.zeros((2,N+1)); # up and down e current separate
-    Sz_vals = np.zeros( (3,N+1), dtype = complex ); # see below
     occ_vals = np.zeros( (3,N+1), dtype = complex ); # occ list has [left lead occ, dot occ, right lead occ]
+    Sz_vals = np.zeros( (3,N+1), dtype = complex ); # see below
     
     # time step loop
     for i in range(N+1):
@@ -272,21 +273,23 @@ def kernel_plot(eris, ci, tf, dt, i_dot, t_hyb, RK, spinblind, verbose):
         energy_vals[i]  = np.real(compute_energy((d1a,d1b),(d2aa,d2ab,d2bb),eris));
         Jup, Jdown = compute_current(i_dot, (d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
         current_vals[0][i], current_vals[1][i] = t_hyb*Jup, t_hyb*Jdown; # add in hop strength
-
-        # total z spin of left lead, dot, right lead
-        Sz_vals[0][i] = compute_Sz(i_left,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
-        Sz_vals[1][i] = compute_Sz(i_dot,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);       
-        Sz_vals[2][i] = compute_Sz(i_right,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
         
         # occupancy of left lead, dot, right lead
         occ_vals[0][i] = compute_occ(i_left,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
         occ_vals[1][i] = compute_occ(i_dot,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
         occ_vals[2][i] = compute_occ(i_right,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
 
+        # total z spin of left lead, dot, right lead
+        Sz_vals[0][i] = compute_Sz(i_left,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
+        Sz_vals[1][i] = compute_Sz(i_dot,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);       
+        Sz_vals[2][i] = compute_Sz(i_right,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
+
         if(verbose > 4): print("    time: ", i*dt);
 
-    observables = energy_vals, current_vals, occ_vals, Sz_vals
-    return t_vals, observables
+    # return val is array of observables
+    # ordering is always t, E, Jup, Jdown, occ left, occ dot, occ right, Sz left, Sz dot, Sz right
+    observables = [t_vals, energy_vals, current_vals[0], current_vals[1], occ_vals[0], occ_vals[1], occ_vals[2], Sz_vals[0], Sz_vals[1], Sz_vals[2]]
+    return np.array(observables)
     
 def kernel_std(eris, ci, tf, dt, RK):
     '''
@@ -432,10 +435,20 @@ def TimeProp(h1e, h2e, fcivec, mol,  scf_inst, time_stop, time_step, i_dot, t_do
 ###########################################################################################################
 #### test code and wrapper funcs
 
-def TestRun(nleads, nelecs, tf, dt, phys_params = None, verbose = 0):
+def SpinfreeTest(nleads, nelecs, tf, dt, phys_params = None, verbose = 0):
     '''
-    sample calculation of SIAM
-    Impurity = one level dot
+    Spin free calculation of SIAM. Impurity is dot
+
+    Args:
+    - nleads, tuple of left lead sites, right lead sites
+    - nelecs, tuple of up es, down es
+    - tf, float, stop time run
+    - dt, float, time step of time run
+    - phys_params, tuple of all the physical inputs to the model, explained in code
+                defaults to None, meaning std inputs
+
+    Saves all observables as single array to .npy
+    returns name of .npy file
     '''
 
     # inputs
@@ -541,10 +554,16 @@ def TestRun(nleads, nelecs, tf, dt, phys_params = None, verbose = 0):
     eris = ERIs(h1e, g2e, mf.mo_coeff) # diff h1e than in uhf, thus time dependence
     ci = CIObject(fcivec, norb, nelec)
     kernel_mode = "plot"; # tell kernel whether to return density matrices or arrs for plotting
-    t, observables = kernel(kernel_mode, eris, ci, tf, dt, i_dot = [idot], t_dot = td_noneq, verbose = verbose);
+    observables = kernel(kernel_mode, eris, ci, tf, dt, i_dot = [idot], t_dot = td_noneq, verbose = verbose);
 
-    # reutrn results
-    return t, observables
+    # save results as .npy
+    fname = os.getcwd();
+    fname += "/dat/SpinfreeTest/" # folder is func name
+    fname += str(nleads[0])+str(1)+str(nleads[1])+"_e"+str(sum(nelecs))+".npy";
+    np.save(fname, observables);
+    print("4. Saved data to "+fname);
+
+    return fname;
     
 
 if __name__ == "__main__":

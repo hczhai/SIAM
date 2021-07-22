@@ -41,9 +41,9 @@ from pyblock3.algebra.mpe import MPE
 #################################################
 #### get current data
 
-def DotCurrentData(n_leads, nelecs, timestop, deltat, phys_params=None, prefix = "", ret_results = False, verbose = 0):
+def DotData(n_leads, nelecs, timestop, deltat, phys_params=None, prefix = "", ret_results = False, verbose = 0):
     '''
-    More flexible version of siam.py DotDCurrentWrapper with inputs allowing tuning of nelecs, mu, Vgate
+    More flexible version of siam.py DotCurrentWrapper with inputs allowing tuning of nelecs, mu, Vgate
 
     Walks thru all the steps for plotting current thru a SIAM. Impurity is a quantum dot
     - construct the biasless hamiltonian, 1e and 2e parts
@@ -63,7 +63,7 @@ def DotCurrentData(n_leads, nelecs, timestop, deltat, phys_params=None, prefix =
     verbose, level of stdout printing
 
     Returns:
-    none, but outputs t, observable data to /dat/DotCurrentData/ folder
+    none, but outputs t, observable data to /dat/Data/ folder
     '''
 
     # check inputs
@@ -117,26 +117,21 @@ def DotCurrentData(n_leads, nelecs, timestop, deltat, phys_params=None, prefix =
 
     # from fci gd state, do time propagation
     if(verbose): print("3. Time propagation")
-    timevals, observables = td.TimeProp(h1e, g2e, v_fci, mol, dotscf, timestop, deltat, imp_i, V_imp_leads, kernel_mode = "plot", verbose = verbose);
-    energyvals, currentvals, occvals, Szvals = observables # unpack
-
-    if ret_results: # asked to return observable arrays instead of saving
-        return timevals, observables
+    observables = td.TimeProp(h1e, g2e, v_fci, mol, dotscf, timestop, deltat, imp_i, V_imp_leads, kernel_mode = "plot", verbose = verbose);
     
     # write results to external file
-    folderstring = "dat/DotCurrentData/";
-    fstring = folderstring+prefix+ str(n_leads[0])+"_"+str(n_imp_sites)+"_"+str(n_leads[1])+"_e"+str(nelecs[0])+"_mu"+str(mu)+"_Vg"+str(V_gate)
+    folder = "dat/DotData/";
+    fname = folder+prefix+ str(n_leads[0])+"_"+str(n_imp_sites)+"_"+str(n_leads[1])+"_e"+str(sum(nelecs))+"_mu"+str(mu)+"_Vg"+str(V_gate)+".npy";
     hstring = time.asctime();
     hstring += "\nSpin blind formalism, bias turned off, lead sites decoupled"
     hstring += "\nInputs:\n- Num. leads = "+str(n_leads)+"\n- Num. impurity sites = "+str(n_imp_sites)+"\n- nelecs = "+str(nelecs)+"\n- V_leads = "+str(V_leads)+"\n- V_imp_leads = "+str(V_imp_leads)+"\n- V_bias = "+str(V_bias)+"\n- mu = "+str(mu) +"\n- V_gate = "+str(V_gate)+"\n- U = "+str(U);
-    np.savetxt(fstring+"_J.txt", np.array([timevals, currentvals]), header = hstring);
-    np.savetxt(fstring+"_E.txt", np.array([timevals, energyvals]), header = hstring);
-    print("Saved t, E, J data to "+fstring);
+    np.save(fname, observables);
+    print("4. Saved data to "+fname);
     
-    return; # end dot current data
+    return fname; # end dot data
 
 
-def DotCurrentData_dmrg(n_leads, nelecs, timestop, deltat, phys_params=None, prep = False, prefix = "", ret_results = False, verbose = 0):
+def DotData_dmrg(n_leads, nelecs, timestop, deltat, phys_params=None, prep = False, prefix = "", ret_results = False, verbose = 0):
     '''
     Exactly as above, but uses dmrg instead of td-fci
     '''
@@ -215,7 +210,7 @@ def DotCurrentData_dmrg(n_leads, nelecs, timestop, deltat, phys_params=None, pre
     energyvals, currentvals = observables
     currentvals = currentvals*V_imp_leads; # strength of current is from V_imp_leads
 
-    return; # end dot current data dmrg 
+    return; # end dot data dmrg 
 
 
 #################################################
