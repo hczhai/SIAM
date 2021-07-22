@@ -417,9 +417,9 @@ def alt_spin(B, norbs):
 
     return h_alt_spin;
 
+
 #######################################################
 #### put it all together for specific model of imp ham
-
 
 def dot_hams(nleads, nsites, nelecs, physical_params, verbose = 0):
     '''
@@ -473,7 +473,7 @@ def dot_hams(nleads, nsites, nelecs, physical_params, verbose = 0):
     return h1e, h2e, himp; #end dot hams
 
 
-def dot_model(h1e, g2e, norbs, nelecs, physical_params,verbose = 0):
+def dot_model(h1e, g2e, norbs, nelecs, verbose = 0):
     '''
     Run whole SIAM machinery for given  model hamiltonian
     
@@ -482,7 +482,6 @@ def dot_model(h1e, g2e, norbs, nelecs, physical_params,verbose = 0):
     - g2e, 2d np array, 2e part of siam ham
     - norbs, int, total num spin orbs
     - nelecs, tuple of number es, 0 due to All spin up formalism
-    - physical params, tuple of t, thyb, Vbias, mu, Vgate, U
     
     Returns: tuple of
     mol, gto.mol object which holds some physical params
@@ -507,7 +506,7 @@ def dot_model(h1e, g2e, norbs, nelecs, physical_params,verbose = 0):
     scf_inst._eri = g2e # put h2e into scf solver
     scf_inst.kernel(dm0=(Pa, Pa)); # prints HF gd state but this number is meaningless
                                    # what matter is h1e, h2e are now encoded in this scf instance
-        
+
     return mol, scf_inst;
     
     

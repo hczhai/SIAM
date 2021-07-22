@@ -100,7 +100,7 @@ def DotData(n_leads, nelecs, timestop, deltat, phys_params=None, prefix = "", re
         
     # get scf implementation siam by passing hamiltonian arrays
     print("2. FCI solution");
-    mol, dotscf = siam.dot_model(h1e, g2e, norbs, nelecs, eq_params, verbose = verbose);
+    mol, dotscf = siam.dot_model(h1e, g2e, norbs, nelecs, verbose = verbose);
     
     # from scf instance, do FCI, get exact gd state of equilibrium system
     E_fci, v_fci = siam.scf_FCI(mol, dotscf, verbose = verbose);
@@ -117,7 +117,8 @@ def DotData(n_leads, nelecs, timestop, deltat, phys_params=None, prefix = "", re
 
     # from fci gd state, do time propagation
     if(verbose): print("3. Time propagation")
-    observables = td.TimeProp(h1e, g2e, v_fci, mol, dotscf, timestop, deltat, imp_i, V_imp_leads, kernel_mode = "plot", verbose = verbose);
+    init_str, observables = td.TimeProp(h1e, g2e, v_fci, mol, dotscf, timestop, deltat, imp_i, V_imp_leads, kernel_mode = "plot", verbose = verbose);
+    print(init_str)
     
     # write results to external file
     folder = "dat/DotData/";

@@ -100,7 +100,7 @@ def GenericPlot(x,y, handles=[], styles = [], labels=["x","y",""]):
 #### very specific plot functions
 
 
-def PlotObservables(nleads, dataf, splots = ['J', 'Jtot','Sz']):
+def PlotObservables(nleads, thyb, dataf, splots = ['J', 'Jtot','Sz']):
     '''
     plot observables from td fci run
 
@@ -127,7 +127,7 @@ def PlotObservables(nleads, dataf, splots = ['J', 'Jtot','Sz']):
         axes[ax_counter].plot(t, Jdown, color="yellow", label = "$J_{down}$");
         axes[ax_counter].set_ylabel("Current");
         axes[ax_counter].legend();
-        axes[ax_counter].set_title("Dot impurity, "+str(nleads[0])+" left sites, "+str(nleads[1])+" right sites");
+        axes[ax_counter].set_title("Dot impurity:\n"+str(nleads[0])+" left sites, "+str(nleads[1])+" right sites, $t_{hyb}$ = "+str(thyb)+"turned on");
         ax_counter += 1;
 
     # just total current vs time

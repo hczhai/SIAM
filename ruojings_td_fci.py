@@ -137,11 +137,13 @@ def compute_Sz(site_i, d1, d2, mocoeffs, norbs, ASU = False):
     
     else: # more complicated, have to contract 1e density matrices seperately
         Sz = np.zeros((norbs,norbs));
-        Sz[site_i[0]] = 1; # picks out site
+        for i in site_i:
+            Sz[i,i] = 1; # pick out relevant sites
         d1a, d1b = d1; # unpack 1 elec density matrix
         Sz_eris = ERIs(Sz, np.zeros((norbs,norbs,norbs,norbs)), mocoeffs);
         Szup = compute_energy((d1a,np.zeros_like(d1b)),d2,Sz_eris); # contract with d1a only
         Szdw = compute_energy((np.zeros_like(d1a),d1b),d2,Sz_eris); # now with d1b only
+        #print("up, dw = ",Szup, Szdw);
         return (1/2)*(Szup - Szdw);
     
     
@@ -258,7 +260,23 @@ def kernel_plot(eris, ci, tf, dt, i_dot, t_hyb, RK, spinblind, verbose):
     for i in range(N+1):
     
         # density matrices
-        (d1a, d1b), (d2aa, d2ab, d2bb) = ci.compute_rdm12()
+        (d1a, d1b), (d2aa, d2ab, d2bb) = ci.compute_rdm12();
+
+        # before any time stepping, get initial state
+        if(i==0):
+            occ_init, Sz_init = np.zeros(len(i_all), dtype = complex), np.zeros(len(i_all), dtype = complex);
+            for sitej in i_all: # iter over sites
+                if spinblind: # sites are pairs of spin orbs
+                    if(sitej % 2 == 0): # at even sites do up and down together
+                        occ_init[sitej] = compute_occ([sitej,sitej+1],(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
+                        Sz_init[sitej] = compute_Sz([sitej,sitej+1],(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
+                    else: pass; # skip odd sites
+                else: # sites are just sites
+                    occ_init[sitej] = compute_occ([sitej],(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
+                    Sz_init[sitej] = compute_Sz([sitej],(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
+            initstatestr = "- Initial state:"
+            initstatestr += "    occ = "+str(np.real(occ_init));
+            initstatestr += "    Sz = "+str(np.real(Sz_init));
         
         # time step
         dr, dr_imag = compute_update(ci, eris, dt, RK) # update state (r, an fcivec) at each time step
@@ -289,7 +307,7 @@ def kernel_plot(eris, ci, tf, dt, i_dot, t_hyb, RK, spinblind, verbose):
     # return val is array of observables
     # ordering is always t, E, Jup, Jdown, occ left, occ dot, occ right, Sz left, Sz dot, Sz right
     observables = [t_vals, energy_vals, current_vals[0], current_vals[1], occ_vals[0], occ_vals[1], occ_vals[2], Sz_vals[0], Sz_vals[1], Sz_vals[2]]
-    return np.array(observables)
+    return initstatestr, np.array(observables)
     
 def kernel_std(eris, ci, tf, dt, RK):
     '''
@@ -554,7 +572,8 @@ def SpinfreeTest(nleads, nelecs, tf, dt, phys_params = None, verbose = 0):
     eris = ERIs(h1e, g2e, mf.mo_coeff) # diff h1e than in uhf, thus time dependence
     ci = CIObject(fcivec, norb, nelec)
     kernel_mode = "plot"; # tell kernel whether to return density matrices or arrs for plotting
-    observables = kernel(kernel_mode, eris, ci, tf, dt, i_dot = [idot], t_dot = td_noneq, verbose = verbose);
+    init_str, observables = kernel(kernel_mode, eris, ci, tf, dt, i_dot = [idot], t_dot = td_noneq, verbose = verbose);
+    print(init_str);
 
     # save results as .npy
     fname = os.getcwd();

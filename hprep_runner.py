@@ -31,9 +31,9 @@ tf = 4.0;
 # std inputs
 if verbose: print("-"*80,"\nSpin free\n");
 # saves data to .npy
-#fname = ruojings_td_fci.SpinfreeTest(nleads, nelecs, tf, dt, phys_params = None, verbose = verbose);
+fname = ruojings_td_fci.SpinfreeTest(nleads, nelecs, tf, dt, phys_params = None, verbose = verbose);
 fname = "dat/SpinfreeTest/211_e4.npy"
-plot.PlotObservables(nleads, fname); # plot results
+plot.PlotObservables(nleads, 0.4, fname); # plot results
 
 # run ASU code for td FCI, std inputs + mag field
 if verbose: print("-"*80,"\nASU\n");
@@ -41,9 +41,9 @@ B = 0.0 #4.0;
 theta = 0 #np.pi/2
 params = 1.0, 0.4, -0.005, 0.0, -0.5, 1.0, B, theta; # dot with B in z direction
 # save data to .npy
-#fname_ASU = siam_current.DotData(nleads, nelecs_ASU, tf, dt, phys_params=None, verbose = verbose);
+fname_ASU = siam_current.DotData(nleads, nelecs_ASU, tf, dt, phys_params=None, verbose = verbose);
 fname_ASU = "dat/DotData/2_1_1_e4_mu0_Vg-0.5.npy";
-plot.PlotObservables(nleads, fname_ASU);
+plot.PlotObservables(nleads, 0.4, fname_ASU);
 
 ##################################################################################
 #### test finite size effects ?
