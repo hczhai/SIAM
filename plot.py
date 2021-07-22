@@ -109,6 +109,8 @@ def PlotObservables(nleads, t, observables, occ_only = True):
     # unpack, normalize
     E, J, occ, Sz = observables
     E = E/E[0] - 1; #normalize
+    Jup, Jdown = J[0], J[1]; # current is spin sep'd
+    J = Jup + Jdown;
 
     # plot current and occupancy vs time
     fig, axes = plt.subplots(numplots, sharex = True);

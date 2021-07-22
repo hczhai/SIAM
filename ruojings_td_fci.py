@@ -3,6 +3,7 @@ Time dependent fci code and SIAM example
 Author: Ruojing Peng
 '''
 import plot
+import siam
 
 from pyscf import lib, fci, scf, gto, ao2mo
 from pyscf.fci import direct_uhf, direct_nosym, cistring
@@ -114,106 +115,78 @@ def compute_occ(site_i, d1, d2, mocoeffs, norbs, ASU = False):
     - pass eris and density matrices to compute energy
     '''
 
-    assert( isinstance(site_i, list) or isinstance(site_i, np.ndarray));
+    # operator
+    occ = siam.occ(site_i, norbs);
     
-    occ = np.zeros((norbs,norbs));
-    
-    # put dot occ operator in h1e form, spin free
-    if not ASU:       
-        for doti in range(site_i[0], site_i[-1]+1, 1):
-            occ[doti,doti] = 1; 
-    else: # ASU formalism - molecular orb is 2 spin orbs
-        # iter over all given sites
-        for doti in range(site_i[0], site_i[-1]+1, 2): # doti is up, doti+1 is down # +1 because dot_i is incluse but range is exclusive
-            occ[doti,doti] = 1; # spin up orb
-            occ[doti+1, doti+1] = 1; # spin down orb
-    
-    # have to store this operator as an eris object
+    # have to store this operator as an eris object to compute "energy"
     occ_eris = ERIs(occ, np.zeros((norbs,norbs,norbs,norbs)), mocoeffs)
-    occ_val = compute_energy(d1,d2, occ_eris);
-    occ_val = np.real(occ_val);
-    return occ_val;
-
+    return compute_energy(d1,d2, occ_eris);
 
 def compute_Sz(site_i, d1, d2, mocoeffs, norbs, ASU = False):
     '''
     Compute Sz for the impurity. See compute_occ doc above
     '''
 
-    assert( isinstance(site_i, list) or isinstance(site_i, np.ndarray));
-    
-    Sz = np.zeros((norbs,norbs));
-
-    # put Sz operator in h1e form
-    if not ASU:
-        Sz[site_i[0]] = 1; # picks out site
-        d1a, d1b = d1; # unpack 1 elec density matrix
-        Sz_eris = ERIs(Sz, np.zeros((norbs,norbs,norbs,norbs)), mocoeffs);
-        Szup = compute_energy((d1a,np.zeros_like(d1b)),d2,Sz_eris);
-        Szdw = compute_energy((np.zeros_like(d1a),d1b),d2,Sz_eris);
-        Sz_val = (1/2)*(Szup - Szdw);
-        return Sz_val;
-        
-    else:
-        # iter over all given sites
-        for doti in range(site_i[0], site_i[-1]+1, 2): # doti is up, doti+1 is down # +1 because dot_i is incluse but range is exclusive
-            Sz[doti,doti] = 1/2; # spin up
-            Sz[doti+1, doti+1] = -1/2; # spin down
+    if ASU: # just put Sz operator in h1e form
+        Sz = siam.Sz(site_i, norbs);
 
         # have to store this operator as an eris object
         Sz_eris = ERIs(Sz, np.zeros((norbs,norbs,norbs,norbs)), mocoeffs)
-        Sz_val = compute_energy(d1,d2, Sz_eris);
-        return Sz_val;
-
+        return compute_energy(d1,d2, Sz_eris);
     
-def compute_current(site_i,t,d1,d2,mocoeffs,norbs, ASU = False):
+    else: # more complicated, have to contract 1e density matrices seperately
+        Sz = np.zeros((norbs,norbs));
+        Sz[site_i[0]] = 1; # picks out site
+        d1a, d1b = d1; # unpack 1 elec density matrix
+        Sz_eris = ERIs(Sz, np.zeros((norbs,norbs,norbs,norbs)), mocoeffs);
+        Szup = compute_energy((d1a,np.zeros_like(d1b)),d2,Sz_eris); # contract with d1a only
+        Szdw = compute_energy((np.zeros_like(d1a),d1b),d2,Sz_eris); # now with d1b only
+        return (1/2)*(Szup - Szdw);
+    
+    
+def compute_current(site_i,d1,d2,mocoeffs,norbs, ASU = False):
     '''
     Compute current through the impurity. See compute_occ docstring above
+
+    Notes:
+    - Does not multiply by t_hyb anymore! have to do later
+    - spin free returns all current as up current, ASU actually gets both
     '''
 
     assert( isinstance(site_i, list) or isinstance(site__i, np.ndarray));
 
     if ASU:
-        return compute_current_ASU(site_i,t,d1,d2,mocoeffs,norbs);
+        return compute_current_ASU(site_i,d1,d2,mocoeffs,norbs);
 
     # operator
     J = np.zeros((norbs,norbs));
     for doti in range(site_i[0], site_i[-1]+1, 1):
-        J[doti - 1,doti] = -t/2;
-        J[doti,doti - 1] =  t/2;
-        J[doti + 1,doti] =  t/2;
-        J[doti,doti + 1] = -t/2;
+        J[doti - 1,doti] = -1/2;
+        J[doti,doti - 1] =  1/2;
+        J[doti + 1,doti] =  1/2;
+        J[doti,doti + 1] = -1/2;
     
     # have to store this operator as an eris object
     J_eris = ERIs(J, np.zeros((norbs,norbs,norbs,norbs)), mocoeffs)
     J_val = compute_energy(d1,d2, J_eris);
     J_val = -np.imag(J_val);
-    return J_val;
+    return J_val, 0;
     
-def compute_current_ASU(site_i,t,d1,d2,mocoeffs,norbs):
+def compute_current_ASU(site_i,d1,d2,mocoeffs,norbs):
     '''
     ASU formalism version of above
     '''
 
-    # current operator (1e only)
-    J = np.zeros((norbs,norbs));
-
-    # iter over dot sites to fill current op
-    for doti in range(site_i[0], site_i[-1]+1, 2): # doti is up, doti+1 is down # +1 because dot_i is incluse but range is exclusive
-        J[doti - 2,doti] = -t/2;  # dot up spin to left up spin # left moving is -
-        J[doti+1-2,doti+1] = -t/2; # down to down
-        J[doti,doti - 2] =  t/2; # left up spin to dot up spin # hc of 2 above # right moving is +
-        J[doti+1, doti+1-2] = t/2; # hc
-        J[doti + 2,doti] = t/2;  # up spin to right up spin
-        J[doti+1+2,doti+1] = t/2; # down to down
-        J[doti,doti + 2] =  -t/2; # hc
-        J[doti+1, doti+1+2] = -t/2; # hc
+    # up, down current operators (1 e operators)
+    Jup = siam.Jup(site_i, norbs); # up e current
+    Jdown = siam.Jdown(site_i, norbs); # down e current
     
-    # have to store this operator as an eris object
-    J_eris = ERIs(J, np.zeros((norbs,norbs,norbs,norbs)), mocoeffs)
-    J_val = compute_energy(d1,d2, J_eris); # this func of ruojings gets <x> for whatever operator x is stored in eris arg
-    J_val = -np.imag(J_val);
-    return J_val;
+    # have to store as an eris object
+    Jup_eris = ERIs(Jup, np.zeros((norbs,norbs,norbs,norbs)), mocoeffs);
+    Jdown_eris = ERIs(Jdown, np.zeros((norbs,norbs,norbs,norbs)), mocoeffs);
+    Jup_val = compute_energy(d1,d2, Jup_eris); # this func of ruojings gets <x> for whatever operator x is stored in eris arg
+    Jdown_val = compute_energy(d1,d2, Jdown_eris);
+    return -np.imag(Jup_val), -np.imag(Jdown_val); # -imag is same as *i
 
 ################################################################
 #### kernel
@@ -257,7 +230,7 @@ def kernel(mode, eris, ci, tf, dt, RK=4, i_dot = None, t_dot = None, spinblind =
     
         return kernel_plot(eris, ci, tf, dt, i_dot, t_dot, RK, spinblind, verbose);
 
-def kernel_plot(eris, ci, tf, dt, i_dot, t_dot, RK, spinblind, verbose):
+def kernel_plot(eris, ci, tf, dt, i_dot, t_hyb, RK, spinblind, verbose):
     '''
     Kernel for getting observables at each time step, for plotting
     Outputs 1d arrays of time, energy, dot occupancy, current
@@ -276,20 +249,15 @@ def kernel_plot(eris, ci, tf, dt, i_dot, t_dot, RK, spinblind, verbose):
     # return vals
     t_vals = np.zeros(N+1);
     energy_vals = np.zeros(N+1);
-    current_vals = np.zeros(N+1);
-    Sz_vals = np.zeros( (3,N+1) ); # see below
-    occ_vals = np.zeros( (3,N+1) ); # occ list has [left lead occ, dot occ, right lead occ]
+    current_vals = np.zeros((2,N+1)); # up and down e current separate
+    Sz_vals = np.zeros( (3,N+1), dtype = complex ); # see below
+    occ_vals = np.zeros( (3,N+1), dtype = complex ); # occ list has [left lead occ, dot occ, right lead occ]
     
     # time step loop
     for i in range(N+1):
     
         # density matrices
         (d1a, d1b), (d2aa, d2ab, d2bb) = ci.compute_rdm12()
-        #d1as.append(d1a)
-        #d1bs.append(d1b)
-        #d2aas.append(d2aa)
-        #d2abs.append(d2ab)
-        #d2bbs.append(d2bb)
         
         # time step
         dr, dr_imag = compute_update(ci, eris, dt, RK) # update state (r, an fcivec) at each time step
@@ -302,12 +270,13 @@ def kernel_plot(eris, ci, tf, dt, i_dot, t_dot, RK, spinblind, verbose):
         # compute observables
         t_vals[i] = i*dt;
         energy_vals[i]  = np.real(compute_energy((d1a,d1b),(d2aa,d2ab,d2bb),eris));
-        current_vals[i] = compute_current(i_dot, t_dot, (d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
+        Jup, Jdown = compute_current(i_dot, (d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
+        current_vals[0][i], current_vals[1][i] = t_hyb*Jup, t_hyb*Jdown; # add in hop strength
 
         # total z spin of left lead, dot, right lead
-        Sz_vals[0][i] = np.real(compute_Sz(i_left,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind));
-        Sz_vals[1][i] = np.real(compute_Sz(i_dot,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind));       
-        Sz_vals[2][i] = np.real(compute_Sz(i_right,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind));
+        Sz_vals[0][i] = compute_Sz(i_left,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
+        Sz_vals[1][i] = compute_Sz(i_dot,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);       
+        Sz_vals[2][i] = compute_Sz(i_right,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
         
         # occupancy of left lead, dot, right lead
         occ_vals[0][i] = compute_occ(i_left,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);

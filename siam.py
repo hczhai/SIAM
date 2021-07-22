@@ -43,7 +43,9 @@ from pyscf import fci, gto, scf, ao2mo
 
 #######################################################
 #### 1st part of siam hamiltonian array creation:
-#### create sep hams for leads, dot, combine into 1
+#### create sep hams for leads, dot
+
+#### 1 e ham operators
 
 def h_leads(V, N):
     '''
@@ -122,15 +124,115 @@ def h_dot_1e(V,N):
     V is gate voltage (ie onsite energy of dot sites)
     N is number of dot sites
     '''
-    
+
+    # create h array
     h = np.zeros((2*N,2*N));
     
-    # on site energy for each dot site
+    # gate voltage for each dot site
     for i in range (2*N):
-    
         h[i,i] = V;
         
     return h; # end h dot 1e
+
+
+#### other 1 e operators
+
+def occ(site_i, norbs):
+    '''
+    Operator for the occupancy of sites specified by site_i
+    Args:
+    - site_i, list of (usually spin orb) site indices
+    - norbs, total num orbitals in system
+    '''
+
+    # check inputs
+    assert( isinstance(site_i, list) or isinstance(site_i, np.ndarray));
+
+    # create op array
+    o = np.zeros((norbs,norbs));
+
+    # iter over sites, = 1 for ones we measure occ of
+    for i in range(site_i[0], site_i[-1]+1, 1):
+        o[i,i] = 1.0;
+
+    return o;
+
+
+def Sz(site_i, norbs):
+    '''
+    Operator for the z spin of sites specified by site_i
+    ASU formalism only !!!
+    Args:
+    - site_i, list of (usually spin orb) site indices
+    - norbs, total num orbitals in system
+    '''
+
+    # check inputs
+    assert( isinstance(site_i, list) or isinstance(site_i, np.ndarray));
+
+    # create op array
+    sz = np.zeros((norbs,norbs));
+
+    # iter over all given sites
+    for i in range(site_i[0], site_i[-1]+1, 2): # doti is up, doti+1 is down 
+        sz[i,i] = 1/2; # spin up
+        sz[i+1, i+1] = -1/2; # spin down
+
+    return sz;
+
+
+def Jup(site_i, norbs):
+    '''
+    Current of up spin e's thru sitei
+    ASU formalism only !!!
+    Args:
+    - site_i, list of (usually spin orb) site indices
+    - norbs, total num orbitals in system
+    '''
+
+    # check inputs
+    assert( len(site_i) == 2); # should be only 1 site ie 2 spatial orbs
+
+    # current operator (1e only)
+    J = np.zeros((norbs,norbs));
+
+    # even spin index is up spins
+    upi = site_i[0];
+    assert(upi % 2 == 0); # check even
+    J[upi-2,upi] = -1/2;  # dot up spin to left up spin #left moving is negative current
+    J[upi,upi-2] =  1/2; # left up spin to dot up spin # hc of above # right moving is +
+    J[upi+2,upi] = 1/2;  # up spin to right up spin
+    J[upi,upi+2] =  -1/2; # hc
+
+    return J;
+
+
+def Jdown(site_i, norbs):
+    '''
+    Current of down spin e's thru sitei
+    ASU formalism only !!!
+    Args:
+    - site_i, list of (usually spin orb) site indices
+    - norbs, total num orbitals in system
+    '''
+
+    # check inputs
+    assert( len(site_i) == 2); # should be only 1 site ie 2 spatial orbs
+
+    # current operator (1e only)
+    J = np.zeros((norbs,norbs));
+
+    # odd spin index is down spins
+    dwi = site_i[1];
+    assert(dwi % 2 == 1); # check even
+    J[dwi-2,dwi] = -1/2;  # dot dw spin to left dw spin #left moving is negative current
+    J[dwi,dwi-2] =  1/2; # left dw spin to dot dw spin # hc of above # right moving is +
+    J[dwi+2,dwi] = 1/2;  # dot dw spin to right dw spin
+    J[dwi,dwi+2] =  -1/2; # hc
+
+    return J;
+
+#### 2 e ham operators
     
 def h_dot_2e(U,N):
     '''
@@ -148,6 +250,12 @@ def h_dot_2e(U,N):
         h[i+1,i+1,i,i] = U; # switch electron labels
         
     return h; # end h dot 2e
+
+
+
+#######################################################
+#### 2nd part of siam hamiltonian array creation:
+#### stitch seperate ham arrays together
 
 
 def stitch_h1e(h_imp, h_imp_leads, h_leads, h_bias, n_leads, verbose = 0):
@@ -222,8 +330,9 @@ def stitch_h2e(h_imp,n_leads,verbose = 0):
                         
     return h; # end stitch h2e
 
+
 #######################################################
-#### 2nd part of siam hamiltonian array creation:
+#### 3rd part of siam hamiltonian array creation:
 #### add biases, mag fields etc on top
 
 def h_bias(V, dot_is, norbs, verbose = 0):
@@ -307,7 +416,9 @@ def alt_spin(B, norbs):
         h_alt_spin += h_B(B,0.0,site2,norbs);
 
     return h_alt_spin;
-        
+
+#######################################################
+#### put it all together for specific model of imp ham
 
 
 def dot_hams(nleads, nsites, nelecs, physical_params, verbose = 0):
@@ -527,67 +638,6 @@ def scf_FCI(mol, scf_inst, nroots = 1, verbose = 0):
 
 #####################################
 #### wrapper functions, test code
-
-def DotCurrentWrapper():
-    '''
-    Walks thru all the steps for plotting current thru a SIAM. Impurity is a quantum dot
-    - construct the biasless hamiltonian, 1e and 2e parts
-    - encode hamiltonians in an scf.UHF inst
-    - do FCI on scf.UHF to get exact gd state
-    - turn on bias to induce current
-    - use ruojing's code to do time propagation
-    '''
-
-    # top level inputs
-    verbose = 5; # passed along throughout to control printing
-    np.set_printoptions(suppress=True); # no sci notatation printing
-
-    # set up the hamiltonian
-    n_leads = (3,2); # left leads, right leads
-    n_imp_sites = 1 # code not flexible enough to change this
-    imp_i = [n_leads[0]*2, n_leads[0]*2+1 ]; # should be list for generality
-    norbs = 2*(n_leads[0]+n_leads[1]+n_imp_sites); # num spin orbs
-    nelecs = (int(norbs/2),0);
-
-    # physical params, should always be floats
-    V_leads = 1.0; # hopping
-    V_imp_leads = 0.4; # hopping
-    V_bias = 0; # wait till later to turn on current
-    mu = 0; # 0 chemical potential
-    V_gate = -0.5; # gate voltage on dot
-    U = 1.0; # hubbard repulsion
-    params = V_leads, V_imp_leads, V_bias, mu, V_gate, U;
-
-    # get h1e, h2e, and scf implementation of SIAM with dot as impurity
-    h1e, h2e, mol, dotscf = dot_model(n_leads, n_imp_sites, norbs, nelecs, params, verbose = verbose);
-
-    # do fci directly from hams
-    direct_FCI(h1e, h2e, norbs, nelecs, verbose = verbose);
-    
-    # from scf instance, do FCI
-    E_fci, v_fci = scf_FCI(mol, dotscf, verbose = verbose);
-
-    # prepare in dynamic state by turning on bias
-    V_bias = -0.005;
-    h1e = start_bias(V_bias, imp_i,h1e);
-    if(verbose > 2):
-        print(h1e)
-
-    # from fci gd state, do time propagation
-    timestop, deltat = 10.0, 0.01 # time prop params
-    timevals, energyvals, currentvals = td.TimeProp(h1e, h2e, v_fci, mol, dotscf, timestop, deltat, imp_i, V_imp_leads, kernel_mode = "plot", verbose = verbose);
-
-    # renormalize current
-    currentvals = currentvals*np.pi/abs(V_bias);
-    energyvals = energyvals/energyvals[0];
-
-    # plot current vs time
-    plot.GenericPlot(timevals,[currentvals, energyvals],labels=["time (dt = "+str(deltat)+")","Current*$\pi / |V_{bias}|$","td-FCI through dot (ASU)"], handles = ["current", "gd state E/$E_{initial}$"]);
-    
-    # write results to external file
-    # should also write code that plots from external file
-    
-    return; # end dot current wrapper
     
     
 def MolCurrentWrapper():
@@ -762,10 +812,6 @@ def DebugMolCurrent():
 
 if(__name__ == "__main__"):
 
-    #DebugMolCurrent();
-
-    # test machinery on garnet's simple dot model
-    #ls dat
-    MolCurrentWrapper();
+    pass;
 
 

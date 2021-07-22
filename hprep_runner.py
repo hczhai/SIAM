@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 #### prepare dot in spin up state
 
 
-verbose = 3;
+verbose = 4;
 nleads = (3,2);
 nelecs = (nleads[0],nleads[0]); # half filling
 nelecs_ASU = (sum(nelecs),0); # all spin up formalism
