@@ -107,7 +107,7 @@ def DotData(n_leads, nelecs, timestop, deltat, phys_params=None, prefix = "", re
 
     # remove spin prep terms
     h1e += siam.h_B(-B, theta, imp_i, norbs, verbose = verbose);
-    h1e += siam.alt_spin(-V_leads,norbs);
+    #h1e += siam.alt_spin(-V_leads,norbs);
     
     # prepare in nonequilibrium state by turning on t_hyb (hopping onto dot)
     if(verbose > 2 ): print("- Add nonequilibrium terms");

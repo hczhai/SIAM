@@ -266,11 +266,15 @@ def kernel_plot(eris, ci, tf, dt, i_dot, t_hyb, RK, spinblind, verbose):
         if(i==0):
             occ_init, Sz_init = np.zeros(len(i_all), dtype = complex), np.zeros(len(i_all), dtype = complex);
             for sitej in i_all: # iter over sites
+                
                 if spinblind: # sites are pairs of spin orbs
-                    if(sitej % 2 == 0): # at even sites do up and down together
-                        occ_init[sitej] = compute_occ([sitej,sitej+1],(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
-                        Sz_init[sitej] = compute_Sz([sitej,sitej+1],(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
-                    else: pass; # skip odd sites
+                    if(sitej % 2 == 0): # spin up sites
+                        occ_init[sitej] = compute_occ([sitej],(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
+                        Sz_init[sitej] = (1/2)*compute_occ([sitej],(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
+                    else: # spin down sites
+                        occ_init[sitej] = compute_occ([sitej],(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
+                        Sz_init[sitej] = (-1/2)*compute_occ([sitej],(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
+                    
                 else: # sites are just sites
                     occ_init[sitej] = compute_occ([sitej],(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
                     Sz_init[sitej] = compute_Sz([sitej],(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);

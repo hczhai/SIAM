@@ -399,6 +399,8 @@ def alt_spin(B, norbs):
     Can remove by putting in -B instead of B
     '''
 
+    #return 0.0;
+
     # return var
     h_alt_spin = np.zeros((norbs,norbs))
 
@@ -460,8 +462,8 @@ def dot_hams(nleads, nsites, nelecs, physical_params, verbose = 0):
     if(verbose > 1): print("\n- Full one electron hamiltonian = \n",h1e);
 
     # alt spin up and down in initial state
-    h1e += alt_spin(V_leads,norbs);
-    if(verbose ): print("alt spin ham:\n",h1e);
+    #h1e += alt_spin(V_leads,norbs);
+    #if(verbose ): print("alt spin ham:\n",h1e);
         
     # 2e hamiltonian only comes from impurity
     if(verbose > 1):
