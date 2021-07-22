@@ -100,47 +100,75 @@ def GenericPlot(x,y, handles=[], styles = [], labels=["x","y",""]):
 #### very specific plot functions
 
 
-def PlotObservables(nleads, dataf, occ_only = True):
+def PlotObservables(nleads, dataf, splots = ['J', 'Jtot','Sz']):
     '''
     plot observables from td fci run
+
+    Args:
+    - nleads, tuple of left lead sites, right lead sites
+    - dataf, string of .npy filename where data array is stored
+    - splots, list of strings which tell which subplots to make
     '''
 
     # top level inputs
-    if occ_only: numplots = 3;
-    else: numplots=4;
+    numplots = len(splots);
+    fig, axes = plt.subplots(numplots, sharex = True);
+    ax_counter = 0; # update every time an ax is plotted
 
-    # unpack, normalize
+    # unpack
     observables = np.load(dataf);
     t, E, Jup, Jdown, occL, occD, occR, SzL, SzD, SzR = tuple(observables); # scatter
-    E = E/E[0] - 1; #normalize
     J = Jup + Jdown;
 
-    # plot current and occupancy vs time
-    fig, axes = plt.subplots(numplots, sharex = True);
-    axes[0].plot(t, J); # current
-    axes[0].set_ylabel("Current");
-    axes[0].set_title("Dot impurity, "+str(nleads[0])+" left sites, "+str(nleads[1])+" right sites");
-    axes[1].plot(t, occL, label = "Left lead"); # occupancy
-    axes[1].plot(t, occD, label = "dot");
-    axes[1].plot(t, occR, label = "Right lead");
-    axes[1].set_ylabel("Occupancy")
-    axes[1].legend();
+    # plot current vs time, total and spin pol versions
+    if 'J' in splots:
+        axes[ax_counter].plot(t, J, color="black", linestyle = "dashed", label = "J"); # current
+        axes[ax_counter].plot(t, Jup, color="red", label = "$J_{up}$");
+        axes[ax_counter].plot(t, Jdown, color="yellow", label = "$J_{down}$");
+        axes[ax_counter].set_ylabel("Current");
+        axes[ax_counter].legend();
+        axes[ax_counter].set_title("Dot impurity, "+str(nleads[0])+" left sites, "+str(nleads[1])+" right sites");
+        ax_counter += 1;
 
-    # other plots as desired
-    if occ_only: # plot change in occupancy
-        axes[2].plot(t, occL - occL[0], label = "Left lead");
-        axes[2].plot(t, occD - occD[0], label = "dot");
-        axes[2].plot(t, occR - occR[0], label = "Right lead");
-        axes[2].set_ylabel("$\Delta$ Occupancy")
-    
-    else: # spin and energy
-        axes[2].plot(t,SzL); # spin
-        axes[2].plot(t,SzD);
-        axes[2].plot(t,SzR);
-        axes[2].set_ylabel("$<S_z>$");
-        axes[3].plot(t, E); # energy
-        axes[3].set_xlabel("time (dt = "+str(np.real(t[1]))+")");
-        axes[3].set_ylabel("$E/E_{i} - 1$");
+    # just total current vs time
+    if 'Jtot' in splots:
+        axes[ax_counter].plot(t, J, color="black", linestyle = "dashed", label = "J"); # current
+        axes[ax_counter].set_ylabel("Current");
+        axes[ax_counter].set_title("Dot impurity, "+str(nleads[0])+" left sites, "+str(nleads[1])+" right sites");
+        ax_counter += 1;
+        
+    # plot occupancy vs time
+    if 'occ' in splots:
+        axes[ax_counter].plot(t, occL, label = "Left lead"); # occupancy
+        axes[ax_counter].plot(t, occD, label = "dot");
+        axes[ax_counter].plot(t, occR, label = "Right lead");
+        axes[ax_counter].set_ylabel("Occupancy")
+        axes[ax_counter].legend();
+        ax_counter += 1;
+
+    # change in occupancy vs time
+    if 'delta_occ' in splots:
+        axes[ax_counter].plot(t, occL - occL[0], label = "Left lead");
+        axes[ax_counter].plot(t, occD - occD[0], label = "dot");
+        axes[ax_counter].plot(t, occR - occR[0], label = "Right lead");
+        axes[ax_counter].set_ylabel("$\Delta$ Occupancy");
+        ax_counter += 1;
+
+    # z spin vs time
+    if 'Sz' in splots: 
+        axes[ax_counter].plot(t,SzL); 
+        axes[ax_counter].plot(t,SzD);
+        axes[ax_counter].plot(t,SzR);
+        axes[ax_counter].set_ylabel("$<S_z>$");
+        ax_counter += 1;
+
+    # energy vs time
+    if 'E' in splots: # energy
+        E = E/E[0] - 1; # normalize
+        axes[ax_counter].plot(t, E); # energy
+        axes[ax_counter].set_xlabel("time (dt = "+str(np.real(t[1]))+")");
+        axes[ax_counter].set_ylabel("$E/E_{i} - 1$");
+        ax_counter += 1;
 
     # configure all axes, show
     for axi in range(len(axes) ): # customize axes
