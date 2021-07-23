@@ -438,7 +438,7 @@ def dot_hams(nleads, nsites, nelecs, physical_params, verbose = 0):
     Returns:
     h1e, 2d np array, 1e part of siam ham
     h2e, 2d np array, 2e part of siam ham ( same as g2e)
-    himp, dot part of siam ham only (tuple of 1e, 2e parts)
+    input_str, string with info on all the phy params
     '''
 
     # unpack inputs
@@ -446,8 +446,8 @@ def dot_hams(nleads, nsites, nelecs, physical_params, verbose = 0):
     dot_i = [2*nleads[0], 2*nleads[0]+1];
     V_leads, V_imp_leads, V_bias, mu, V_gate, U, B, theta = physical_params;
     
-    if(verbose): # print inputs
-        print("\nInputs:\n- Num. leads = ",nleads,"\n- Num. impurity sites = ",nsites,"\n- nelecs = ",nelecs,"\n- V_leads = ",V_leads,"\n- V_imp_leads = ",V_imp_leads,"\n- V_bias = ",V_bias,"\n- mu = ",mu,"\n- V_gate = ",V_gate, "\n- Hubbard U = ",U,"\n- B = ",B,"\n- theta = ",theta);
+    input_str = "\nInputs:\n- Num. leads = "+str(nleads)+"\n- Num. impurity sites = "+str(nsites)+"\n- nelecs = "+str(nelecs)+"\n- V_leads = "+str(V_leads)+"\n- V_imp_leads = "+str(V_imp_leads)+"\n- V_bias = "+str(V_bias)+"\n- mu = "+str(mu)+"\n- V_gate = "+str(V_gate)+"\n- Hubbard U = "+str(U)+"\n- B = "+str(B)+"\n- theta = "+str(theta);
+    if verbose: print(input_str);
 
     #### make full system ham from inputs
 
@@ -470,9 +470,8 @@ def dot_hams(nleads, nsites, nelecs, physical_params, verbose = 0):
         print("\n- Nonzero h2e elements = ");
     hd2e = h_dot_2e(U,nsites);
     h2e = stitch_h2e(hd2e, nleads, verbose = verbose);
-    himp = hd, hd2e; # dot ham only
 
-    return h1e, h2e, himp; #end dot hams
+    return h1e, h2e, input_str; #end dot hams
 
 
 def dot_model(h1e, g2e, norbs, nelecs, verbose = 0):

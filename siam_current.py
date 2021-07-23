@@ -96,7 +96,7 @@ def DotData(n_leads, nelecs, timestop, deltat, phys_params=None, prefix = "", re
     # get 1 elec and 2 elec hamiltonian arrays for siam, dot model impurity
     if(verbose): print("1. Construct hamiltonian")
     eq_params = V_leads, 0.0, V_bias, mu, V_gate, U, B, theta; # dot hopping turned off
-    h1e, g2e, hdot = siam.dot_hams(n_leads, n_imp_sites, nelecs, eq_params, verbose = verbose);
+    h1e, g2e, input_str = siam.dot_hams(n_leads, n_imp_sites, nelecs, eq_params, verbose = verbose);
         
     # get scf implementation siam by passing hamiltonian arrays
     print("2. FCI solution");
@@ -112,20 +112,23 @@ def DotData(n_leads, nelecs, timestop, deltat, phys_params=None, prefix = "", re
     # prepare in nonequilibrium state by turning on t_hyb (hopping onto dot)
     if(verbose > 2 ): print("- Add nonequilibrium terms");
     neq_params = 0.0, V_imp_leads, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
-    neq_h1e, dummy, dummy = siam.dot_hams(n_leads, n_imp_sites, nelecs, neq_params, verbose = verbose);
+    neq_h1e, dummy, input_str_noneq = siam.dot_hams(n_leads, n_imp_sites, nelecs, neq_params, verbose = verbose);
     h1e += neq_h1e; # updated to include thyb
 
     # from fci gd state, do time propagation
     if(verbose): print("3. Time propagation")
     init_str, observables = td.TimeProp(h1e, g2e, v_fci, mol, dotscf, timestop, deltat, imp_i, V_imp_leads, kernel_mode = "plot", verbose = verbose);
-    print(init_str)
     
     # write results to external file
     folder = "dat/DotData/";
     fname = folder+prefix+ str(n_leads[0])+"_"+str(n_imp_sites)+"_"+str(n_leads[1])+"_e"+str(sum(nelecs))+"_mu"+str(mu)+"_Vg"+str(V_gate)+".npy";
     hstring = time.asctime();
-    hstring += "\nSpin blind formalism, bias turned off, lead sites decoupled"
-    hstring += "\nInputs:\n- Num. leads = "+str(n_leads)+"\n- Num. impurity sites = "+str(n_imp_sites)+"\n- nelecs = "+str(nelecs)+"\n- V_leads = "+str(V_leads)+"\n- V_imp_leads = "+str(V_imp_leads)+"\n- V_bias = "+str(V_bias)+"\n- mu = "+str(mu) +"\n- V_gate = "+str(V_gate)+"\n- U = "+str(U);
+    hstring += "\nASU formalism, t_hyb noneq. term"
+    hstring += "Equilibrium"+input_str; # write input vals to txt
+    hstring += "Nonequlibrium"+input_str_noneq;
+    hstring += init_str; # write initial state to txt
+    print(fname[:-4]+".txt");
+    np.savetxt(fname[:-4]+".txt", np.array([1,2,3]), header = hstring); # saves info to txt
     np.save(fname, observables);
     print("4. Saved data to "+fname);
     

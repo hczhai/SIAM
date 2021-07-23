@@ -278,9 +278,9 @@ def kernel_plot(eris, ci, tf, dt, i_dot, t_hyb, RK, spinblind, verbose):
                 else: # sites are just sites
                     occ_init[sitej] = compute_occ([sitej],(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
                     Sz_init[sitej] = compute_Sz([sitej],(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
-            initstatestr = "- Initial state:"
-            initstatestr += "    occ = "+str(np.real(occ_init));
-            initstatestr += "    Sz = "+str(np.real(Sz_init));
+            initstatestr = "\nInitial state:"
+            initstatestr += "\n    occ = "+str(np.real(occ_init));
+            initstatestr += "\n    Sz = "+str(np.real(Sz_init));
         
         # time step
         dr, dr_imag = compute_update(ci, eris, dt, RK) # update state (r, an fcivec) at each time step
