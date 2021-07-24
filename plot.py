@@ -100,14 +100,18 @@ def GenericPlot(x,y, handles=[], styles = [], labels=["x","y",""]):
 #### very specific plot functions
 
 
-def PlotObservables(nleads, thyb, dataf, splots = ['J', 'Jtot','Sz']):
+def PlotObservables(nleads, thyb, dataf, splots = ['Jtot','occ','Sz']):
     '''
     plot observables from td fci run
+    Supported observables: J(up, down sep) Jtot(=Jup+Jdown), occ, change in
+    occ, Sz, energy
 
     Args:
     - nleads, tuple of left lead sites, right lead sites
     - dataf, string of .npy filename where data array is stored
     - splots, list of strings which tell which subplots to make
+
+    TODO: get nleads and thyb from input txt file
     '''
 
     # top level inputs
@@ -119,6 +123,8 @@ def PlotObservables(nleads, thyb, dataf, splots = ['J', 'Jtot','Sz']):
     observables = np.load(dataf);
     t, E, Jup, Jdown, occL, occD, occR, SzL, SzD, SzR = tuple(observables); # scatter
     J = Jup + Jdown;
+    mytitle = "Dot impurity:\n"+str(nleads[0])+" left sites, "+str(nleads[1])+" right sites, $t_{hyb}$ = "+str(thyb)+" turned on"
+    myxlabel = "time (dt = "+str(np.real(t[1]))+")"
 
     # plot current vs time, total and spin pol versions
     if 'J' in splots:
@@ -127,7 +133,6 @@ def PlotObservables(nleads, thyb, dataf, splots = ['J', 'Jtot','Sz']):
         axes[ax_counter].plot(t, Jdown, color="yellow", label = "$J_{down}$");
         axes[ax_counter].set_ylabel("Current");
         axes[ax_counter].legend();
-        axes[ax_counter].set_title("Dot impurity:\n"+str(nleads[0])+" left sites, "+str(nleads[1])+" right sites, $t_{hyb}$ = "+str(thyb)+" turned on");
         ax_counter += 1;
 
     # just total current vs time
@@ -166,17 +171,75 @@ def PlotObservables(nleads, thyb, dataf, splots = ['J', 'Jtot','Sz']):
     if 'E' in splots: # energy
         E = E/E[0] - 1; # normalize
         axes[ax_counter].plot(t, E); # energy
-        axes[ax_counter].set_xlabel("time (dt = "+str(np.real(t[1]))+")");
         axes[ax_counter].set_ylabel("$E/E_{i} - 1$");
         ax_counter += 1;
 
     # configure all axes, show
     for axi in range(len(axes) ): # customize axes
+        if axi == 0: axes[axi].set_title(mytitle);
+        if axi == len(axes)-1: axes[axi].set_xlabel(myxlabel);
         axes[axi].minorticks_on();
         axes[axi].grid(which='major', color='#DDDDDD', linewidth=0.8);
         axes[axi].grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5);
     plt.show();
     return; # end plot observables
+
+
+def CompInitSpin(Bs, ts, dats):
+    '''
+    Compare current etc for different init spin states of dot
+    '''
+
+    # check params
+    assert(len(Bs) == len(ts) == len(dats) );
+
+    # top level inputs
+    numplots = 3;
+    fig, axes = plt.subplots(numplots);
+
+    # parse B, t into strings
+    for i in range(len(Bs)):
+        try: # get 2 dec places if they are there
+            Bs[i] = str(Bs[i])[:4];
+            ts[i] = str(ts[i])[:4];
+        except: # always at least 1 decimal
+            Bs[i] = str(Bs[i])[:3];
+            ts[i] = str(ts[i])[:3];
+
+    for dati in range(len(dats)): # iter over data sets
+        observables = np.load(dats[dati]);
+        t, E, Jup, Jdown, occL, occD, occR, SzL, SzD, SzR = tuple(observables); # scatter
+        J = Jup + Jdown;
+        dt = np.real(t[1]);
+
+        # plot current vs time
+        lab = "B = "+str(Bs[dati])+", theta = "+str(ts[dati]);
+        axes[0].plot(t,J,label = lab);
+        axes[0].set_title("Initial spin state comparison");
+        axes[0].set_ylabel("Current");
+
+        # plot Sz of dot vs time
+        axes[1].plot(t, SzD);
+        axes[1].set_ylabel("$S_z$");
+        axes[1].set_xlabel("time (dt = "+str(dt)+")");
+        axes[1].get_shared_x_axes().join(axes[0],axes[1]);
+
+        # plot freq modes of current
+        Fnorm, freq = siam_current.Fourier(np.real(J)[470:], np.real(1/dt), angular = True);
+        axes[2].plot(freq, Fnorm);
+        axes[2].set_ylabel("Amplitude");
+        axes[2].set_xlabel("$\omega$");
+        axes[2].set_xlim(0,3);
+
+    # format and show
+    axes[0].legend();
+    for axi in range(len(axes) ): # customize axes
+        axes[axi].minorticks_on();
+        axes[axi].grid(which='major', color='#DDDDDD', linewidth=0.8);
+        axes[axi].grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5);
+    plt.show();
+    return;
+    
     
 def PlotdtdE():
 
@@ -196,7 +259,7 @@ def PlotdtdE():
     dtvals = np.array(dts);
 
     # start the file name string
-    folderstring = "dat/DotCurrentData/";
+    folderstring = "txtdat/DotCurrentData/";
 
     # unpack each _E.txt file
     for i in range(len(dts)):

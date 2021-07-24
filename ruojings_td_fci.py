@@ -116,6 +116,8 @@ def compute_occ(site_i, d1, d2, mocoeffs, norbs, ASU = False):
     - pass eris and density matrices to compute energy
     '''
 
+    if(len(site_i) == 0): return 0.0;
+
     # operator
     occ = siam.occ(site_i, norbs);
     
@@ -127,6 +129,8 @@ def compute_Sz(site_i, d1, d2, mocoeffs, norbs, ASU = False):
     '''
     Compute Sz for the impurity. See compute_occ doc above
     '''
+
+    if(len(site_i) == 0): return 0.0;
 
     if ASU: # just put Sz operator in h1e form
         Sz = siam.Sz(site_i, norbs);
@@ -164,10 +168,12 @@ def compute_current(site_i,d1,d2,mocoeffs,norbs, ASU = False):
     # operator
     J = np.zeros((norbs,norbs));
     for doti in range(site_i[0], site_i[-1]+1, 1):
-        J[doti - 1,doti] = -1/2;
-        J[doti,doti - 1] =  1/2;
-        J[doti + 1,doti] =  1/2;
-        J[doti,doti + 1] = -1/2;
+        if site_i[0] != 0: # if left lead exists, do left lead coupling
+            J[doti - 1,doti] = -1/2;
+            J[doti,doti - 1] =  1/2;
+        if site_i[-1] != norbs-1: # if right lead exists, right lead coupling
+            J[doti + 1,doti] =  1/2;
+            J[doti,doti + 1] = -1/2;
     
     # have to store this operator as an eris object
     J_eris = ERIs(J, np.zeros((norbs,norbs,norbs,norbs)), mocoeffs)
@@ -562,10 +568,12 @@ def SpinfreeTest(nleads, nelecs, tf, dt, phys_params = None, verbose = 0):
 
     # intro nonequilibrium terms (t_hyb = td nonzero)
     if(verbose): print("3. Time propagation")
-    h1e[idot, idot+1] += -td_noneq; # row
-    h1e[idot, idot-1] += -td_noneq; 
-    h1e[idot+1, idot] += -td_noneq;  # column
-    h1e[idot-1, idot] += -td_noneq; 
+    if nleads[0] != 0: # left lead coupling
+        h1e[idot, idot-1] += -td_noneq; 
+        h1e[idot-1, idot] += -td_noneq;
+    if nleads[1] != 0: # right lead coupling
+        h1e[idot+1, idot] += -td_noneq;
+        h1e[idot, idot+1] += -td_noneq;
     if(verbose > 2 ): print("- Nonequilibrium terms:\n", h1e);
 
     if True: # get noneq energies

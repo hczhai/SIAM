@@ -35,46 +35,57 @@ if False:
     print("0. Exact diagonalization")
     for ei in range(len(evals)):
         psi_c.append(np.dot(psi_i, evecs[ei]) );
-        print("- energy = ",evals[ei]," coeff = ", psi_c[ei]);
-    print(np.dot(psi_c,psi_c));
+        print("- energy = ","{0:.6f}".format(evals[ei]),", coef = ","{0:.6f}".format(psi_c[ei]));
     
 
 ##################################################################################
 #### replicate results from ruojing's code with siam_current module (ASU formalism)
+#### 1_1_1 system to match analytical results
 
+if True:
+    verbose = 4;
+    nleads = (1,0);
+    nelecs = (1,1); # half filling
+    nelecs_ASU = (sum(nelecs),0); # all spin up formalism
+    splots = ['Jtot','occ']; # which subplots to make
 
-verbose = 4;
-nleads = (1,1);
-nelecs = (2,1); # half filling
-nelecs_ASU = (sum(nelecs),0); # all spin up formalism
+    #time info
+    dt = 0.01;
+    tf = 5.0;
 
-#time info
-dt = 0.01;
-tf = 5.0;
+    # benchmark with spin free code
+    params = 1.0, 1.0, -0.005, 0.0, 0.0; # featureless dot
+    fname = ruojings_td_fci.SpinfreeTest(nleads, nelecs, tf, dt, phys_params = params, verbose = verbose);
+    plot.PlotObservables(nleads, params[1], fname, splots = splots);
 
-# run test with spin free code
-params = 1.0, 1.0, -0.005, 0.0, 0.0; # featureless dot
-t, observables = ruojings_td_fci.TestRun(nleads, nelecs, tf, dt, phys_params = params, verbose = verbose);
-E, J, occ, Sz = observables; # unpack all data
-
-# plot results
-plot.PlotObservables(nleads, t, observables);
-
-del t, observables, E, J, occ, Sz
-
-# run test with ASU code
-
-#params_ASU = 1.0, 1.0, -0.005, 0.0, 0.0, 0.0, 0.0, 0.0; # featureless dot
-#t, observables = siam_current.DotCurrentData(nleads, nelecs_ASU, tf, dt, phys_params=None, ret_results = True, verbose = verbose);
-E, J, occ, Sz = observables; # unpack all data
-
-# plot results
-plot.PlotObservables(nleads, t, observables);
+    # test ASU code
+    params_ASU = 1.0, 1.0, -0.005, 0.0, 0.0, 0.0, 0.0, 0.0; # featureless dot
+    fname_ASU = siam_current.DotData(nleads, nelecs_ASU, tf, dt, phys_params=params_ASU, verbose = verbose);
+    plot.PlotObservables(nleads, params_ASU[1], fname_ASU);
 
 ##################################################################################
-#### test finite size effects ?
+#### 3_1_2 system is where both methods should always match
 
+if False:
+    verbose = 4;
+    nleads = (3,2);
+    nelecs = (3,3); # half filling
+    nelecs_ASU = (sum(nelecs),0); # all spin up formalism
+    splots = ['Jtot','occ','delta_occ','Sz']; # which subplots to make
 
+    #time info
+    dt = 0.01;
+    tf = 5.0;
+
+    # benchmark with spin free code
+    params = 1.0, 1.0, -0.005, 0.0, 0.0; # featureless dot
+    fname = ruojings_td_fci.SpinfreeTest(nleads, nelecs, tf, dt, phys_params = params, verbose = verbose);
+    plot.PlotObservables(nleads, params[1], fname);
+
+    # test ASU code
+    params_ASU = 1.0, 1.0, -0.005, 0.0, 0.0, 0.0, 0.0, 0.0; # featureless dot
+    fname_ASU = siam_current.DotData(nleads, nelecs_ASU, tf, dt, phys_params=params_ASU, verbose = verbose);
+    plot.PlotObservables(nleads, params_ASU[1], observables);
 
 
 

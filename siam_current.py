@@ -84,11 +84,11 @@ def DotData(n_leads, nelecs, timestop, deltat, phys_params=None, prefix = "", re
         V_leads = 1.0; # hopping
         V_imp_leads = 0.4; # hopping t dot, allows current flow
         V_bias = -0.005; # induces current flow
-        mu = 0;
+        mu = 0.0;
         V_gate = -0.5;
         U = 1.0; # hubbard repulsion
-        B = 0; # magnetic field strength
-        theta = 0;
+        B = 0.0; # magnetic field strength
+        theta = 0.0;
     else: # customized
         V_leads, V_imp_leads, V_bias, mu, V_gate, U, B, theta = phys_params;
 
@@ -121,11 +121,11 @@ def DotData(n_leads, nelecs, timestop, deltat, phys_params=None, prefix = "", re
     
     # write results to external file
     folder = "dat/DotData/";
-    fname = folder+prefix+ str(n_leads[0])+"_"+str(n_imp_sites)+"_"+str(n_leads[1])+"_e"+str(sum(nelecs))+"_mu"+str(mu)+"_Vg"+str(V_gate)+".npy";
+    fname = folder+prefix+ str(n_leads[0])+"_"+str(n_imp_sites)+"_"+str(n_leads[1])+"_e"+str(sum(nelecs))+"_B"+str(B)[:3]+"_t"+str(theta)[:3]+"_Vg"+str(V_gate)+".npy";
     hstring = time.asctime();
     hstring += "\nASU formalism, t_hyb noneq. term"
-    hstring += "Equilibrium"+input_str; # write input vals to txt
-    hstring += "Nonequlibrium"+input_str_noneq;
+    hstring += "\nEquilibrium"+input_str; # write input vals to txt
+    hstring += "\nNonequlibrium"+input_str_noneq;
     hstring += init_str; # write initial state to txt
     print(fname[:-4]+".txt");
     np.savetxt(fname[:-4]+".txt", np.array([1,2,3]), header = hstring); # saves info to txt
