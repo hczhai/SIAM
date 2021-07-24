@@ -42,7 +42,7 @@ if False:
 #### replicate results from ruojing's code with siam_current module (ASU formalism)
 #### 1_1_1 system to match analytical results
 
-if True:
+if False:
     verbose = 4;
     nleads = (1,0);
     nelecs = (1,1); # half filling
@@ -66,7 +66,7 @@ if True:
 ##################################################################################
 #### 3_1_2 system is where both methods should always match
 
-if False:
+if True:
     verbose = 4;
     nleads = (3,2);
     nelecs = (3,3); # half filling
@@ -75,17 +75,19 @@ if False:
 
     #time info
     dt = 0.01;
-    tf = 5.0;
+    tf = 8.0;
 
     # benchmark with spin free code
-    params = 1.0, 1.0, -0.005, 0.0, 0.0; # featureless dot
-    fname = ruojings_td_fci.SpinfreeTest(nleads, nelecs, tf, dt, phys_params = params, verbose = verbose);
-    plot.PlotObservables(nleads, params[1], fname);
+    #params = 1.0, 1.0, -0.005, 0.0, 0.0; # featureless dot
+    #fname = ruojings_td_fci.SpinfreeTest(nleads, nelecs, tf, dt, phys_params = None, verbose = verbose);
+    fname = "dat/SpinfreeTest/312_e6.npy"
+    plot.PlotObservables(nleads, 0.4, fname, splots = splots);
 
     # test ASU code
-    params_ASU = 1.0, 1.0, -0.005, 0.0, 0.0, 0.0, 0.0, 0.0; # featureless dot
-    fname_ASU = siam_current.DotData(nleads, nelecs_ASU, tf, dt, phys_params=params_ASU, verbose = verbose);
-    plot.PlotObservables(nleads, params_ASU[1], observables);
+    #params_ASU = 1.0, 1.0, -0.005, 0.0, 0.0, 0.0, 0.0, 0.0; # featureless dot
+    #fname_ASU = siam_current.DotData(nleads, nelecs_ASU, tf, dt, phys_params=None, verbose = verbose);
+    fname_ASU = "dat/DotData/3_1_2_e6_B0.0_t0.0_Vg-0.5.npy"
+    plot.PlotObservables(nleads, 0.4, fname_ASU, splots = splots);
 
 
 
