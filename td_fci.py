@@ -1,9 +1,17 @@
 '''
 Time dependent fci code and SIAM example
 Author: Ruojing Peng
+
+td fci module:
+- have to run thru direct_uhf solver
+- I use all spin up formalism: only alpha electrons input, only h1e_a and g1e_aa matter to solver
+- benchmarked with dot impurity model from ruojings_td_fci.py
+- TimeProp is main driver
+- turn on bias in leads, pass hamiltonians, molecule, and scf object to time prop
+- outputs current and energy vs time
 '''
 import plot
-import siam
+import ops
 
 from pyscf import lib, fci, scf, gto, ao2mo
 from pyscf.fci import direct_uhf, direct_nosym, cistring
@@ -119,7 +127,7 @@ def compute_occ(site_i, d1, d2, mocoeffs, norbs, ASU = False):
     if(len(site_i) == 0): return 0.0;
 
     # operator
-    occ = siam.occ(site_i, norbs);
+    occ = ops.occ(site_i, norbs);
     
     # have to store this operator as an eris object to compute "energy"
     occ_eris = ERIs(occ, np.zeros((norbs,norbs,norbs,norbs)), mocoeffs)
@@ -133,7 +141,7 @@ def compute_Sz(site_i, d1, d2, mocoeffs, norbs, ASU = False):
     if(len(site_i) == 0): return 0.0;
 
     if ASU: # just put Sz operator in h1e form
-        Sz = siam.Sz(site_i, norbs);
+        Sz = ops.Sz(site_i, norbs);
 
         # have to store this operator as an eris object
         Sz_eris = ERIs(Sz, np.zeros((norbs,norbs,norbs,norbs)), mocoeffs)
@@ -187,8 +195,8 @@ def compute_current_ASU(site_i,d1,d2,mocoeffs,norbs):
     '''
 
     # up, down current operators (1 e operators)
-    Jup = siam.Jup(site_i, norbs); # up e current
-    Jdown = siam.Jdown(site_i, norbs); # down e current
+    Jup = ops.Jup(site_i, norbs); # up e current
+    Jdown = ops.Jdown(site_i, norbs); # down e current
     
     # have to store as an eris object
     Jup_eris = ERIs(Jup, np.zeros((norbs,norbs,norbs,norbs)), mocoeffs);

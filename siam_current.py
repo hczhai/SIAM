@@ -26,13 +26,13 @@ siam.py
 '''
 
 import plot
-import siam
-import ruojings_td_fci as td
+import ops
+import fci_mod
+import td_fci
 import td_dmrg
 
 import time
 import numpy as np
-import scipy
 import matplotlib.pyplot as plt
 from pyscf import fci
 from pyblock3 import fcidump, hamiltonian
@@ -96,28 +96,27 @@ def DotData(n_leads, nelecs, timestop, deltat, phys_params=None, prefix = "", re
     # get 1 elec and 2 elec hamiltonian arrays for siam, dot model impurity
     if(verbose): print("1. Construct hamiltonian")
     eq_params = V_leads, 0.0, V_bias, mu, V_gate, U, B, theta; # dot hopping turned off
-    h1e, g2e, input_str = siam.dot_hams(n_leads, n_imp_sites, nelecs, eq_params, verbose = verbose);
+    h1e, g2e, input_str = fci_mod.dot_hams(n_leads, n_imp_sites, nelecs, eq_params, verbose = verbose);
         
     # get scf implementation siam by passing hamiltonian arrays
     print("2. FCI solution");
-    mol, dotscf = siam.dot_model(h1e, g2e, norbs, nelecs, verbose = verbose);
+    mol, dotscf = fci_mod.dot_model(h1e, g2e, norbs, nelecs, verbose = verbose);
     
     # from scf instance, do FCI, get exact gd state of equilibrium system
-    E_fci, v_fci = siam.scf_FCI(mol, dotscf, verbose = verbose);
+    E_fci, v_fci = fci_mod.scf_FCI(mol, dotscf, verbose = verbose);
 
     # remove spin prep terms
-    h1e += siam.h_B(-B, theta, imp_i, norbs, verbose = verbose);
-    #h1e += siam.alt_spin(-V_leads,norbs);
+    h1e += ops.h_B(-B, theta, imp_i, norbs, verbose = verbose);
     
     # prepare in nonequilibrium state by turning on t_hyb (hopping onto dot)
     if(verbose > 2 ): print("- Add nonequilibrium terms");
     neq_params = 0.0, V_imp_leads, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
-    neq_h1e, dummy, input_str_noneq = siam.dot_hams(n_leads, n_imp_sites, nelecs, neq_params, verbose = verbose);
+    neq_h1e, dummy, input_str_noneq = fci_mod.dot_hams(n_leads, n_imp_sites, nelecs, neq_params, verbose = verbose);
     h1e += neq_h1e; # updated to include thyb
 
     # from fci gd state, do time propagation
     if(verbose): print("3. Time propagation")
-    init_str, observables = td.TimeProp(h1e, g2e, v_fci, mol, dotscf, timestop, deltat, imp_i, V_imp_leads, kernel_mode = "plot", verbose = verbose);
+    init_str, observables = td_fci.TimeProp(h1e, g2e, v_fci, mol, dotscf, timestop, deltat, imp_i, V_imp_leads, kernel_mode = "plot", verbose = verbose);
     
     # write results to external file
     folder = "dat/DotData/";
@@ -174,7 +173,7 @@ def DotData_dmrg(n_leads, nelecs, timestop, deltat, phys_params=None, prep = Fal
 
     # get h1e and h2e for siam, h_imp = h_dot
     ham_params = V_leads, 1e-5, V_bias, mu, V_gate, U; # dot hopping turned off, but nonzero to fix numerical errors
-    h1e, g2e, hdot = siam.dot_hams(n_leads, n_imp_sites, nelecs, ham_params, verbose = verbose);
+    h1e, g2e, hdot = fci_mod.dot_hams(n_leads, n_imp_sites, nelecs, ham_params, verbose = verbose);
 
     # store physics in fci dump object
     hdump = fcidump.FCIDUMP(h1e=h1e,g2e=g2e,pg='c1',n_sites=norbs,n_elec=sum(nelecs), twos=nelecs[0]-nelecs[1]);      

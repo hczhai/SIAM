@@ -2,7 +2,7 @@
 Demonstrate weird behavior in td-fci code as t_hyb is turned off
 '''
 
-import ruojings_td_fci
+import td_fci
 from pyscf import lib, fci, scf, gto, ao2mo
 
 import numpy as np
@@ -100,10 +100,10 @@ for i in range(idot): # introduce bias on leads to get td current
     h1e[i,i] = V/2
 for i in range(idot+1,norb):
     h1e[i,i] = -V/2
-eris = ruojings_td_fci.ERIs(h1e, g2e, mf.mo_coeff) # diff h1e than in uhf, thus time dependence
-ci = ruojings_td_fci.CIObject(fcivec, norb, nelec)
+eris = td_fci.ERIs(h1e, g2e, mf.mo_coeff) # diff h1e than in uhf, thus time dependence
+ci = td_fci.CIObject(fcivec, norb, nelec)
 kernel_mode = "plot"; # tell kernel whether to return density matrices or arrs for plotting
-t, observables = ruojings_td_fci.kernel(kernel_mode, eris, ci, tf, dt, i_dot = [idot], t_dot = td, verbose = verbose);
+t, observables = td_fci.kernel(kernel_mode, eris, ci, tf, dt, i_dot = [idot], t_dot = td, verbose = verbose);
 E, J, occ, Sz = observables;
 
 # normalize vals
@@ -226,10 +226,10 @@ h1e[idot, idot-1] += -td;
 h1e[idot+1, idot] += -td; # column
 h1e[idot-1, idot] += -td;
 
-eris = ruojings_td_fci.ERIs(h1e, g2e, mf.mo_coeff) # diff h1e than in uhf, thus time dependence
-ci = ruojings_td_fci.CIObject(fcivec, norb, nelec)
+eris = td_fci.ERIs(h1e, g2e, mf.mo_coeff) # diff h1e than in uhf, thus time dependence
+ci = td_fci.CIObject(fcivec, norb, nelec)
 kernel_mode = "plot"; # tell kernel whether to return density matrices or arrs for plotting
-t, observables = ruojings_td_fci.kernel(kernel_mode, eris, ci, tf, dt, i_dot = [idot], t_dot = td, verbose = verbose);
+t, observables = td_fci.kernel(kernel_mode, eris, ci, tf, dt, i_dot = [idot], t_dot = td, verbose = verbose);
 E, J, occ, Sz = observables;
 
 # normalize vals

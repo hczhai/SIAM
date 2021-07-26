@@ -6,7 +6,6 @@ July 2021
 Runner file for prepping dot spin state with B field
 '''
 
-import ruojings_td_fci
 import siam_current
 import plot
 
