@@ -587,12 +587,14 @@ if(__name__ == "__main__"):
     # system inputs
     nleads = (1,1);
     nelecs = (sum(nleads)+1,0); # half filling
-    tf = 8.0
+    tf = 5.0
     dt = 0.01
 
     # dmrg run
-    datafile = DotDataDmrg(nleads,nelecs,tf,dt,verbose = verbose);
+    params = 1.0, 1.0, -0.005, 0.0, 0.0, 0.0, 0.0, 0.0;
+    datafile = DotDataDmrg(nleads,nelecs,tf,dt,phys_params = params, verbose = verbose);
 
     # plot results
-    plot.PlotObservables(nleads, 0.4, datafile);
+    splots = ['Jtot','occ','Sz','E'];
+    plot.PlotObservables(nleads, params[1], datafile, splots = splots);
 

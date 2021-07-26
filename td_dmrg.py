@@ -37,31 +37,32 @@ def compute_occ(site_i, mps, h):
     return compute_obs(occ_mpo, mps);
 
 
+def compute_Sz(site_i, mps, h):
+
+    norbs = mps.n_sites
+
+    # Sz operator in dmrg
+    Sz_op = ops_dmrg.Sz(site_i, norbs);
+    Sz_mpo = h.build_mpo(Sz_op);
+    return compute_obs(Sz_mpo, mps);
+
+
 def compute_current(site_i, mps, h):
 
-    # current operator as h1e array
     norbs = mps.n_sites
-    J = np.zeros((norbs,norbs));
 
-    # to simplify code, set t_hyb = 1 and just multiply J vals by t_hyb later
-    t=1;
-    print("--> Setting t_hyb = 1");
+    # J of up spins
+    Jup = ops_dmrg.Jup(site_i, norbs);
+    Jup_mpo = h.build_mpo(Jup);
 
-    # iter over dot sites to fill current op
-    for doti in range(site_i[0], site_i[-1]+1, 2): # doti is up, doti+1 is down # +1 because dot_i is incluse but range is exclusive
-        J[doti - 2,doti] = -t/2;  # dot up spin to left up spin # left moving is -
-        J[doti+1-2,doti+1] = -t/2; # down to down
-        J[doti,doti - 2] =  t/2; # left up spin to dot up spin # hc of 2 above # right moving is +
-        J[doti+1, doti+1-2] = t/2; # hc
-        J[doti + 2,doti] = t/2;  # up spin to right up spin
-        J[doti+1+2,doti+1] = t/2; # down to down
-        J[doti,doti + 2] =  -t/2; # hc
-        J[doti+1, doti+1+2] = -t/2; # hc
+    # J of up spins
+    Jdown = ops_dmrg.Jdown(site_i, norbs);
+    Jdown_mpo = h.build_mpo(Jdown);
+    
+    Jup_val = -np.imag(compute_obs(Jup_mpo, mps)); # -imag is same as *i
+    Jdown_val = -np.imag(compute_obs(Jdown_mpo, mps));
+    return Jup_val, Jdown_val;
 
-    # now convert current op from array to MPO
-    J_mpo = h.build_mpo(J);
-
-    return compute_obs(J_mpo, mps);
     
 ##########################################################################################################
 #### time propagation
@@ -117,9 +118,13 @@ def kernel(mpo, h_obj, mps, tf, dt, i_dot, thyb, bdims, verbose = 0):
         # compute observables
         timevals[i] = i*dt;
         energyvals[i] = energies[-1];
+        currentvals[0][i], currentvals[1][i] = compute_current(i_dot, mps, h_obj);
         occvals[0][i] = compute_occ(i_left, mps, h_obj);
         occvals[1][i] = compute_occ(i_dot, mps, h_obj);
         occvals[2][i] = compute_occ(i_right, mps, h_obj);
+        Szvals[0][i] = compute_Sz(i_left, mps, h_obj);
+        Szvals[1][i] = compute_Sz(i_dot, mps, h_obj);
+        Szvals[2][i] = compute_Sz(i_right, mps, h_obj);
         
         # update stdout        
         if(verbose>4): print("    time: ", i*dt);

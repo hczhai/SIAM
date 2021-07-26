@@ -41,6 +41,9 @@ def occ(site_i, norbs):
     - norbs, total num orbitals in system
     '''
 
+    # check inputs
+    assert( isinstance(site_i, list) or isinstance(site_i, np.ndarray));
+
     def occ_yield(norbs, adag, a):
 
         # iter over site(s) we want occupancies of
@@ -63,15 +66,17 @@ def Sz(site_i, norbs):
     # check inputs
     assert( isinstance(site_i, list) or isinstance(site_i, np.ndarray));
 
-    # create op array
-    sz = np.zeros((norbs,norbs));
+    def Sz_yield(norbs, adag, a):
 
-    # iter over all given sites
-    for i in range(site_i[0], site_i[-1]+1, 2): # doti is up, doti+1 is down 
-        sz[i,i] = 1/2; # spin up
-        sz[i+1, i+1] = -1/2; # spin down
+        # iter over site(s) we want occupancies of
+        for i in site_i:
+            spin = 0; # ASU formalism
+            if(i % 2 == 0): # spin up orb
+                yield (1/2)*adag[i,spin]*a[i,spin]; 
+            else: # spin down orb
+                yield (-1/2)*adag[i,spin]*a[i,spin];
 
-    return sz;
+    return Sz_yield;
 
 
 def Jup(site_i, norbs):
@@ -86,18 +91,18 @@ def Jup(site_i, norbs):
     # check inputs
     assert( len(site_i) == 2); # should be only 1 site ie 2 spatial orbs
 
-    # current operator (1e only)
-    J = np.zeros((norbs,norbs));
+    def J_yield(norbs, adag, a):
 
-    # even spin index is up spins
-    upi = site_i[0];
-    assert(upi % 2 == 0); # check even
-    J[upi-2,upi] = -1/2;  # dot up spin to left up spin #left moving is negative current
-    J[upi,upi-2] =  1/2; # left up spin to dot up spin # hc of above # right moving is +
-    J[upi+2,upi] = 1/2;  # up spin to right up spin
-    J[upi,upi+2] =  -1/2; # hc
+        # even spin index is up spins
+        upi = site_i[0];
+        spin = 0; # ASU formalism
+        assert(upi % 2 == 0); # check even
+        yield (-1/2)*adag[upi-2,spin]*a[upi,spin] # dot up spin to left up spin #left moving is negative current
+        yield (1/2)*adag[upi,spin]*a[upi-2,spin]# left up spin to dot up spin # hc of above # right moving is +
+        yield (1/2)*adag[upi+2,spin]*a[upi,spin]  # up spin to right up spin
+        yield (-1/2)*adag[upi,spin]*a[upi+2,spin] # hc
 
-    return J;
+    return J_yield;
 
 
 def Jdown(site_i, norbs):
@@ -112,18 +117,18 @@ def Jdown(site_i, norbs):
     # check inputs
     assert( len(site_i) == 2); # should be only 1 site ie 2 spatial orbs
 
-    # current operator (1e only)
-    J = np.zeros((norbs,norbs));
+    def J_yield(norbs, adag, a):
 
-    # odd spin index is down spins
-    dwi = site_i[1];
-    assert(dwi % 2 == 1); # check even
-    J[dwi-2,dwi] = -1/2;  # dot dw spin to left dw spin #left moving is negative current
-    J[dwi,dwi-2] =  1/2; # left dw spin to dot dw spin # hc of above # right moving is +
-    J[dwi+2,dwi] = 1/2;  # dot dw spin to right dw spin
-    J[dwi,dwi+2] =  -1/2; # hc
+        # odd spin index is down spins
+        dwi = site_i[1];
+        spin = 0; # ASU formalism
+        assert(dwi % 2 == 1); # check odd
+        yield (-1/2)*adag[dwi-2,spin]*a[dwi,spin] # dot dw spin to left dw spin #left moving is negative current
+        yield (1/2)*adag[dwi,spin]*a[dwi-2,spin]  # left dw spin to dot dw spin # hc of above # right moving is +
+        yield (1/2)*adag[dwi+2,spin]*a[dwi,spin]  # dot dw spin to right dw spin
+        yield (-1/2)*adag[dwi,spin]*a[dwi+2,spin]
 
-    return J;
+    return J_yield;
 
 
 def h_B(B, theta, site_i, norbs, verbose=0):
