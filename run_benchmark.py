@@ -54,7 +54,7 @@ if True:
     tf = 5.0;
 
     # benchmark with spin free code
-    params = 1.0, 1.0, -50.0, 0.0, 0.0; # featureless dot
+    params = 1.0, 1.0, -0.005, 0.0, 0.0; # featureless dot
     fname = ruojings_td_fci.SpinfreeTest(nleads, nelecs, tf, dt, phys_params = params, verbose = verbose);
     plot.PlotObservables(nleads, params[1], fname, splots = splots);
 
