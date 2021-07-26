@@ -51,7 +51,7 @@ if True:
 
     #time info
     dt = 0.01;
-    tf = 8.0;
+    tf = 2.0;
 
     # benchmark with spin free code
     #params = 1.0, 1.0, -0.005, 0.0, 0.0; # featureless dot

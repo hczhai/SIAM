@@ -2,7 +2,6 @@
 Plotting module for quick methods of making matplotlib plots in pyscf context
 '''
 
-from errors import *
 import siam_current
 
 import numpy as np
@@ -546,9 +545,9 @@ def CorrelPlot(datadict, correl_key, labels):
     
     # check inputs
     if( type(datadict) != type(dict()) ): # check that basisdict is a dict
-        raise PlotTypeError(fname+" 1st arg must be dictionary.\n");
+        raise TypeError(fname+" 1st arg must be dictionary.\n");
     if( type(labels) != type([]) ): # check that labels is a list
-        raise PlotTypeError(fname+" 2nd arg must be a list.\n");
+        raise TypeError(fname+" 2nd arg must be a list.\n");
         
     # make figure
     # 1 ax for energy 1 for correl energy
@@ -608,9 +607,9 @@ def BasisPlot(basisdict, labels, comparediff=False):
     
     # check inputs
     if( type(basisdict) != type(dict()) ): # check that basisdict is a dict
-        raise PlotTypeError(fname+" 1st arg must be dictionary.\n");
+        raise TypeError(fname+" 1st arg must be dictionary.\n");
     if( type(labels) != type([]) ): # check that labels is a list
-        raise PlotTypeError(fname+" 2nd arg must be a list.\n");
+        raise TypeError(fname+" 2nd arg must be a list.\n");
     while( len(labels) < 3): # add dummy labels until we get to three
         labels.append('');
     
