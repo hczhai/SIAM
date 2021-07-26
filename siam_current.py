@@ -99,7 +99,7 @@ def DotData(n_leads, nelecs, timestop, deltat, phys_params=None, prefix = "", re
     h1e, g2e, input_str = fci_mod.dot_hams(n_leads, n_imp_sites, nelecs, eq_params, verbose = verbose);
         
     # get scf implementation siam by passing hamiltonian arrays
-    print("2. FCI solution");
+    if(verbose): print("2. FCI solution");
     mol, dotscf = fci_mod.dot_model(h1e, g2e, norbs, nelecs, verbose = verbose);
     
     # from scf instance, do FCI, get exact gd state of equilibrium system
@@ -134,7 +134,7 @@ def DotData(n_leads, nelecs, timestop, deltat, phys_params=None, prefix = "", re
     return fname; # end dot data
 
 
-def DotData_dmrg(n_leads, nelecs, timestop, deltat, phys_params=None, prep = False, prefix = "", ret_results = False, verbose = 0):
+def DotDataDmrg(n_leads, nelecs, timestop, deltat, phys_params=None, prefix = "", verbose = 0):
     '''
     Exactly as above, but uses dmrg instead of td-fci
     '''
@@ -172,8 +172,9 @@ def DotData_dmrg(n_leads, nelecs, timestop, deltat, phys_params=None, prep = Fal
 
 
     # get h1e and h2e for siam, h_imp = h_dot
-    ham_params = V_leads, 1e-5, V_bias, mu, V_gate, U; # dot hopping turned off, but nonzero to fix numerical errors
-    h1e, g2e, hdot = fci_mod.dot_hams(n_leads, n_imp_sites, nelecs, ham_params, verbose = verbose);
+    if(verbose): print("1. Construct hamiltonian")
+    ham_params = V_leads, 1e-4, V_bias, mu, V_gate, U, B, theta; # dot hopping turned off, but nonzero to fix numerical errors
+    h1e, g2e, input_str = fci_mod.dot_hams(n_leads, n_imp_sites, nelecs, ham_params, verbose = verbose);
 
     # store physics in fci dump object
     hdump = fcidump.FCIDUMP(h1e=h1e,g2e=g2e,pg='c1',n_sites=norbs,n_elec=sum(nelecs), twos=nelecs[0]-nelecs[1]);      
@@ -190,6 +191,7 @@ def DotData_dmrg(n_leads, nelecs, timestop, deltat, phys_params=None, prep = Fal
 
     # ground-state DMRG
     # runs thru an MPE (matrix product expectation) class built from mpo, mps
+    if(verbose): print("2. DMRG solution");
     MPE_obj = MPE(psi_mps, h_mpo, psi_mps);
 
     # solve system by doing dmrg sweeps
@@ -199,21 +201,32 @@ def DotData_dmrg(n_leads, nelecs, timestop, deltat, phys_params=None, prep = Fal
     dmrg_obj = MPE_obj.dmrg(bdims=bond_dims, noises = noises, tol = 1e-8, iprint=1); # will print sweep output
     E_dmrg = dmrg_obj.energies;
     print("- Final gd energy = ", E_dmrg[-1]);
-    return;
 
     # nonequil hamiltonian (as MPO)
-    ham_params_neq = V_leads, V_imp_leads, V_bias, mu, V_gate, U; # dot hopping on now
-    h1e_neq, g2e_neq, hdot_neq = siam.dot_hams(n_leads, n_imp_sites, nelecs, ham_params_neq, verbose = verbose);
+    if(verbose > 2 ): print("- Add nonequilibrium terms");
+    ham_params_neq = V_leads, V_imp_leads, V_bias, mu, V_gate, U, B, theta; # dot hopping on now
+    h1e_neq, g2e_neq, input_str_neq = fci_mod.dot_hams(n_leads, n_imp_sites, nelecs, ham_params_neq, verbose = verbose);
     hdump_neq = fcidump.FCIDUMP(h1e=h1e_neq,g2e=g2e_neq,pg='c1',n_sites=norbs,n_elec=sum(nelecs), twos=nelecs[0]-nelecs[1]);
     h_obj_neq = hamiltonian.Hamiltonian(hdump_neq,True);
     h_mpo_neq = h_obj_neq.build_qc_mpo(); # got mpo
 
     # time propagate the noneq state
-    timevals, observables = td_dmrg.kernel(h_mpo_neq, h_obj_neq, psi_mps, timestop, deltat, imp_i, bond_dims[:1], verbose = verbose);
-    energyvals, currentvals = observables
-    currentvals = currentvals*V_imp_leads; # strength of current is from V_imp_leads
+    init_str, observables = td_dmrg.kernel(h_mpo_neq, h_obj_neq, psi_mps, timestop, deltat, imp_i, V_imp_leads, bond_dims[:1], verbose = verbose);
 
-    return; # end dot data dmrg 
+    # write results to external file
+    folder = "dat/DotDataDmrg/";
+    fname = folder+prefix+ str(n_leads[0])+"_"+str(n_imp_sites)+"_"+str(n_leads[1])+"_e"+str(sum(nelecs))+"_B"+str(B)[:3]+"_t"+str(theta)[:3]+"_Vg"+str(V_gate)+".npy";
+    hstring = time.asctime();
+    hstring += "\nASU formalism, t_hyb noneq. term"
+    hstring += "\nEquilibrium"+input_str; # write input vals to txt
+    hstring += "\nNonequlibrium"+input_str_neq;
+    hstring += init_str; # write initial state to txt
+    print(fname[:-4]+".txt");
+    np.savetxt(fname[:-4]+".txt", np.array([1,2,3]), header = hstring); # saves info to txt
+    np.save(fname, observables);
+    print("4. Saved data to "+fname);
+    
+    return fname; # end dot data dmrg
 
 
 #################################################
@@ -569,12 +582,17 @@ def DotDataVsVgate():
 
 if(__name__ == "__main__"):
 
+    verbose = 4;
+
     # system inputs
     nleads = (1,1);
     nelecs = (sum(nleads)+1,0); # half filling
-    tf = 0.2
+    tf = 8.0
     dt = 0.01
 
     # dmrg run
-    DotCurrentData_dmrg(nleads,nelecs,tf,dt,verbose = 5);
+    datafile = DotDataDmrg(nleads,nelecs,tf,dt,verbose = verbose);
+
+    # plot results
+    plot.PlotObservables(nleads, 0.4, datafile);
 
