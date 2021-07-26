@@ -40,9 +40,9 @@ if False:
 
 ##################################################################################
 #### replicate results from ruojing's code with siam_current module (ASU formalism)
-#### 1_1_1 system to match analytical results
+#### 1_1_0 system to match analytical results
 
-if False:
+if True:
     verbose = 4;
     nleads = (1,0);
     nelecs = (1,1); # half filling
@@ -54,7 +54,7 @@ if False:
     tf = 5.0;
 
     # benchmark with spin free code
-    params = 1.0, 1.0, -0.005, 0.0, 0.0; # featureless dot
+    params = 1.0, 1.0, -50.0, 0.0, 0.0; # featureless dot
     fname = ruojings_td_fci.SpinfreeTest(nleads, nelecs, tf, dt, phys_params = params, verbose = verbose);
     plot.PlotObservables(nleads, params[1], fname, splots = splots);
 
@@ -66,7 +66,7 @@ if False:
 ##################################################################################
 #### 3_1_2 system is where both methods should always match
 
-if True:
+if False:
     verbose = 4;
     nleads = (3,2);
     nelecs = (3,3); # half filling
