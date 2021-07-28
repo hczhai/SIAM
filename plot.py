@@ -186,7 +186,7 @@ def PlotObservables(dataf, nleads = (0,0), thyb = (1e-5,0.4), splots = ['Jtot','
     return; # end plot observables
 
 
-def CompObservablesB(nleads, Bs, ts, dats, splots = ['Jtot','Sz'] ):
+def CompObservablesB(dats, nleads, Bs, ts, Vg, splots = ['Jtot','Sz'] ):
     '''
     Compare current etc for different init spin states of dot
     due to different B fields
@@ -197,7 +197,7 @@ def CompObservablesB(nleads, Bs, ts, dats, splots = ['Jtot','Sz'] ):
 
     # top level inputs
     colors = ["tab:blue","tab:orange","tab:green","tab:red","tab:purple"]
-    mytitle = "Initial spin state comparison:\n"+str(nleads[0])+" left lead sites, "+str(nleads[1])+" right lead sites."
+    mytitle = "Initial spin state comparison, $V_{g} =$"+str(Vg)+":\n"+str(nleads[0])+" left lead sites, "+str(nleads[1])+" right lead sites."
     numplots = len(splots);
     if 'Freq' in splots:
         fig, axes = plt.subplots(numplots); # dont share x axis
@@ -406,7 +406,7 @@ def PlotFiniteSize():
     plt.show();
     return; # end plot finite size
 
-def CurrentPlot(folder, nleads, nimp, nelecs, Vgs, B, theta, mytitle = "", verbose = 0):
+def CurrentPlot(folder, nleads, nimp, nelecs, Vgs, B, theta, splots = ['Jtot','J','Sz'], mytitle = "", verbose = 0):
     '''
     Plot current and energy against time for dot impurity
     Fourier analyze and plot modes
@@ -420,9 +420,9 @@ def CurrentPlot(folder, nleads, nimp, nelecs, Vgs, B, theta, mytitle = "", verbo
     assert( isinstance(Vgs, list) or isinstance(Vgs, np.ndarray) );
 
     # control layout of plots
-    ax1 = plt.subplot2grid((5, 1), (0, 0), rowspan=2)  # J vs t
-    ax2 = plt.subplot2grid((5, 1), (2, 0) )            # E vs t
-    ax3 = plt.subplot2grid((5, 1), (3, 0), rowspan=2)  # freqs
+    numplots = len(splots);
+    fig, axes = plt.subplots(numplots, sharex=True);
+    colors = ["tab:blue","tab:orange","tab:green","tab:red","tab:purple"]
 
     # plot data across Vg sweep
     for i in range(len(Vgs)):
@@ -433,29 +433,61 @@ def CurrentPlot(folder, nleads, nimp, nelecs, Vgs, B, theta, mytitle = "", verbo
         t, E, Jup, Jdown, occL, occD, occR, SzL, SzD, SzR = tuple(observables); # scatter
         J = Jup + Jdown;
         dt = np.real(t[1]);
+        axcounter = 0;
         print("Loading data from "+fname);
 
         # plot J vs t on top
-        ax1.plot(t, J, label = "$V_g$ = "+str(Vgs[i]) );
-        ax1.set_title(mytitle);
-        ax1.set_xlabel("time (dt = "+str(dt)+" s)");
-        ax1.set_ylabel("Current");
-        ax1.legend();
+        if 'Jtot' in splots:
+            axes[axcounter].plot(t, J, label = "$V_g$ = "+str(Vgs[i]) );
+            axes[axcounter].set_title(mytitle);
+            axes[axcounter].set_xlabel("time (dt = "+str(dt)+" s)");
+            axes[axcounter].set_ylabel("Current");
+            axcounter += 1;
+
+        if 'J' in splots:
+            axes[axcounter].plot(t, Jup, color=colors[i], linestyle = "dashed", label = "$J_{up}$"); # current
+            axes[axcounter].plot(t, Jdown, color=colors[i], linestyle = "dotted", label = "$J_{down}$");
+            axes[axcounter].set_ylabel("Current");
+            dashline = matplotlib.lines.Line2D([],[],color = 'black', linestyle = 'dashed');
+            dotline = matplotlib.lines.Line2D([],[],color = 'black', linestyle = 'dotted');
+            axes[axcounter].legend(handles=[dashline, dotline],labels=['$J_{up}$','$J_{down}$']);           
+            axcounter += 1;
+
+        # plot Sz of dot vs time
+        if 'Sz' in splots:
+            axes[axcounter].plot(t, SzD, label = "$V_g$ = "+str(Vgs[i]) );
+            axes[axcounter].set_ylabel("Dot $S_z$");
+            axes[axcounter].legend();
+            axcounter += 1;
+
+        # plot Sz of leads vs time
+        if 'Szleads' in splots:
+            axes[axcounter].plot(t, SzL, linestyle='dashed', color = colors[i])
+            axes[axcounter].plot(t, SzR, linestyle = "dotted", color = colors[i])
+            axes[axcounter].set_ylabel("Lead $S_z$");
+            dashline = matplotlib.lines.Line2D([],[],color = 'black', linestyle = 'dashed');
+            dotline = matplotlib.lines.Line2D([],[],color = 'black', linestyle = 'dotted');
+            axes[axcounter].legend(handles=[dashline, dotline],labels=['Left lead','Right lead']);
+            axcounter += 1;
 
         # plot E vs t middle
-        ax2.plot(t,E);
-        ax2.set_xlabel("time (dt = "+str(dt)+" s)");
-        ax2.set_ylabel("Energy");
+        if 'E' in splots:
+            axes[axcounter].plot(t,E);
+            axes[axcounter].set_xlabel("time (dt = "+str(dt)+" s)");
+            axes[axcounter].set_ylabel("Energy");
+            axcounter += 1;
 
         # plot frequencies below
-        Fnorm, freq = siam_current.Fourier(J, 1/dt, angular = True); # gives dominant frequencies
-        ax3.plot(freq, Fnorm);
-        ax3.set_xlabel("$\omega$ (2$\pi$/s)")
-        ax3.set_ylabel("Amplitude")
-        ax3.set_xlim(0,3);
+        if False:
+            Fnorm, freq = siam_current.Fourier(J, 1/dt, angular = True); # gives dominant frequencies
+            axes[axcounter].plot(freq, Fnorm);
+            axes[axcounter].set_xlabel("$\omega$ (2$\pi$/s)")
+            axes[axcounter].set_ylabel("Amplitude")
+            axes[axcounter].set_xlim(0,3);
+            axcounter += 1;
 
     # config and show
-    for axi in [ax1, ax2, ax3]:
+    for axi in axes:
         axi.minorticks_on();
         axi.grid(which='major', color='#DDDDDD', linewidth=0.8);
         axi.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5);

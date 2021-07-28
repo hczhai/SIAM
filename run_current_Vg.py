@@ -23,21 +23,22 @@ plot_Fourier = False;
 verbose = 5;
 
 # time
-tf = 10.0;
+tf = 5.0;
 dt = 0.01;
 
 # physical inputs
-nleads = (3,3);
+nleads = (2,2);
 nimp = 1;
 nelecs = (sum(nleads) + nimp, 0);
-Vgs = [-0.5, -0.25, 0.0, 0.25, 0.5];  # should be list
+Vgs = [-0.5,-0.25, 0.0,0.25, 0.5];  # should be list
+B = 5.0; # prep dot in down state always. NB starting thyb at 1e-5
 
 #################################################
 #### get data for current thru dot
 
 if get_data:
     for Vg in Vgs:
-        myparams = 1.0, 0.4, -0.005, 0.0, Vg, 1.0, 0.0, 0.0; # std inputs except Vg
+        myparams = 1.0, 0.4, -0.005, 0.0, Vg, 1.0, B, 0.0; # std inputs except Vg
         siam_current.DotData(nleads, nelecs, tf, dt, phys_params = myparams, prefix = "VgSweep/", verbose = verbose);
 
 
@@ -50,7 +51,7 @@ title = "Dot with "+str(nleads[0])+" lead sites on each site"
 if plot_J:
     # plot J vs t, E vs t, fourier freqs, ind'ly or across Vg, mu sweep
     folder = "dat/DotData/VgSweep/" # where data is stored
-    plot.CurrentPlot(folder, nleads, nimp, nelecs, Vgs, 0.0, 0.0, mytitle = title);
+    plot.CurrentPlot(folder, nleads, nimp, nelecs, Vgs, B, 0.0, mytitle = title);
 
 
 if plot_Fourier:

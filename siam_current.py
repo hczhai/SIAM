@@ -174,7 +174,8 @@ def DotDataDmrg(n_leads, nelecs, timestop, deltat, phys_params=None, prefix = ""
 
     # get h1e and h2e for siam, h_imp = h_dot
     if(verbose): print("1. Construct hamiltonian")
-    ham_params = V_leads, 1e-4, V_bias, mu, V_gate, U, B, theta; # dot hopping turned off, but nonzero to fix numerical errors
+    thyb_eq = 1e-4; # small but nonzero val is more robust
+    ham_params = V_leads, thyb_eq, V_bias, mu, V_gate, U, B, theta; # dot hopping turned off, but nonzero to fix numerical errors
     h1e, g2e, input_str = fci_mod.dot_hams(n_leads, n_imp_sites, nelecs, ham_params, verbose = verbose);
 
     # store physics in fci dump object
