@@ -345,68 +345,6 @@ def MolCurrentPlot():
     return; # end mol current plot
 
 
-def UnpackDotData(folder, nleads, nimp, nelecs, mu, Vg):
-    '''
-    From txt file, gets J vs t, E vs t data
-    Designed to get data across values of Vg or mu, so these both must be
-    iterable, although they can be length 1 only
-
-    Returns:
-    tuple of time, J, time, E (too entrenched to consolidate time)
-    each is list of np arrays:
-    - each list entry corresponds to diff Vg or mu val
-    - each array is time vals or observables at time vals
-    '''
-
-    # confirm mu and Vg are iterable
-    assert( isinstance(mu, list) or isinstance(mu, np.ndarray) );
-    assert( isinstance(Vg, list) or isinstance(Vg, np.ndarray) );
-
-    # return vals
-    xJvals = [];
-    yJvals = [];
-    xEvals = [];
-    yEvals = [];
-
-    # get data across Vg sweep, or no sweep
-    if( len(mu) == 1): # not getting diff mu vals
-        for i in range(len(Vg)):
-
-            # get data from txt file
-            V = Vg[i];
-            m = mu[0]
-            fname = folder+str(nleads[0])+"_"+str(nimp)+"_"+str(nleads[1]);
-            fname += "_e"+str(nelecs[0])+"_mu"+str(m)+"_Vg"+str(V)
-            print("- Reading data from "+fname);
-            xJ, yJ = np.loadtxt(fname+"_J.txt");
-            xE, yE = np.loadtxt(fname+"_E.txt");
-            xJvals.append(xJ);
-            yJvals.append(yJ);
-            xEvals.append(xE);
-            yEvals.append(yE);
-
-    # get data across mu sweep
-    elif(len(Vg) == 1 and len(mu) > 1):
-        for i in range(len(mu)):
-
-            V = Vg[0];
-            m = mu[i];
-            fname = folder+str(nleads[0])+"_"+str(nimp)+"_"+str(nleads[1]);
-            fname += "_e"+str(nelecs[0])+"_mu"+str(m)+"_Vg"+str(V)
-            print("- Reading data from "+fname);
-            xJ, yJ = np.loadtxt(fname+"_J.txt");
-            xE, yE = np.loadtxt(fname+"_E.txt");
-            xJvals.append(xJ);
-            yJvals.append(yJ);
-            xEvals.append(xE);
-            yEvals.append(yE);
-        
-    else:
-        raise Exception("not yet supported in UnpackDotData");
-
-    return xJvals, yJvals, xEvals, yEvals; # end unpack dot data
-
-
 def DotCurrentPlot():
 
     # control layout of plots
@@ -582,19 +520,27 @@ def DotDataVsVgate():
 
 if(__name__ == "__main__"):
 
+    import time
+    start_t = time.time(); #time in sec
+
     verbose = 4;
 
     # system inputs
-    nleads = (1,1);
+    nleads = (3,2);
     nelecs = (sum(nleads)+1,0); # half filling
-    tf = 5.0
+    tf = 8.0
     dt = 0.01
 
-    # dmrg run
-    params = 1.0, 1.0, -0.005, 0.0, 0.0, 0.0, 0.0, 0.0;
-    datafile = DotDataDmrg(nleads,nelecs,tf,dt,phys_params = params, verbose = verbose);
+    # dmrg run, std params, for benchmark
+    datafile = DotDataDmrg(nleads,nelecs,tf,dt,phys_params = None, verbose = verbose);
 
+    stop_t = time.time();
+    print("total elapsed time = "+str((stop_t-start_t)/60)+" minutes");
+    print("Real sec./comp. sec = "+str((stop_t-start_t)/tf) );
+    
     # plot results
-    splots = ['Jtot','occ','Sz','E'];
-    plot.PlotObservables(nleads, params[1], datafile, splots = splots);
+    datafile = "dat/DotDataDMRG/3_1_2_e6_B0_t0_Vg-0.5.npy"
+    splots = ['Jtot','occ','delta_occ','Sz'];
+    plot.PlotObservables(nleads, 0.4, datafile, splots = splots);
+
 

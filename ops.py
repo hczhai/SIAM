@@ -210,7 +210,7 @@ def Jdown(site_i, norbs):
 
     # odd spin index is down spins
     dwi = site_i[1];
-    assert(dwi % 2 == 1); # check even
+    assert(dwi % 2 == 1); # check odd
     J[dwi-2,dwi] = -1/2;  # dot dw spin to left dw spin #left moving is negative current
     J[dwi,dwi-2] =  1/2; # left dw spin to dot dw spin # hc of above # right moving is +
     J[dwi+2,dwi] = 1/2;  # dot dw spin to right dw spin

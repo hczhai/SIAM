@@ -70,6 +70,8 @@ def compute_current(site_i, mps, h):
 def kernel(mpo, h_obj, mps, tf, dt, i_dot, thyb, bdims, verbose = 0):
     '''
     Drive time prop for dmrg
+    Use real time time dependent dmrg method outlined here:
+    https://pyblock3.readthedocs.io/en/latest/Documentation/rttddmrg.html
 
     Args:
     - mpo, a matrix product operator form of the hamiltonian

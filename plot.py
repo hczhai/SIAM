@@ -6,6 +6,7 @@ import siam_current
 
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.lines
 import pyscf as ps
 
 # format matplotlib globally
@@ -184,17 +185,24 @@ def PlotObservables(nleads, thyb, dataf, splots = ['Jtot','occ','Sz']):
     return; # end plot observables
 
 
-def CompInitSpin(Bs, ts, dats):
+def CompObservablesB(nleads, Bs, ts, dats, splots = ['Jtot','Sz'] ):
     '''
     Compare current etc for different init spin states of dot
+    due to different B fields
     '''
 
     # check params
     assert(len(Bs) == len(ts) == len(dats) );
 
     # top level inputs
-    numplots = 3;
-    fig, axes = plt.subplots(numplots);
+    colors = ["tab:blue","tab:orange","tab:green","tab:red","tab:purple"]
+    mytitle = "Initial spin state comparison:\n"+str(nleads[0])+" left lead sites, "+str(nleads[1])+" right lead sites."
+    numplots = len(splots);
+    if 'Freq' in splots:
+        fig, axes = plt.subplots(numplots); # dont share x axis
+        numplots += -1; # this should force xlabel to last vs t plot, instead of freq plot
+    else:
+        fig, axes = plt.subplots(numplots, sharex = True);
 
     # parse B, t into strings
     for i in range(len(Bs)):
@@ -210,33 +218,65 @@ def CompInitSpin(Bs, ts, dats):
         t, E, Jup, Jdown, occL, occD, occR, SzL, SzD, SzR = tuple(observables); # scatter
         J = Jup + Jdown;
         dt = np.real(t[1]);
+        myxlabel = "time (dt = "+str(dt)+")"
+        axcounter = 0;
 
         # plot current vs time
-        lab = "B = "+str(Bs[dati])+", theta = "+str(ts[dati]);
-        axes[0].plot(t,J,label = lab);
-        axes[0].set_title("Initial spin state comparison");
-        axes[0].set_ylabel("Current");
+        if 'Jtot' in splots:
+            lab = "B = "+str(Bs[dati])+", theta = "+str(ts[dati]);
+            axes[axcounter].plot(t,J,label = lab);
+            axes[axcounter].set_ylabel("Current");
+            axcounter += 1
+
+        if 'J' in splots:
+            axes[axcounter].plot(t, Jup, color=colors[dati], linestyle = "dashed", label = "$J_{up}$"); # current
+            axes[axcounter].plot(t, Jdown, color=colors[dati], linestyle = "dotted", label = "$J_{down}$");
+            axes[axcounter].set_ylabel("Current");
+            dashline = matplotlib.lines.Line2D([],[],color = 'black', linestyle = 'dashed');
+            dotline = matplotlib.lines.Line2D([],[],color = 'black', linestyle = 'dotted');
+            axes[axcounter].legend(handles=[dashline, dotline],labels=['$J_{up}$','$J_{down}$']);           
+            axcounter += 1;
 
         # plot Sz of dot vs time
-        axes[1].plot(t, SzD);
-        axes[1].set_ylabel("$S_z$");
-        axes[1].set_xlabel("time (dt = "+str(dt)+")");
-        axes[1].get_shared_x_axes().join(axes[0],axes[1]);
+        if 'Sz' in splots:
+            axes[axcounter].plot(t, SzD);
+            axes[axcounter].set_ylabel("Dot $S_z$");
+            axcounter += 1;
+
+        # plot Sz of leads vs time
+        if 'Szleads' in splots:
+            axes[axcounter].plot(t, SzL, linestyle='dashed', label = "left")
+            axes[axcounter].plot(t, SzR, linestyle = "dotted", label = "right")
+            axes[axcounter].set_ylabel("Lead $S_z$");
+            axes[axcounter].legend()
+            axcounter += 1;
+
+        # plot energy vs time
+        if 'E' in splots:
+            axes[axcounter].plot(t, E);
+            axes[axcounter].set_ylabel("Energy");
+            axes[axcounter].get_shared_x_axes().join(axes[0],axes[3]);
+            axcounter += 1
 
         # plot freq modes of current
-        Fnorm, freq = siam_current.Fourier(np.real(J)[470:], np.real(1/dt), angular = True);
-        axes[2].plot(freq, Fnorm);
-        axes[2].set_ylabel("Amplitude");
-        axes[2].set_xlabel("$\omega$");
-        axes[2].set_xlim(0,3);
+        if 'Freq' in splots:
+            Fnorm, freq = siam_current.Fourier(np.real(J), np.real(1/dt), angular = True);
+            axes[axcounter].plot(freq, Fnorm);
+            axes[axcounter].set_ylabel("Amplitude");
+            axes[axcounter].set_xlabel("$\omega$");
+            axes[axcounter].set_xlim(0,3);
+            axcounter += 1;
 
     # format and show
     axes[0].legend();
     for axi in range(len(axes) ): # customize axes
+        if axi == 0: axes[axi].set_title(mytitle);
+        if axi == numplots-1: axes[axi].set_xlabel(myxlabel);
         axes[axi].minorticks_on();
         axes[axi].grid(which='major', color='#DDDDDD', linewidth=0.8);
         axes[axi].grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5);
     plt.show();
+
     return;
     
     
@@ -365,7 +405,7 @@ def PlotFiniteSize():
     plt.show();
     return; # end plot finite size
 
-def CurrentPlot(folder, nleads, nimp, nelecs, mu, Vg, mytitle = "", verbose = 0):
+def CurrentPlot(folder, nleads, nimp, nelecs, Vgs, B, theta, mytitle = "", verbose = 0):
     '''
     Plot current and energy against time for dot impurity
     Fourier analyze and plot modes
@@ -375,73 +415,49 @@ def CurrentPlot(folder, nleads, nimp, nelecs, mu, Vg, mytitle = "", verbose = 0)
     DO NOT modify mu or Vg before calling Unpack to get data
     '''
 
-    # confirm mu and Vg are iterable
-    assert( isinstance(mu, list) or isinstance(mu, np.ndarray) );
-    assert( isinstance(Vg, list) or isinstance(Vg, np.ndarray) );
-    if(verbose):
-        print("Vg, mu = ",Vg,mu);
+    # confirm Vgs is iterable
+    assert( isinstance(Vgs, list) or isinstance(Vgs, np.ndarray) );
 
     # control layout of plots
-    ax3 = plt.subplot2grid((5, 1), (0, 0), rowspan=2)  # J vs t
-    ax4 = plt.subplot2grid((5, 1), (2, 0) )            # E vs t
-    ax5 = plt.subplot2grid((5, 1), (3, 0), rowspan=2)            # freqs
-
-
-    # get current data from txt
-    # Unpack returns lists of time, J, time, E, each list is diff Vg or mu
-    xJ, yJ, xE, yE = siam_current.UnpackDotData(folder, nleads, nimp, nelecs, mu, Vg);
-    dt = xJ[0][1]; # since xJ[0][0] = 0
+    ax1 = plt.subplot2grid((5, 1), (0, 0), rowspan=2)  # J vs t
+    ax2 = plt.subplot2grid((5, 1), (2, 0) )            # E vs t
+    ax3 = plt.subplot2grid((5, 1), (3, 0), rowspan=2)  # freqs
 
     # plot data across Vg sweep
-    if( len(mu) == 1): # either Vg sweep or no sweep, either way this works
-        for i in range(len(Vg)):
+    for i in range(len(Vgs)):
 
-            # plot J vs t on top
-            ax3.plot(xJ[i], yJ[i], label = "$V_g$ = "+str(Vg[i])+", $\mu$ = "+str(mu[0]));
-            ax3.set_title(mytitle);
-            ax3.set_xlabel("time (dt = "+str(dt)+" s)");
-            ax3.set_ylabel("$J*\pi/V_{bias}$");
-            ax3.legend();
+        # get data from txt
+        fname = folder+str(nleads[0])+"_"+str(nimp)+"_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_B"+str(B)[:3]+"_t"+str(theta)[:3]+"_Vg"+str(Vgs[i])+".npy";
+        observables = np.load(fname);
+        t, E, Jup, Jdown, occL, occD, occR, SzL, SzD, SzR = tuple(observables); # scatter
+        J = Jup + Jdown;
+        dt = np.real(t[1]);
+        print("Loading data from "+fname);
 
-            # plot E vs t middle
-            yE[i] = yE[i]/yE[i][0] - 1; # normalize energy to 0
-            ax4.plot(xE[i], yE[i] );
-            ax4.set_xlabel("time (dt = "+str(dt)+" s)");
-            ax4.set_ylabel("$E/E_i$ - 1");
+        # plot J vs t on top
+        ax1.plot(t, J, label = "$V_g$ = "+str(Vgs[i]) );
+        ax1.set_title(mytitle);
+        ax1.set_xlabel("time (dt = "+str(dt)+" s)");
+        ax1.set_ylabel("Current");
+        ax1.legend();
 
-            # plot frequencies below
-            Fnorm, freq = siam_current.Fourier(yJ[i], 1/dt, angular = True); # gives dominant frequencies
-            ax5.plot(freq, Fnorm);
-            ax5.set_xlabel("$\omega$ (2$\pi$/s)")
-            ax5.set_ylabel("Amplitude")
-            ax5.set_xlim(0,3);
-            ax5.grid();
+        # plot E vs t middle
+        ax2.plot(t,E);
+        ax2.set_xlabel("time (dt = "+str(dt)+" s)");
+        ax2.set_ylabel("Energy");
 
-    elif( len(mu) > 1 and len(Vg) == 1): # mu sweep
-        for i in range(len(mu)):
-
-            # plot J vs t on top
-            ax3.plot(xJ[i], yJ[i], label = "$V_g$ = "+str(Vg[0])+", $\mu$ = "+str(mu[i]));
-            ax3.set_title(mytitle);
-            ax3.set_xlabel("time (dt = "+str(dt)+" s)");
-            ax3.set_ylabel("$J*\pi/V_{bias}$");
-            ax3.legend();
-
-            # plot E vs t middle
-            yE[i] = yE[i]/yE[i][0] - 1; # normalize energy to 0
-            ax4.plot(xE[i], yE[i] );
-            ax4.set_xlabel("time (dt = "+str(dt)+" s)");
-            ax4.set_ylabel("$E/E_i$ - 1");
-
-            # plot frequencies below
-            Fnorm, freq = siam_current.Fourier(yJ[i], 1/dt, angular = True); # gives dominant frequencies
-            ax5.plot(freq, Fnorm);
-            ax5.set_xlabel("$\omega$ (2$\pi$/s)")
-            ax5.set_ylabel("Amplitude")
-            ax5.set_xlim(0,3);
-            ax5.grid();
+        # plot frequencies below
+        Fnorm, freq = siam_current.Fourier(J, 1/dt, angular = True); # gives dominant frequencies
+        ax3.plot(freq, Fnorm);
+        ax3.set_xlabel("$\omega$ (2$\pi$/s)")
+        ax3.set_ylabel("Amplitude")
+        ax3.set_xlim(0,3);
 
     # config and show
+    for axi in [ax1, ax2, ax3]:
+        axi.minorticks_on();
+        axi.grid(which='major', color='#DDDDDD', linewidth=0.8);
+        axi.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5);
     plt.tight_layout();
     plt.show();
 

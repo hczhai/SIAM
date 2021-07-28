@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 
 # top level
 verbose = 4;
-nleads = (3,2);
+nleads = (3,3);
 nelecs = (sum(nleads)+1,0); # half filling
 get_data = False; # whether to run computations, if not data already exists
 
@@ -33,7 +33,7 @@ thetas = [0.0, np.pi/4, np.pi/2, 3*np.pi/4, np.pi];
 
 #time info
 dt = 0.01;
-tf = 20.0;
+tf = 1.0;
 
 datafs = [];
 if get_data: # must actually compute data
@@ -45,12 +45,29 @@ if get_data: # must actually compute data
         datafs.append(fname);
 
 else: # already there
-    datafs = ["dat/DotData/3_1_2_e6_B5.0_t0.0_Vg-0.5.npy","dat/DotData/3_1_2_e6_B5.0_t0.7_Vg-0.5.npy",
+    splots = ['Jtot','J','Sz']; # which subplots to plot
+    if nleads == (2,2):
+    
+        datafs = ["dat/DotData/2_1_2_e5_B5.0_t0.0_Vg-0.5.npy","dat/DotData/2_1_2_e5_B5.0_t0.7_Vg-0.5.npy",
+                  "dat/DotData/2_1_2_e5_B5.0_t1.5_Vg-0.5.npy","dat/DotData/2_1_2_e5_B5.0_t2.3_Vg-0.5.npy",
+                  "dat/DotData/2_1_2_e5_B5.0_t3.1_Vg-0.5.npy"];
+        plot.CompObservablesB(nleads, Bs,thetas,datafs, splots = splots);
+
+    elif nleads == (3,2):
+
+        datafs = ["dat/DotData/3_1_2_e6_B5.0_t0.0_Vg-0.5.npy","dat/DotData/3_1_2_e6_B5.0_t0.7_Vg-0.5.npy",
               "dat/DotData/3_1_2_e6_B5.0_t1.5_Vg-0.5.npy","dat/DotData/3_1_2_e6_B5.0_t2.3_Vg-0.5.npy",
               "dat/DotData/3_1_2_e6_B5.0_t3.1_Vg-0.5.npy"];
+        plot.CompObservablesB(nleads, Bs,thetas,datafs, splots = splots);
 
-    #### plot comparing diff spin states
-    plot.CompInitSpin(Bs,thetas,datafs);
+    elif nleads == (3,3):
+
+        datafs = ["dat/DotData/3_1_3_e7_B5.0_t0.0_Vg-0.5.npy","dat/DotData/3_1_3_e7_B5.0_t0.7_Vg-0.5.npy",
+              "dat/DotData/3_1_3_e7_B5.0_t1.5_Vg-0.5.npy","dat/DotData/3_1_3_e7_B5.0_t2.3_Vg-0.5.npy",
+              "dat/DotData/3_1_3_e7_B5.0_t3.1_Vg-0.5.npy"];
+        plot.CompObservablesB(nleads, Bs,thetas,datafs, splots = splots);
+
+    
 
 
 
