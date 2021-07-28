@@ -32,7 +32,7 @@ thetas = [0.0, np.pi/4, np.pi/2, 3*np.pi/4, np.pi];
 
 #time info
 dt = 0.01;
-tf = 1.0;
+tf = 5.0;
 
 datafs = [];
 
