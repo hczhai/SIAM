@@ -36,7 +36,7 @@ tf = 1.0;
 
 datafs = [];
 
-# get data for each theta value
+# get data for each theta value, store in txt file
 for i in range(len(Bs)): # iter over B, theta inputs
     B, theta = Bs[i], thetas[i];
     params = tl, th, Vb, mu, Vg, U, B, theta;
