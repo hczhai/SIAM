@@ -32,37 +32,37 @@ if False:
     # benchmark with spin free code
     params = 1.0, 1.0, -0.005, 0.0, 0.0; # featureless dot
     #fname = td_fci.SpinfreeTest(nleads, nelecs, tf, dt, phys_params = params, verbose = verbose);
-    #plot.PlotObservables(nleads, params[1], fname, splots = splots);
+    #plot.PlotObservables(fname, nleads = nleads, splots = splots);
 
     # test ASU code - won't work in 110 case
     params_ASU = 1.0, 1.0, -0.005, 0.0, 0.0, 0.0, 0.0, 0.0; # featureless dot
     #fname_ASU = siam_current.DotData(nleads, nelecs_ASU, tf, dt, phys_params=params_ASU, verbose = verbose);
-    #plot.PlotObservables(nleads, params_ASU[1], fname_ASU, splots = splots);
+    #plot.PlotObservables(fname_ASU, nleads = nleads, splots = splots);
 
 ##################################################################################
 #### 3_1_2 system is where both methods should always match
     # currently do 2_1_1 to look at Fig B5 with stromger thyb
 
-if False:
+if True:
     verbose = 4;
-    nleads = (3,2);
-    nelecs = (3,3); # half filling
+    nleads = (2,1);
+    nelecs = (2,2); # half filling
     nelecs_ASU = (sum(nelecs),0); # all spin up formalism
-    splots = ['Jtot','occ','delta_occ','Sz']; # which subplots to make
+    splots = ['Jtot','occ','Sz']; # which subplots to make
 
     #time info
     dt = 0.01;
-    tf = 2.0;
+    tf = 4.0;
 
     # benchmark with spin free code
     fname = td_fci.SpinfreeTest(nleads, nelecs, tf, dt, phys_params = None, verbose = verbose);
     #fname = "dat/SpinfreeTest/312_e6.npy"
-    plot.PlotObservables(nleads, 0.4, fname, splots = splots);
+    plot.PlotObservables(fname, nleads = nleads, thyb = (1e-5,0.4), splots = splots);
 
     # test ASU code
     fname_ASU = siam_current.DotData(nleads, nelecs_ASU, tf, dt, phys_params=None, verbose = verbose);
     #fname_ASU = "dat/DotData/3_1_2_e6_B0.0_t0.0_Vg-0.5.npy"
-    plot.PlotObservables(nleads, 0.4, fname_ASU, splots = splots);
+    plot.PlotObservables(fname_ASU, nleads = nleads, thyb = (1e-5,0.4), splots = splots);
 
 
 ##################################################################################

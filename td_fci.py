@@ -497,7 +497,7 @@ def SpinfreeTest(nleads, nelecs, tf, dt, phys_params = None, verbose = 0):
     # physical params, should always be floats
     if( phys_params == None): # defaults
         t = 1.0 # lead hopping
-        td = 0.0 # dot-lead hopping not turned on yet!
+        td = 1e-5 # dot-lead hopping not turned on yet, but still nonzero to make code more robust
         td_noneq = 0.4 # for when it is turned on
         V = -0.005 # bias
         Vg = -0.5 # gate voltage

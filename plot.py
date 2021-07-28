@@ -100,7 +100,7 @@ def GenericPlot(x,y, handles=[], styles = [], labels=["x","y",""]):
 #### very specific plot functions
 
 
-def PlotObservables(nleads, thyb, dataf, splots = ['Jtot','occ','Sz']):
+def PlotObservables(dataf, nleads = (0,0), thyb = (1e-5,0.4), splots = ['Jtot','occ','Sz']):
     '''
     plot observables from td fci run
     Supported observables: J(up, down sep) Jtot(=Jup+Jdown), occ, change in
@@ -123,7 +123,7 @@ def PlotObservables(nleads, thyb, dataf, splots = ['Jtot','occ','Sz']):
     observables = np.load(dataf);
     t, E, Jup, Jdown, occL, occD, occR, SzL, SzD, SzR = tuple(observables); # scatter
     J = Jup + Jdown;
-    mytitle = "Dot impurity:\n"+str(nleads[0])+" left sites, "+str(nleads[1])+" right sites, $t_{hyb}$ = "+str(thyb)+" turned on"
+    mytitle = "Dot impurity:\n"+str(nleads[0])+" left sites, "+str(nleads[1])+" right sites, $t_{hyb}$ = "+str(thyb[0])+" -> "+str(thyb[1]);
     myxlabel = "time (dt = "+str(np.real(t[1]))+")"
 
     # plot current vs time, total and spin pol versions
@@ -165,6 +165,7 @@ def PlotObservables(nleads, thyb, dataf, splots = ['Jtot','occ','Sz']):
         axes[ax_counter].plot(t,SzD);
         axes[ax_counter].plot(t,SzR);
         axes[ax_counter].set_ylabel("$<S_z>$");
+        axes[ax_counter].ticklabel_format(style='sci', axis='y', scilimits=(0,0), useOffset=False)
         ax_counter += 1;
 
     # energy vs time
