@@ -41,7 +41,7 @@ from pyblock3.algebra.mpe import MPE
 #################################################
 #### get current data
 
-def DotData(n_leads, nelecs, timestop, deltat, phys_params=None, prefix = "", ret_results = False, verbose = 0):
+def DotData(n_leads, nelecs, timestop, deltat, phys_params=None, Rlead_pol = 0, prefix = "", verbose = 0):
     '''
     More flexible version of siam.py DotCurrentWrapper with inputs allowing tuning of nelecs, mu, Vgate
 
@@ -55,12 +55,14 @@ def DotData(n_leads, nelecs, timestop, deltat, phys_params=None, prefix = "", re
     Args:
     nleads, tuple of ints of left lead sites, right lead sites
     nelecs, tuple of num up e's, 0 due to ASU formalism
-    mu, float, chem potential on lead sites
-    Vgate, float, onsite energy on dot
     timestop, float, how long to run for
     deltat, float, time step increment
-    quick, optional bool, if true test func on short run
-    verbose, level of stdout printing
+    physical params, tuple of t, thyb, Vbias, mu, Vgate, U, B, theta. if None gives defaults
+    Rlead_pol, int -1, 0, 1
+        if +/- 1, will polarize right lead spins to up/down state
+        if 0, does nothing (default)
+        also does nothing if B=0 no matter what rlead_pol actually is
+    prefix: assigns prefix (eg folder) to default output file name
 
     Returns:
     none, but outputs t, observable data to /dat/Data/ folder
@@ -97,7 +99,7 @@ def DotData(n_leads, nelecs, timestop, deltat, phys_params=None, prefix = "", re
     if(verbose): print("1. Construct hamiltonian")
     thyb_eq = 1e-5; # small but nonzero = more robust
     eq_params = V_leads, thyb_eq, V_bias, mu, V_gate, U, B, theta; # dot hopping turned off, but nonzero = more robust
-    h1e, g2e, input_str = fci_mod.dot_hams(n_leads, n_imp_sites, nelecs, eq_params, verbose = verbose);
+    h1e, g2e, input_str = fci_mod.dot_hams(n_leads, n_imp_sites, nelecs, eq_params, Rlead_pol = Rlead_pol, verbose = verbose);
         
     # get scf implementation siam by passing hamiltonian arrays
     if(verbose): print("2. FCI solution");
@@ -108,6 +110,7 @@ def DotData(n_leads, nelecs, timestop, deltat, phys_params=None, prefix = "", re
 
     # remove spin prep terms
     h1e += ops.h_B(-B, theta, imp_i, norbs, verbose = verbose);
+    h1e += ops.h_B(abs(B)*Rlead_pol,0.0,np.arange(0,norbs, 1, dtype = int)[imp_i[-1]+1:],norbs, verbose = verbose);
     
     # prepare in nonequilibrium state by turning on t_hyb (hopping onto dot)
     if(verbose > 2 ): print("- Add nonequilibrium terms");

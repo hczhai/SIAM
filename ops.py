@@ -380,7 +380,7 @@ def h_bias(V, dot_is, norbs, verbose = 0):
     Returns 2d np array repping bias voltage term of h1e
     '''
 
-    assert(isinstance(dot_is, list) );
+    assert(isinstance(dot_is, list) or isinstance(site_i, np.ndarray));
 
     hb = np.zeros((norbs, norbs));
     for i in range(norbs): # iter over diag of h1e
@@ -410,7 +410,7 @@ def h_B(B, theta, site_i, norbs, verbose=0):
     Returns 2d np array repping magnetic field on given sites
     '''
 
-    assert(isinstance(site_i, list) );
+    assert(isinstance(site_i, list) or isinstance(site_i, np.ndarray));
 
     hB = np.zeros((norbs,norbs));
     for i in range(site_i[0],site_i[-1],2): # i is spin up, i+1 is spin down

@@ -41,13 +41,13 @@ if get_data: # must actually compute data
     for i in range(len(Bs)): # iter over B, theta inputs
         B, theta = Bs[i], thetas[i];
         params = tl, th, Vb, mu, Vg, U, B, theta;
-        fname = siam_current.DotData(nleads, nelecs, tf, dt, phys_params=params, verbose = verbose);
+        fname = siam_current.DotData(nleads, nelecs, tf, dt, phys_params=params, Rlead_pol = 1, prefix = "spinpol/", verbose = verbose);
         datafs.append(fname);
 
 else: # already there
-    splots = ['Jtot','J','Sz']; # which subplots to plot
+    splots = ['Jtot','J','Sz','Szleads']; # which subplots to plot
     for i in range(len(Bs)):
-        datafs.append("dat/DotData/"+str(nleads[0])+"_1_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_B"+str(Bs[i])+"_t"+str(thetas[i])[:3]+"_Vg"+str(Vg)+".npy");
+        datafs.append("dat/DotData/spinpol/"+str(nleads[0])+"_1_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_B"+str(Bs[i])+"_t"+str(thetas[i])[:3]+"_Vg"+str(Vg)+".npy");
         
     plot.CompObservablesB(datafs, nleads, Bs,thetas, Vg, splots = splots);
 

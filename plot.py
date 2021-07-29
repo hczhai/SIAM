@@ -259,7 +259,9 @@ def CompObservablesB(dats, nleads, Bs, ts, Vg, splots = ['Jtot','Sz'] ):
             axes[axcounter].plot(t, SzL, color = colors[dati], linestyle='dashed', label = "left")
             axes[axcounter].plot(t, SzR, color = colors[dati], linestyle = "dotted", label = "right")
             axes[axcounter].set_ylabel("Lead $S_z$");
-            axes[axcounter].legend()
+            dashline = matplotlib.lines.Line2D([],[],color = 'black', linestyle = 'dashed');
+            dotline = matplotlib.lines.Line2D([],[],color = 'black', linestyle = 'dotted');
+            axes[axcounter].legend(handles=[dashline, dotline],labels=['Left lead','Right lead']);  
             axcounter += 1;
 
         # plot energy vs time

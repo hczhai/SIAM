@@ -25,7 +25,7 @@ from pyscf import fci, gto, scf, ao2mo
 ##########################################################################################################
 ####
 
-def dot_hams(nleads, nsites, nelecs, physical_params, verbose = 0):
+def dot_hams(nleads, nsites, nelecs, physical_params, Rlead_pol=0, verbose = 0):
     '''
     Converts physical params into 1e and 2e parts of siam model hamiltonian, with
     Impurity hamiltonian:
@@ -36,7 +36,12 @@ def dot_hams(nleads, nsites, nelecs, physical_params, verbose = 0):
     - nleads, tuple of ints of lead sites on left, right
     - nsites, int, num impurity sites
     - nelecs, tuple of number es, 0 due to All spin up formalism
-    - physical params, tuple of t, thyb, Vbias, mu, Vgate, U
+    - physical params, tuple of t, thyb, Vbias, mu, Vgate, U, B, theta. if None gives defaults
+    - Rlead_pol, int -1, 0, 1
+        if +/- 1, will polarize right lead spins to up/down state
+        if 0, does nothing (default)
+        also does nothing if B=0 no matter what rlead_pol actually is
+    
     Returns:
     h1e, 2d np array, 1e part of siam ham
     h2e, 2d np array, 2e part of siam ham ( same as g2e)
@@ -63,7 +68,10 @@ def dot_hams(nleads, nsites, nelecs, physical_params, verbose = 0):
     h1e += ops.h_B(B, theta, dot_i, norbs, verbose = verbose); # prep dot state w/ magntic field in direction nhat (theta, phi=0)
     if(verbose > 1): print("\n- Full one electron hamiltonian = \n",h1e);
 
-    # alt spin up and down in initial state
+    # polarize the right lead if asked
+    if(Rlead_pol == 1 or Rlead_pol == -1): # turn on mag field for right lead
+        Rsites = np.arange(0,norbs, 1, dtype = int)[dot_i[-1]+1:];
+        h1e += ops.h_B(-abs(B)*Rlead_pol,0.0,Rsites,norbs, verbose = verbose);
         
     # 2e hamiltonian only comes from impurity
     if(verbose > 1):
