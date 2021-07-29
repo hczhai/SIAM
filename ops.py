@@ -37,8 +37,10 @@ def h_leads(V, N):
     '''
     create 1e hamiltonian for leads alone
     V is hopping between leads
-    N is number of leads (on each side)
+    N tuple of number of lead sites on left, right lead
     '''
+
+    assert(isinstance(N, tuple));
     
     n_lead_sos = 2*N[0] + 2*N[1]; # 2 spin orbs per lead site
     h = np.zeros((n_lead_sos,n_lead_sos));
@@ -61,8 +63,10 @@ def h_chem(mu,N):
     '''
     create 1e hamiltonian for chem potential of leads
     mu is chemical potential of leads
-    N is tuple of number of leads on each side
+    N tuple of number of lead sites on left, right lead
     '''
+
+    assert(isinstance(N, tuple));
     
     n_lead_sos = 2*N[0] + 2*N[1]; # 2 spin orbs per lead site
     h = np.zeros((n_lead_sos,n_lead_sos));
@@ -323,9 +327,10 @@ def stitch_h1e(h_imp, h_imp_leads, h_leads, h_bias, n_leads, verbose = 0):
         
             # last 2n_lead indices are right leads
             h[n_spin_orbs-1-i,n_spin_orbs-1-j] += h_leads[n_lead_sos-1-i, n_lead_sos-1-j];
-        
+      
     # fill in imp and imp-lead elements in middle
     assert(n_imp_sos+4 == np.shape(h_imp_leads)[0]); # 2 spin orbs to left, right
+    assert(n_lead_sos >= 4); # assumed by later code
     for i in range(n_imp_sos + 4):
         for j in range(n_imp_sos + 4):
             

@@ -3,9 +3,10 @@ Christian Bunker
 M^2QM at UF
 June 2021
 
-Template:
-Use FCI exact diag to solve single impurity anderson model (siam)
+siam_current.py
 
+Use FCI exact diag to solve single impurity anderson model (siam)
+Then use td FCI or td DMRG to time propagate
 
 pyscf formalism:
 - h1e_pq = (p|h|q) p,q spatial orbitals
@@ -20,8 +21,6 @@ pyscf fci module:
 - .kernel takes (1e hamiltonian, 2e hamiltonian, # spacial orbs, (# alpha e's, # beta e's))
 - direct_nosym assumes only h_pqrs = h_rspq (switch r1, r2 in coulomb integral)
 - direct_spin1 assumes h_pqrs = h_qprs = h_pqsr = h_qpsr
-
-siam.py
 
 '''
 

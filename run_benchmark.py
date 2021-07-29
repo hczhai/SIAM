@@ -18,16 +18,16 @@ import matplotlib.pyplot as plt
 #### replicate results from ruojing's code with siam_current module (ASU formalism)
 #### 1_1_0 system to match analytical results
 
-if False:
+if True:
     verbose = 4;
-    nleads = (1,0);
+    nleads = (1,1);
     nelecs = (1,1); # half filling
     nelecs_ASU = (sum(nelecs),0); # all spin up formalism
-    splots = ['J','Sz']; # which subplots to make
+    splots = ['Jtot','occ','Sz']; # which subplots to make
 
     #time info
     dt = 0.01;
-    tf = 5.0;
+    tf = 1.0;
 
     # benchmark with spin free code
     params = 1.0, 1.0, -0.005, 0.0, 0.0; # featureless dot
@@ -36,14 +36,14 @@ if False:
 
     # test ASU code - won't work in 110 case
     params_ASU = 1.0, 1.0, -0.005, 0.0, 0.0, 0.0, 0.0, 0.0; # featureless dot
-    #fname_ASU = siam_current.DotData(nleads, nelecs_ASU, tf, dt, phys_params=params_ASU, verbose = verbose);
-    #plot.PlotObservables(fname_ASU, nleads = nleads, splots = splots);
+    fname_ASU = siam_current.DotData(nleads, nelecs_ASU, tf, dt, phys_params=params_ASU, verbose = verbose);
+    plot.PlotObservables(fname_ASU, nleads = nleads, splots = splots);
 
 ##################################################################################
 #### 3_1_2 system is where both methods should always match
     # currently do 2_1_1 to look at Fig B5 with stromger thyb
 
-if True:
+if False:
     verbose = 4;
     nleads = (2,1);
     nelecs = (2,2); # half filling
