@@ -21,6 +21,7 @@ get_data = False;
 plot_J = True;
 plot_Fourier = False;
 verbose = 5;
+splots = ['Jtot','Sz'];
 
 # time
 tf = 5.0;
@@ -46,12 +47,12 @@ if get_data:
 #### plot current data
 
 # plot inputs
-title = "Dot with "+str(nleads[0])+" lead sites on each site"
+title = "Dot impurity:\n"+str(nleads[0])+" left sites, "+str(nleads[1])+" right sites, $t_{hyb} = 10^{-5}$ -> 0.4, B = "+str(B); 
 
 if plot_J:
     # plot J vs t, E vs t, fourier freqs, ind'ly or across Vg, mu sweep
     folder = "dat/DotData/VgSweep/" # where data is stored
-    plot.CurrentPlot(folder, nleads, nimp, nelecs, Vgs, B, 0.0, mytitle = title);
+    plot.CurrentPlot(folder, nleads, nimp, nelecs, Vgs, B, 0.0, splots=splots, mytitle = title);
 
 
 if plot_Fourier:

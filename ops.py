@@ -144,6 +144,52 @@ def occ(site_i, norbs):
     return o;
 
 
+def Sx(site_i, norbs):
+    '''
+    Operator for the x spin of sites specified by site_i
+    ASU formalism only !!!
+    Args:
+    - site_i, list of (usually spin orb) site indices
+    - norbs, total num orbitals in system
+    '''
+
+    # check inputs
+    assert( isinstance(site_i, list) or isinstance(site_i, np.ndarray));
+
+    # create op array
+    sx = np.zeros((norbs,norbs));
+
+    # iter over all given sites
+    for i in range(site_i[0], site_i[-1]+1, 2): # doti is up, doti+1 is down 
+        sx[i,i+1] = 1/2; # spin up
+        sx[i+1,i] = 1/2; # spin down
+
+    return sx;
+
+
+def Sy(site_i, norbs):
+    '''
+    Operator for the y spin of sites specified by site_i
+    ASU formalism only !!!
+    Args:
+    - site_i, list of (usually spin orb) site indices
+    - norbs, total num orbitals in system
+    '''
+
+    # check inputs
+    assert( isinstance(site_i, list) or isinstance(site_i, np.ndarray));
+
+    # create op array
+    sy = np.zeros((norbs,norbs),dtype = complex);
+
+    # iter over all given sites
+    for i in range(site_i[0], site_i[-1]+1, 2): # doti is up, doti+1 is down 
+        sy[i,i+1] = -1/2; # spin up
+        sy[i+1,i] = 1/2; # spin down
+
+    return sy;
+
+
 def Sz(site_i, norbs):
     '''
     Operator for the z spin of sites specified by site_i

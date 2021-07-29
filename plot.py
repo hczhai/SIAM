@@ -216,6 +216,7 @@ def CompObservablesB(dats, nleads, Bs, ts, Vg, splots = ['Jtot','Sz'] ):
 
     for dati in range(len(dats)): # iter over data sets
         observables = np.load(dats[dati]);
+        print("Loading data from "+dats[dati]);
         t, E, Jup, Jdown, occL, occD, occR, SzL, SzD, SzR = tuple(observables); # scatter
         J = Jup + Jdown;
         dt = np.real(t[1]);
@@ -231,11 +232,20 @@ def CompObservablesB(dats, nleads, Bs, ts, Vg, splots = ['Jtot','Sz'] ):
 
         if 'J' in splots:
             axes[axcounter].plot(t, Jup, color=colors[dati], linestyle = "dashed", label = "$J_{up}$"); # current
-            axes[axcounter].plot(t, Jdown, color=colors[dati], linestyle = "dotted", label = "$J_{down}$");
+            axes[axcounter].plot(t, Jdown, color=colors[dati], linewidth = 3, linestyle = "dotted", label = "$J_{down}$");
             axes[axcounter].set_ylabel("Current");
             dashline = matplotlib.lines.Line2D([],[],color = 'black', linestyle = 'dashed');
             dotline = matplotlib.lines.Line2D([],[],color = 'black', linestyle = 'dotted');
             axes[axcounter].legend(handles=[dashline, dotline],labels=['$J_{up}$','$J_{down}$']);           
+            axcounter += 1;
+
+        # plot occupancy vs time
+        if 'occ' in splots:
+            axes[axcounter].plot(t, occL+0.1*dati, label = "Left lead"); # occupancy
+            axes[axcounter].plot(t, occD+0.1*dati, label = "dot");
+            axes[axcounter].plot(t, occR+0.1*dati, label = "Right lead");
+            axes[axcounter].set_ylabel("Occupancy")
+            axes[axcounter].legend();
             axcounter += 1;
 
         # plot Sz of dot vs time
@@ -246,8 +256,8 @@ def CompObservablesB(dats, nleads, Bs, ts, Vg, splots = ['Jtot','Sz'] ):
 
         # plot Sz of leads vs time
         if 'Szleads' in splots:
-            axes[axcounter].plot(t, SzL, linestyle='dashed', label = "left")
-            axes[axcounter].plot(t, SzR, linestyle = "dotted", label = "right")
+            axes[axcounter].plot(t, SzL, color = colors[dati], linestyle='dashed', label = "left")
+            axes[axcounter].plot(t, SzR, color = colors[dati], linestyle = "dotted", label = "right")
             axes[axcounter].set_ylabel("Lead $S_z$");
             axes[axcounter].legend()
             axcounter += 1;
@@ -442,6 +452,7 @@ def CurrentPlot(folder, nleads, nimp, nelecs, Vgs, B, theta, splots = ['Jtot','J
             axes[axcounter].set_title(mytitle);
             axes[axcounter].set_xlabel("time (dt = "+str(dt)+" s)");
             axes[axcounter].set_ylabel("Current");
+            axes[axcounter].legend();
             axcounter += 1;
 
         if 'J' in splots:
@@ -453,11 +464,19 @@ def CurrentPlot(folder, nleads, nimp, nelecs, Vgs, B, theta, splots = ['Jtot','J
             axes[axcounter].legend(handles=[dashline, dotline],labels=['$J_{up}$','$J_{down}$']);           
             axcounter += 1;
 
+        # plot occupancy vs time
+        if 'occ' in splots:
+            axes[axcounter].plot(t, occL, label = "Left lead"); # occupancy
+            axes[axcounter].plot(t, occD, label = "dot");
+            axes[axcounter].plot(t, occR, label = "Right lead");
+            axes[axcounter].set_ylabel("Occupancy")
+            axes[axcounter].legend();
+            axcounter += 1;
+
         # plot Sz of dot vs time
         if 'Sz' in splots:
             axes[axcounter].plot(t, SzD, label = "$V_g$ = "+str(Vgs[i]) );
             axes[axcounter].set_ylabel("Dot $S_z$");
-            axes[axcounter].legend();
             axcounter += 1;
 
         # plot Sz of leads vs time
@@ -577,128 +596,7 @@ def FourierEnergyPlot(folder, nleads, nimp, nelecs, mu, Vg, Energies, mytitle = 
     plt.tight_layout();
     plt.show();
     return; # end fourier enrgy plot
-    
-    
-def CorrelPlot(datadict, correl_key, labels):
-    '''
-    Plot data of energy vs indep var, with and without correl effects included
-    
-    Args:
-    datadict: dictionary with keys name of calc method, vals tuple of x, energy
-    correl_key: which key has correl data
-    labels: strings for labeling plot
-    '''
-    
-    # for debugging
-    fname = CorrelPlot;
-    
-    # check inputs
-    if( type(datadict) != type(dict()) ): # check that basisdict is a dict
-        raise TypeError(fname+" 1st arg must be dictionary.\n");
-    if( type(labels) != type([]) ): # check that labels is a list
-        raise TypeError(fname+" 2nd arg must be a list.\n");
-        
-    # make figure
-    # 1 ax for energy 1 for correl energy
-    fig, axs = plt.subplots(2, 1, sharex = True);
-    
-    # plot energy data
-    for k in datadict:
-    
-        axs[0].plot(*datadict[k], label = k);
-        
-    # format energy plot
-    axs[0].set(xlabel = labels[0], ylabel = labels[1], title=labels[2]);
-    axs[0].legend();
-    
-    # plot correl effects
-    correl_energy = datadict[correl_key][1]; # benchmark
-    for k in datadict:
-        
-        if( k != correl_key): # dont plot 0s for the correl energies
-            x, y = datadict[k];
-            axs[1].plot(x, correl_energy - y);
-        
-    #format correl effects
-    axs[1].set(xlabel = labels[0], ylabel = "Correlation Energy")
-    
-    #show
-    plt.show();
 
-
-def ESpectrumPlot(Evals, title = ""):
-
-    x = np.array([0,1]);
-    y = np.zeros((len(Evals), 2));
-    for i in range(len(Evals)):
-        E = Evals[i];
-        y[i,0] = E;
-        y[i,1] = E;
-
-    #GenericPlot(x,y,labels = ["","Energy", title+" Energy Spectrum"]);
-    return x,y;
-
-
-def BasisPlot(basisdict, labels, comparediff=False):
-    '''
-    Given a dict, with
-        -keys being string for the basis used in the calc
-        -vals being an array of indep var vs energy
-    Make line plots comparing E vs indep var for each basis on same figure
-    
-    Args:
-        basis dict, dict
-        labels, list of strings for xlabel, ylabel, title
-    '''
-    
-    # for debugging
-    fname = BasisPlot;
-    
-    # check inputs
-    if( type(basisdict) != type(dict()) ): # check that basisdict is a dict
-        raise TypeError(fname+" 1st arg must be dictionary.\n");
-    if( type(labels) != type([]) ): # check that labels is a list
-        raise TypeError(fname+" 2nd arg must be a list.\n");
-    while( len(labels) < 3): # add dummy labels until we get to three
-        labels.append('');
-    
-    
-    # make figure
-    # 2 axes required if doing an energy difference comparison
-    if(comparediff):
-        fig, axs = plt.subplots(2, 1, sharex=True);
-        ax, ax1 = axs
-    else:
-        fig, ax = plt.subplots();
-    
-    # plot data for each entry in basis dict
-    for b in basisdict: # keys are strings
-    
-        ax.plot(*basisdict[b], label = b);
-        
-    # plot E diff if asked
-    if(comparediff):
-    
-        #choose baseline data
-        baseline = list(basisdict)[0]; # essentially grabs a random key
-        basedata = basisdict[baseline][1]; # get E vals that we subtract
-    
-        # now go thru and get E diff in each case
-        for b in basisdict:
-        
-            data = basisdict[b][1];
-            x, y = basisdict[b][0], data - basedata;
-            ax1.plot(x, y, label = b);
-            
-        # format ax1
-        ax1.set(xlabel = labels[0], ylabel = labels[1] + " Difference");
-        
-    # format and show
-    ax.set(xlabel = labels[0], ylabel = labels[1], title=labels[2]);
-    ax.legend();
-    plt.show();
-
-    return; #### end basis plot
     
 
 
@@ -707,14 +605,4 @@ def BasisPlot(basisdict, labels, comparediff=False):
 
 if __name__ == "__main__":
 
-    PlotFiniteSize();
-
-    '''
-    Espec = [-121.99, -121.99, -121.99, -121.99, -81.99, -81.99,-81.99,-81.99,-1.622, 0.00007, 0.00007, 0.0237 ]
-    labels = np.full(len(Espec), "");
-    labels[8] = "S";
-    labels[9] = "T+"
-    labels[10] = "T-"
-    labels[11] = "T0"
-    ESpectrumPlot(Espec);
-    '''
+    pass;

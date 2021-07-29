@@ -17,16 +17,16 @@ import matplotlib.pyplot as plt
 
 # top level
 verbose = 4;
-nleads = (2,2);
+nleads = (3,3);
 nelecs = (sum(nleads)+1,0); # half filling
-get_data = True; # whether to run computations, if not data already exists
+get_data = False # whether to run computations, if not data already exists
 
 # phys params, must be floats
 tl = 1.0;
 th = 0.4;
 Vb = -0.005;
 mu = 0.0;
-Vg = -0.75;
+Vg = -0.5;
 U = 1.0
 Bs = [tl*5, tl*5, tl*5,tl*5,tl*5];
 thetas = [0.0, np.pi/4, np.pi/2, 3*np.pi/4, np.pi];
@@ -46,25 +46,10 @@ if get_data: # must actually compute data
 
 else: # already there
     splots = ['Jtot','J','Sz']; # which subplots to plot
-    if nleads == (2,2):
-        datafs = ["dat/DotData/2_1_2_e5_B5.0_t0.0_Vg"+str(Vg)+".npy","dat/DotData/2_1_2_e5_B5.0_t0.7_Vg"+str(Vg)+".npy",
-                  "dat/DotData/2_1_2_e5_B5.0_t1.5_Vg"+str(Vg)+".npy","dat/DotData/2_1_2_e5_B5.0_t2.3_Vg"+str(Vg)+".npy",
-                  "dat/DotData/2_1_2_e5_B5.0_t3.1_Vg"+str(Vg)+".npy"];
-        plot.CompObservablesB(datafs, nleads, Bs,thetas, Vg, splots = splots);
-
-    elif nleads == (3,2):
-
-        datafs = ["dat/DotData/3_1_2_e6_B5.0_t0.0_Vg-0.5.npy","dat/DotData/3_1_2_e6_B5.0_t0.7_Vg-0.5.npy",
-              "dat/DotData/3_1_2_e6_B5.0_t1.5_Vg-0.5.npy","dat/DotData/3_1_2_e6_B5.0_t2.3_Vg-0.5.npy",
-              "dat/DotData/3_1_2_e6_B5.0_t3.1_Vg-0.5.npy"];
-        plot.CompObservablesB(datafs, nleads, Bs,thetas, Vg, splots = splots);
-
-    elif nleads == (3,3):
-
-        datafs = ["dat/DotData/3_1_3_e7_B5.0_t0.0_Vg-0.5.npy","dat/DotData/3_1_3_e7_B5.0_t0.7_Vg-0.5.npy",
-              "dat/DotData/3_1_3_e7_B5.0_t1.5_Vg-0.5.npy","dat/DotData/3_1_3_e7_B5.0_t2.3_Vg-0.5.npy",
-              "dat/DotData/3_1_3_e7_B5.0_t3.1_Vg-0.5.npy"];
-        plot.CompObservablesB(datafs, nleads, Bs,thetas, Vg, splots = splots);
+    for i in range(len(Bs)):
+        datafs.append("dat/DotData/"+str(nleads[0])+"_1_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_B"+str(Bs[i])+"_t"+str(thetas[i])[:3]+"_Vg"+str(Vg)+".npy");
+        
+    plot.CompObservablesB(datafs, nleads, Bs,thetas, Vg, splots = splots);
 
     
 

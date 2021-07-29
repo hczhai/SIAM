@@ -157,6 +157,42 @@ def compute_Sz(site_i, d1, d2, mocoeffs, norbs, ASU = False):
         Szdw = compute_energy((np.zeros_like(d1a),d1b),d2,Sz_eris); # now with d1b only
         #print("up, dw = ",Szup, Szdw);
         return (1/2)*(Szup - Szdw);
+
+
+def compute_Sx(site_i, d1, d2, mocoeffs, norbs, ASU = False):
+    '''
+    Compute Sx for the impurity. See compute_occ doc above
+    '''
+
+    if(len(site_i) == 0): return 0.0;
+
+    if ASU: # just put Szxoperator in h1e form
+        Sx = ops.Sx(site_i, norbs);
+
+        # have to store this operator as an eris object
+        Sx_eris = ERIs(Sx, np.zeros((norbs,norbs,norbs,norbs)), mocoeffs)
+        return compute_energy(d1,d2, Sx_eris);
+
+    else:
+        return 0.0;
+
+
+def compute_Sy(site_i, d1, d2, mocoeffs, norbs, ASU = False):
+    '''
+    Compute Sy for the impurity. See compute_occ doc above
+    '''
+
+    if(len(site_i) == 0): return 0.0;
+
+    if ASU: # just put Sy operator in h1e form
+        Sy = ops.Sy(site_i, norbs);
+
+        # have to store this operator as an eris object
+        Sy_eris = ERIs(Sy, np.zeros((norbs,norbs,norbs,norbs)), mocoeffs)
+        return compute_energy(d1,d2, Sy_eris);
+
+    else:
+        return 0.0;
     
     
 def compute_current(site_i,d1,d2,mocoeffs,norbs, ASU = False):
@@ -278,23 +314,26 @@ def kernel_plot(eris, ci, tf, dt, i_dot, t_hyb, RK, spinblind, verbose):
 
         # before any time stepping, get initial state
         if(i==0):
-            occ_init, Sz_init = np.zeros(len(i_all), dtype = complex), np.zeros(len(i_all), dtype = complex);
-            for sitej in i_all: # iter over sites
-                
+            occ_init = np.zeros(len(i_all), dtype = complex);
+            Sz_init = np.zeros(len(i_all), dtype = complex);
+            Sx_init = np.zeros(len(i_all), dtype = complex);
+            Sy_init = np.zeros(len(i_all), dtype = complex);
+            for sitej in i_all:# iter over sites
                 if spinblind: # sites are pairs of spin orbs
-                    if(sitej % 2 == 0): # spin up sites
-                        occ_init[sitej] = compute_occ([sitej],(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
-                        Sz_init[sitej] = (1/2)*compute_occ([sitej],(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
-                    else: # spin down sites
-                        occ_init[sitej] = compute_occ([sitej],(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
-                        Sz_init[sitej] = (-1/2)*compute_occ([sitej],(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
-                    
+                    if sitej % 2 == 0: # do up and down together
+                        sitejlist = [sitej, sitej+1];
+                        occ_init[sitej] = compute_occ(sitejlist,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
+                        Sz_init[sitej] = compute_Sz(sitejlist,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
+                        Sx_init[sitej] = compute_Sx(sitejlist,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
+                        Sy_init[sitej] = compute_Sy(sitejlist,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind); 
                 else: # sites are just sites
                     occ_init[sitej] = compute_occ([sitej],(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
                     Sz_init[sitej] = compute_Sz([sitej],(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
             initstatestr = "\nInitial state:"
             initstatestr += "\n    occ = "+str(np.real(occ_init));
-            initstatestr += "\n    Sz = "+str(np.real(Sz_init));
+            initstatestr += "\n    Sz = "+str(Sz_init);
+            initstatestr += "\n    Sx = "+str(Sx_init);
+            initstatestr += "\n    Sy = "+str(Sy_init);
         
         # time step
         dr, dr_imag = compute_update(ci, eris, dt, RK) # update state (r, an fcivec) at each time step

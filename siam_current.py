@@ -95,7 +95,7 @@ def DotData(n_leads, nelecs, timestop, deltat, phys_params=None, prefix = "", re
 
     # get 1 elec and 2 elec hamiltonian arrays for siam, dot model impurity
     if(verbose): print("1. Construct hamiltonian")
-    thyb_eq = 1e-5
+    thyb_eq = 1e-5; # small but nonzero = more robust
     eq_params = V_leads, thyb_eq, V_bias, mu, V_gate, U, B, theta; # dot hopping turned off, but nonzero = more robust
     h1e, g2e, input_str = fci_mod.dot_hams(n_leads, n_imp_sites, nelecs, eq_params, verbose = verbose);
         
