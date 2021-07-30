@@ -133,6 +133,13 @@ def compute_occ(site_i, d1, d2, mocoeffs, norbs, ASU = False):
     occ_eris = ERIs(occ, np.zeros((norbs,norbs,norbs,norbs)), mocoeffs)
     return compute_energy(d1,d2, occ_eris);
 
+
+def compute_S(site_i, civec, norbs, nelecs, ASU = True):
+
+    ciobj = CIObject(civec, norbs, nelecs);
+    (d1a, d1b), (d2aa, d2ab, d2bb) = ciobj.compute_rdm12();
+    
+
 def compute_Sz(site_i, d1, d2, mocoeffs, norbs, ASU = False):
     '''
     Compute Sz for the impurity. See compute_occ doc above

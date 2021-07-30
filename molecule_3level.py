@@ -18,10 +18,11 @@ Specific case:
 - 3 L_z levels: m=-1,0,1 (6 spin orbitals)
 '''
 
-import utils
+import ops
 
 import numpy as np
 from pyscf import fci
+import matplotlib.pyplot as plt
 
 ##########################################
 #### create hamiltonians
@@ -94,10 +95,10 @@ def Test():
     np.set_printoptions(suppress=True); # no sci notatation printing
 
     # parameters in the hamiltonian
-    alpha = 0.001;
-    D = 100.0;
-    E = 10.0;
-    U = 1000.0;
+    alpha = 0.5;
+    D = -10.0;
+    E = 1e-4
+    U = 100.0;
     E_shift = U - 2*D
     if(verbose):
         print("\nInputs:","\nalpha = ",alpha,"\nD = ",D,"\nE = ",E,"\nU = ",U);
@@ -132,11 +133,12 @@ def Test():
     cisolver = fci.direct_spin1.FCI()
     E_fci, v_fci = cisolver.kernel(h1e_mat, h2e_mat, norbs, nelecs,nroots=15);
     E_fci.sort();
-    spinexps = utils.Spin_exp(v_fci, norbs, nelecs)
     if(verbose):
-        print("\n1. Spin blind solution, nelecs = ",nelecs, ", nroots = ",myroots);
+        print("\n1. ASU solution, nelecs = ",nelecs, ", nroots = ",myroots);
         for i in range(myroots):
-            print("- E = ",E_fci[i] - E_shift, ", <S_x> = ",spinexps[i][0]," <S_z> = ", spinexps[i][2]);
+            Sx = np.dot(v_fci[i].T, fci.direct_spin1.contract_1e(ops.Sx([0,1,2,3,4,5],6),v_fci[i], norbs, nelecs) );
+            Sz = np.dot(v_fci[i].T, fci.direct_spin1.contract_1e(ops.Sz([0,1,2,3,4,5],6),v_fci[i], norbs, nelecs) );
+            print("- E = ",E_fci[i] - E_shift, ", <S_x> = ",Sx," <S_z> = ", Sz);
             if(verbose > 2):
                 print("     ",v_fci[i].T);
         
@@ -146,5 +148,21 @@ def Test():
 
 if __name__ == "__main__":
 
-    Test();
+    #Test();
+
+    # compare DS and alpha when E=0, D<0
+    # mark pederson predicts DS linear in alpha in this case
+    alphas = np.array([0.1,0.2,0.3,0.4,0.5,1.0])
+    Ds = np.array([-0.199,-0.396,-0.59,-0.784,-0.974,-1.89])
+    plt.plot(alphas, Ds, label = "data");
+    m, b = tuple(np.polyfit(alphas, Ds, 1))
+    fit = m*alphas + b
+    plt.plot(alphas, fit, label = "m = "+str(m));
+    plt.legend();
+    plt.xlabel(r"$\alpha$")
+    plt.ylabel("$D_S$")
+    plt.title("Linear $D_{S}$ when D < 0, E = 0");
+    plt.show()
+
+    
 
