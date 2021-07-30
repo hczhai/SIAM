@@ -120,6 +120,7 @@ def PlotObservables(dataf, nleads = (0,0), thyb = (1e-5,0.4), splots = ['Jtot','
     ax_counter = 0; # update every time an ax is plotted
 
     # unpack
+    print("Loading data from ",dataf);
     observables = np.load(dataf);
     t, E, Jup, Jdown, occL, occD, occR, SzL, SzD, SzR = tuple(observables); # scatter
     J = Jup + Jdown;

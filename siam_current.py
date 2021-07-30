@@ -142,6 +142,8 @@ def DotDataDmrg(n_leads, nelecs, timestop, deltat, phys_params=None, Rlead_pol =
     Exactly as above, but uses dmrg instead of td-fci
     '''
 
+    setup_start = time.time();
+
     # check inputs
     assert( isinstance(n_leads, tuple) );
     assert( isinstance(nelecs, tuple) );
@@ -165,11 +167,11 @@ def DotDataDmrg(n_leads, nelecs, timestop, deltat, phys_params=None, Rlead_pol =
         V_leads = 1.0; # hopping
         V_imp_leads = 0.4; # hopping t dot, allows current flow
         V_bias = -0.005; # induces current flow
-        mu = 0;
+        mu = 0.0;
         V_gate = -0.5;
         U = 1.0; # hubbard repulsion
-        B = 0; # magnetic field strength
-        theta = 0;
+        B = 0.0; # magnetic field strength
+        theta = 0.0;
     else: # customized
         V_leads, V_imp_leads, V_bias, mu, V_gate, U, B, theta = phys_params;
 
@@ -184,7 +186,7 @@ def DotDataDmrg(n_leads, nelecs, timestop, deltat, phys_params=None, Rlead_pol =
     hdump = fcidump.FCIDUMP(h1e=h1e,g2e=g2e,pg='c1',n_sites=norbs,n_elec=sum(nelecs), twos=nelecs[0]-nelecs[1]);      
 
     # instead of np array, dmrg wants ham as a matrix product operator (MPO)
-    h_obj = hamiltonian.Hamiltonian(hdump,True);
+    h_obj = hamiltonian.Hamiltonian(hdump,flat=True);
     h_mpo = h_obj.build_qc_mpo();
     if verbose: print("- Built H as MPO");
 
@@ -206,9 +208,12 @@ def DotDataDmrg(n_leads, nelecs, timestop, deltat, phys_params=None, Rlead_pol =
     E_dmrg = dmrg_obj.energies;
     if verbose: print("- Final gd energy = ", E_dmrg[-1]);
 
+    setup_stop = time.time();
+    print("\n\n\n\n\n",60*"*","Setup time = ", setup_stop - setup_start,60*"*","\n\n\n\n\n")
+
     # nonequil hamiltonian (as MPO)
     if(verbose > 2 ): print("- Add nonequilibrium terms");
-    ham_params_neq = V_leads, V_imp_leads, V_bias, mu, V_gate, U, B, theta; # dot hopping on now
+    ham_params_neq = V_leads, V_imp_leads, V_bias, mu, V_gate, U, 0.0, theta; # dot hopping on now, B field off
     h1e_neq, g2e_neq, input_str_neq = fci_mod.dot_hams(n_leads, n_imp_sites, nelecs, ham_params_neq, verbose = verbose);
     hdump_neq = fcidump.FCIDUMP(h1e=h1e_neq,g2e=g2e_neq,pg='c1',n_sites=norbs,n_elec=sum(nelecs), twos=nelecs[0]-nelecs[1]);
     h_obj_neq = hamiltonian.Hamiltonian(hdump_neq,True);
@@ -218,7 +223,7 @@ def DotDataDmrg(n_leads, nelecs, timestop, deltat, phys_params=None, Rlead_pol =
     init_str, observables = td_dmrg.kernel(h_mpo_neq, h_obj_neq, psi_mps, timestop, deltat, imp_i, V_imp_leads, bond_dims[:1], verbose = verbose);
 
     # write results to external file
-    folder = "dat/DotDataDmrg/";
+    folder = "dat/DotDataDMRG/";
     fname = folder+prefix+ str(n_leads[0])+"_"+str(n_imp_sites)+"_"+str(n_leads[1])+"_e"+str(sum(nelecs))+"_B"+str(B)[:3]+"_t"+str(theta)[:3]+"_Vg"+str(V_gate)+".npy";
     hstring = time.asctime();
     hstring += "\nASU formalism, t_hyb noneq. term"
