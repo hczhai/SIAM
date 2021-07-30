@@ -137,7 +137,7 @@ def DotData(n_leads, nelecs, timestop, deltat, phys_params=None, Rlead_pol = 0, 
     return fname; # end dot data
 
 
-def DotDataDmrg(n_leads, nelecs, timestop, deltat, phys_params=None, prefix = "", verbose = 0):
+def DotDataDmrg(n_leads, nelecs, timestop, deltat, phys_params=None, Rlead_pol = 0, prefix = "", verbose = 0):
     '''
     Exactly as above, but uses dmrg instead of td-fci
     '''
@@ -151,7 +151,7 @@ def DotDataDmrg(n_leads, nelecs, timestop, deltat, phys_params=None, prefix = ""
 
     # dmrg controls
     bond_dims_i = 200;
-    bond_dims = [bond_dims_i,bond_dims_i+100,bond_dims_i+200,bond_dims_i+300];
+    bond_dims = [bond_dims_i,bond_dims_i+100,bond_dims_i+200];
     noises = [1e-3,1e-4,1e-5,0] # need to give noise on order of smallest energy
 
     # set up the hamiltonian
@@ -176,9 +176,9 @@ def DotDataDmrg(n_leads, nelecs, timestop, deltat, phys_params=None, prefix = ""
 
     # get h1e and h2e for siam, h_imp = h_dot
     if(verbose): print("1. Construct hamiltonian")
-    thyb_eq = 1e-4; # small but nonzero val is more robust
+    thyb_eq = 1e-5; # small but nonzero val is more robust
     ham_params = V_leads, thyb_eq, V_bias, mu, V_gate, U, B, theta; # dot hopping turned off, but nonzero to fix numerical errors
-    h1e, g2e, input_str = fci_mod.dot_hams(n_leads, n_imp_sites, nelecs, ham_params, verbose = verbose);
+    h1e, g2e, input_str = fci_mod.dot_hams(n_leads, n_imp_sites, nelecs, ham_params, Rlead_pol = Rlead_pol, verbose = verbose);
 
     # store physics in fci dump object
     hdump = fcidump.FCIDUMP(h1e=h1e,g2e=g2e,pg='c1',n_sites=norbs,n_elec=sum(nelecs), twos=nelecs[0]-nelecs[1]);      
@@ -191,7 +191,7 @@ def DotDataDmrg(n_leads, nelecs, timestop, deltat, phys_params=None, prefix = ""
     # initial ansatz for wf, in matrix product state (MPS) form
     psi_mps = h_obj.build_mps(bond_dims_i);
     E_mps_init = td_dmrg.compute_obs(h_mpo, psi_mps);
-    print("- Initial gd energy = ", E_mps_init);
+    if verbose: print("- Initial gd energy = ", E_mps_init);
 
     # ground-state DMRG
     # runs thru an MPE (matrix product expectation) class built from mpo, mps
@@ -204,7 +204,7 @@ def DotDataDmrg(n_leads, nelecs, timestop, deltat, phys_params=None, prefix = ""
     # noises[0] = 1e-3 and tol = 1e-8 needed here
     dmrg_obj = MPE_obj.dmrg(bdims=bond_dims, noises = noises, tol = 1e-8, iprint=1); # will print sweep output
     E_dmrg = dmrg_obj.energies;
-    print("- Final gd energy = ", E_dmrg[-1]);
+    if verbose: print("- Final gd energy = ", E_dmrg[-1]);
 
     # nonequil hamiltonian (as MPO)
     if(verbose > 2 ): print("- Add nonequilibrium terms");

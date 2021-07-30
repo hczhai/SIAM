@@ -550,7 +550,7 @@ def SpinfreeTest(nleads, nelecs, tf, dt, phys_params = None, verbose = 0):
         U = 1.0 # dot interaction
 
     else: # custom
-        td = 0.0 # dot-lead hopping not turned on yet!
+        td = 1e-5 # dot-lead hopping not turned on yet!
         t, td_noneq, V, Vg, U = phys_params
 
     if(verbose):
