@@ -156,7 +156,7 @@ def PlotObservables(dataf, nleads = (0,0), thyb = (1e-5,0.4), splots = ['Jtot','
         axes[ax_counter].plot(t, occL - occL[0], label = "Left lead");
         axes[ax_counter].plot(t, occD - occD[0], label = "dot");
         axes[ax_counter].plot(t, occR - occR[0], label = "Right lead");
-        axes[ax_counter].set_ylabel("$\Delta$ Occupancy");
+        axes[ax_counter].set_ylabel(r"$\Delta$ Occupancy");
         ax_counter += 1;
 
     # z spin vs time
@@ -225,7 +225,7 @@ def CompObservablesB(dats, nleads, Bs, ts, Vg, splots = ['Jtot','Sz'] ):
 
         # plot current vs time
         if 'Jtot' in splots:
-            lab = "B = "+str(Bs[dati])+", theta = "+str(ts[dati]);
+            lab = r"B = "+str(Bs[dati])+", $\\theta$ = "+str(ts[dati]);
             axes[axcounter].plot(t,J,label = lab);
             axes[axcounter].set_ylabel("Current");
             axcounter += 1
@@ -276,7 +276,7 @@ def CompObservablesB(dats, nleads, Bs, ts, Vg, splots = ['Jtot','Sz'] ):
             Fnorm, freq = siam_current.Fourier(np.real(J), np.real(1/dt), angular = True);
             axes[axcounter].plot(freq, Fnorm);
             axes[axcounter].set_ylabel("Amplitude");
-            axes[axcounter].set_xlabel("$\omega$");
+            axes[axcounter].set_xlabel(r"$\omega$");
             axes[axcounter].set_xlim(0,3);
             axcounter += 1;
 
