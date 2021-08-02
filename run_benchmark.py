@@ -20,9 +20,9 @@ import matplotlib.pyplot as plt
 
 if True:
     verbose = 4;
-    nleads = (1,1);
-    nelecs = (1,1); # half filling
-    nelecs_ASU = (sum(nelecs),0); # all spin up formalism
+    nleads = (3,3);
+    #nelecs = (2,1); # half filling
+    nelecs_ASU = (sum(nleads)+1,0); # all spin up formalism
     splots = ['Jtot','occ','Sz']; # which subplots to make
 
     #time info

@@ -18,9 +18,9 @@ import matplotlib.pyplot as plt
 
 # top level
 verbose = 4;
-nleads = (4,4);
+nleads = (2,2);
 nelecs = (sum(nleads)+1,0); # half filling
-get_data = True # whether to run computations, if not data already exists
+get_data = False # whether to run computations, if not data already exists
 
 # phys params, must be floats
 tl = 1.0;
@@ -36,7 +36,7 @@ thetas = [0.0]
 
 #time info
 dt = 0.01;
-tf = 0.1;
+tf = 5.0;
 
 datafs = [];
 times = [];
@@ -63,9 +63,9 @@ if get_data: # must actually compute data
     print("Number of time steps = ",tf/dt);
 
 else: # already there
-    splots = ['Jtot','J','Sz','Szleads']; # which subplots to plot
+    splots = ['Jtot','occ','delta_occ','Sz']; # which subplots to plot
     for i in range(len(Bs)):
-        datafs.append("dat/DotDataDmrg/spinpol/"+str(nleads[0])+"_1_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_B"+str(Bs[i])+"_t"+str(thetas[i])[:3]+"_Vg"+str(Vg)+".npy");
+        datafs.append("dat/DotDataDMRG/spinpol/"+str(nleads[0])+"_1_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_B"+str(Bs[i])+"_t"+str(thetas[i])[:3]+"_Vg"+str(Vg)+".npy");
         
     plot.CompObservablesB(datafs, nleads, Bs,thetas, Vg, splots = splots);
 

@@ -73,6 +73,7 @@ def DotData(n_leads, nelecs, timestop, deltat, phys_params=None, Rlead_pol = 0, 
     assert( isinstance(timestop, float) );
     assert( isinstance(deltat, float) );
     assert( isinstance(phys_params, tuple) or phys_params == None);
+    if(Rlead_pol == 1 or Rlead_pol == -1): prefix = "spinpol/";
 
     # set up the hamiltonian
     n_imp_sites = 1 # dot
@@ -137,7 +138,7 @@ def DotData(n_leads, nelecs, timestop, deltat, phys_params=None, Rlead_pol = 0, 
     return fname; # end dot data
 
 
-def DotDataDmrg(n_leads, nelecs, timestop, deltat, phys_params=None, Rlead_pol = 0, prefix = "", verbose = 0):
+def DotDataDmrg(n_leads, nelecs, timestop, deltat, bond_dims_i = 50, phys_params=None, Rlead_pol = 0, prefix = "", verbose = 0):
     '''
     Exactly as above, but uses dmrg instead of td-fci
     '''
@@ -150,10 +151,11 @@ def DotDataDmrg(n_leads, nelecs, timestop, deltat, phys_params=None, Rlead_pol =
     assert( isinstance(timestop, float) );
     assert( isinstance(deltat, float) );
     assert( isinstance(phys_params, tuple) or phys_params == None);
+    if(Rlead_pol == 1 or Rlead_pol == -1): prefix = "spinpol/";
+    
 
     # dmrg controls
-    bond_dims_i = 200;
-    bond_dims = [bond_dims_i,bond_dims_i+100,bond_dims_i+200];
+    bond_dims = [bond_dims_i,bond_dims_i+25,bond_dims_i+50];
     noises = [1e-3,1e-4,1e-5,0] # need to give noise on order of smallest energy
 
     # set up the hamiltonian
@@ -220,13 +222,14 @@ def DotDataDmrg(n_leads, nelecs, timestop, deltat, phys_params=None, Rlead_pol =
     h_mpo_neq = h_obj_neq.build_qc_mpo(); # got mpo
 
     # time propagate the noneq state
-    init_str, observables = td_dmrg.kernel(h_mpo_neq, h_obj_neq, psi_mps, timestop, deltat, imp_i, V_imp_leads, bond_dims[:1], verbose = verbose);
+    # td dmrg uses highest bond dim
+    init_str, observables = td_dmrg.kernel(h_mpo_neq, h_obj_neq, psi_mps, timestop, deltat, imp_i, V_imp_leads, [bond_dims[-1]], verbose = verbose);
 
     # write results to external file
     folder = "dat/DotDataDMRG/";
     fname = folder+prefix+ str(n_leads[0])+"_"+str(n_imp_sites)+"_"+str(n_leads[1])+"_e"+str(sum(nelecs))+"_B"+str(B)[:3]+"_t"+str(theta)[:3]+"_Vg"+str(V_gate)+".npy";
     hstring = time.asctime();
-    hstring += "\nASU formalism, t_hyb noneq. term"
+    hstring += "\nASU formalism, t_hyb noneq. term, td-DMRG, bdims = "+str(bond_dims)
     hstring += "\nEquilibrium"+input_str; # write input vals to txt
     hstring += "\nNonequlibrium"+input_str_neq;
     hstring += init_str; # write initial state to txt
