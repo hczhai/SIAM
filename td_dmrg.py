@@ -115,7 +115,7 @@ def kernel(mpo, h_obj, mps, tf, dt, i_dot, thyb, bdims, verbose = 0):
             initstatestr += "\n    Sz = "+str(np.real(Sz_init));
 
         # mpe.tddmrg method does time prop, outputs energies but also modifies mpe obj
-        energies = mpe_obj.tddmrg(bdims,-np.complex(0,dt),n_sweeps=1,iprint=0,normalize = False).energies
+        energies = mpe_obj.tddmrg(bdims,-np.complex(0,dt), n_sweeps = 1, iprint=1).energies
 
         # compute observables
         timevals[i] = i*dt;
