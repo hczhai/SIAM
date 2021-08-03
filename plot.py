@@ -172,7 +172,7 @@ def PlotObservables(dataf, nleads = (0,0), thyb = (1e-5,0.4), splots = ['Jtot','
     # energy vs time
     if 'E' in splots: # energy
         axes[ax_counter].plot(t, E); # energy
-        axes[ax_counter].set_ylabel("$E/E_{i} - 1$");
+        axes[ax_counter].set_ylabel("E");
         ax_counter += 1;
 
     # configure all axes, show
