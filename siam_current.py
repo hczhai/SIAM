@@ -190,6 +190,7 @@ def DotDataDmrg(n_leads, nelecs, timestop, deltat, bond_dims_i = 50, phys_params
     # instead of np array, dmrg wants ham as a matrix product operator (MPO)
     h_obj = hamiltonian.Hamiltonian(hdump,flat=True);
     h_mpo = h_obj.build_qc_mpo();
+    h_mpo, _ = h_mpo.compress(cutoff=1E-15)
     if verbose: print("- Built H as MPO");
 
     # initial ansatz for wf, in matrix product state (MPS) form
@@ -220,6 +221,7 @@ def DotDataDmrg(n_leads, nelecs, timestop, deltat, bond_dims_i = 50, phys_params
     hdump_neq = fcidump.FCIDUMP(h1e=h1e_neq,g2e=g2e_neq,pg='c1',n_sites=norbs,n_elec=sum(nelecs), twos=nelecs[0]-nelecs[1]);
     h_obj_neq = hamiltonian.Hamiltonian(hdump_neq,True);
     h_mpo_neq = h_obj_neq.build_qc_mpo(); # got mpo
+    h_mpo_neq, _ = h_mpo_neq.compress(cutoff=1E-15)
 
     # time propagate the noneq state
     # td dmrg uses highest bond dim

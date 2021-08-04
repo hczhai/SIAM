@@ -36,33 +36,31 @@ def compute_occ(site_i, mps, h):
     occ_mpo = h.build_mpo(occ_op);
     return compute_obs(occ_mpo, mps);
 
+def compute_occ_mpo(site_i, norbs, h):
 
-def compute_Sz(site_i, mps, h):
+    # occupancy operator in dmrg
+    occ_op = ops_dmrg.occ(site_i, norbs)
+    occ_mpo = h.build_mpo(occ_op)
+    return occ_mpo
 
-    norbs = mps.n_sites
+def compute_Sz_mpo(site_i, norbs, h):
 
     # Sz operator in dmrg
-    Sz_op = ops_dmrg.Sz(site_i, norbs);
-    Sz_mpo = h.build_mpo(Sz_op);
-    return compute_obs(Sz_mpo, mps);
+    Sz_op = ops_dmrg.Sz(site_i, norbs)
+    Sz_mpo = h.build_mpo(Sz_op)
+    return Sz_mpo
 
-
-def compute_current(site_i, mps, h):
-
-    norbs = mps.n_sites
+def compute_current_mpo(site_i, norbs, h):
 
     # J of up spins
-    Jup = ops_dmrg.Jup(site_i, norbs);
-    Jup_mpo = h.build_mpo(Jup);
+    Jup_arr = ops_dmrg.Jup(site_i, norbs)
+    Jup_mpo = h.build_mpo(Jup_arr)
 
     # J of up spins
-    Jdown = ops_dmrg.Jdown(site_i, norbs);
-    Jdown_mpo = h.build_mpo(Jdown);
-    
-    Jup_val = -np.imag(compute_obs(Jup_mpo, mps)); # -imag is same as *i
-    Jdown_val = -np.imag(compute_obs(Jdown_mpo, mps));
-    return Jup_val, Jdown_val;
+    Jdown_arr = ops_dmrg.Jdown(site_i, norbs)
+    Jdown_mpo = h.build_mpo(Jdown_arr)
 
+    return Jup_mpo, Jdown_mpo
     
 ##########################################################################################################
 #### time propagation
@@ -84,7 +82,17 @@ def kernel(mpo, h_obj, mps, tf, dt, i_dot, thyb, bdims, verbose = 0):
     i_all = np.arange(0,h_obj.n_sites, 1, dtype = int);
     i_left = i_all[:i_dot[0] ];
     i_right = i_all[i_dot[-1]+1:];
-    
+
+    # mpos only need to compute once to save time
+    norbs = mps.n_sites
+    current_mpos = compute_current_mpo(i_dot, norbs, h_obj)
+    occ_mpo_0 = compute_occ_mpo(i_left, norbs, h_obj)
+    occ_mpo_1 = compute_occ_mpo(i_dot, norbs, h_obj)
+    occ_mpo_2 = compute_occ_mpo(i_right, norbs, h_obj)
+    sz_mpo_0 = compute_Sz_mpo(i_left, norbs, h_obj)
+    sz_mpo_1 = compute_Sz_mpo(i_dot, norbs, h_obj)
+    sz_mpo_2 = compute_Sz_mpo(i_right, norbs, h_obj)
+
     # return vals
     timevals = np.zeros(N+1);
     energyvals = np.zeros(N+1);
@@ -115,18 +123,19 @@ def kernel(mpo, h_obj, mps, tf, dt, i_dot, thyb, bdims, verbose = 0):
             initstatestr += "\n    Sz = "+str(np.real(Sz_init));
 
         # mpe.tddmrg method does time prop, outputs energies but also modifies mpe obj
-        energies = mpe_obj.tddmrg(bdims,-np.complex(0,dt), n_sweeps = 1, iprint=1).energies
+        energies = mpe_obj.tddmrg(bdims,-np.complex(0,dt), n_sweeps = 1, iprint=1, cutoff=0).energies
 
         # compute observables
         timevals[i] = i*dt;
         energyvals[i] = energies[-1];
-        currentvals[0][i], currentvals[1][i] = compute_current(i_dot, mps, h_obj);
-        occvals[0][i] = compute_occ(i_left, mps, h_obj);
-        occvals[1][i] = compute_occ(i_dot, mps, h_obj);
-        occvals[2][i] = compute_occ(i_right, mps, h_obj);
-        Szvals[0][i] = compute_Sz(i_left, mps, h_obj);
-        Szvals[1][i] = compute_Sz(i_dot, mps, h_obj);
-        Szvals[2][i] = compute_Sz(i_right, mps, h_obj);
+        currentvals[0][i] = -np.imag(compute_obs(current_mpos[0], mps))
+        currentvals[1][i] = -np.imag(compute_obs(current_mpos[1], mps))
+        occvals[0][i] = compute_obs(occ_mpo_0, mps)
+        occvals[1][i] = compute_obs(occ_mpo_1, mps)
+        occvals[2][i] = compute_obs(occ_mpo_2, mps)
+        Szvals[0][i] = compute_obs(sz_mpo_0, mps)
+        Szvals[1][i] = compute_obs(sz_mpo_1, mps)
+        Szvals[2][i] = compute_obs(sz_mpo_2, mps)
         
         # update stdout        
         if(verbose>4): print("    time: ", i*dt);
